@@ -1,0 +1,126 @@
+@import "tailwindcss";
+
+:root {
+    --brand-bg: #FFFFFF;
+    --brand-terracotta: #D86A33;
+    --brand-wine: #550C18;
+    --brand-peach: #FFC99C;
+    --brand-card: #FFFFFF;
+}
+
+body {
+    background-color: #FFFFFF;
+    color: #1a1a1a;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* Checkered Background Pattern */
+.bg-checkered-peach {
+    background-color: #FFF9F5;
+    background-image: linear-gradient(45deg, #FFC99C25 25%, transparent 25%), 
+                      linear-gradient(-45deg, #FFC99C25 25%, transparent 25%), 
+                      linear-gradient(45deg, transparent 75%, #FFC99C25 75%), 
+                      linear-gradient(-45deg, transparent 75%, #FFC99C25 75%);
+    background-size: 24px 24px;
+    background-position: 0 0, 0 12px, 12px -12px, -12px 0px;
+}
+
+/* Scallop Wave Border Utility */
+.scallop-divider-top {
+    background-image: radial-gradient(circle at 10px 0, transparent 10px, #FFFFFF 11px);
+    background-size: 20px 12px;
+    background-repeat: repeat-x;
+    height: 12px;
+    width: 100%;
+}
+
+.scallop-divider-bottom {
+    background-image: radial-gradient(circle at 10px 12px, transparent 10px, #FFFFFF 11px);
+    background-size: 20px 12px;
+    background-repeat: repeat-x;
+    height: 12px;
+    width: 100%;
+}
+
+/* Washi Tape Effect */
+.washi-tape {
+    background: rgba(255, 201, 156, 0.75);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    backdrop-filter: blur(2px);
+    transform: rotate(-2deg);
+}
+
+.washi-tape-alt {
+    background: rgba(216, 106, 51, 0.7);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    backdrop-filter: blur(2px);
+    transform: rotate(2deg);
+}
+
+/* Infinite Marquee Animation */
+@keyframes marquee {
+    0% { transform: translateX(0%); }
+    100% { transform: translateX(-50%); }
+}
+
+@keyframes marquee-reverse {
+    0% { transform: translateX(-50%); }
+    100% { transform: translateX(0%); }
+}
+
+.animate-marquee {
+    display: flex;
+    width: max-content;
+    animation: marquee 25s linear infinite;
+}
+
+.animate-marquee:hover {
+    animation-play-state: paused;
+}
+
+.animate-marquee-reverse {
+    display: flex;
+    width: max-content;
+    animation: marquee-reverse 25s linear infinite;
+}
+
+/* Slow Spin Animation for starbursts and badges */
+@keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.animate-spin-slow {
+    animation: spin-slow 15s linear infinite;
+}
+
+/* Floating Animation */
+@keyframes float-gentle {
+    0%, 100% { transform: translateY(0px) rotate(0deg); }
+    50% { transform: translateY(-8px) rotate(2deg); }
+}
+
+.animate-float {
+    animation: float-gentle 4s ease-in-out infinite;
+}
+
+.animate-float-delayed {
+    animation: float-gentle 5s ease-in-out 1.5s infinite;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+::-webkit-scrollbar-track {
+    background: #FFF4EB;
+}
+::-webkit-scrollbar-thumb {
+    background: #D86A33;
+    border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+    background: #550C18;
+}
