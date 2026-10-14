@@ -63,7 +63,7 @@ export default function HeroSection() {
             {/* Floating Sticker 2: Rotating Stamp Badge Top Right */}
             <div className="hidden lg:flex absolute top-36 right-16 animate-float-delayed items-center justify-center pointer-events-none z-10">
                 <div className="relative w-24 h-24 rounded-full border-2 border-dashed border-[#D86A33] bg-[#FFF4EB] p-2 flex items-center justify-center text-center shadow-lg -rotate-12 hover:rotate-0 transition-transform">
-                    <div className="text-[10px] font-black text-[#550C18] uppercase tracking-tighter leading-tight">
+                    <div className="text-[10px] font-black text-[#5F2142] uppercase tracking-tighter leading-tight">
                         ✦ 100% ✦<br />
                         <span className="text-[#D86A33] font-extrabold text-xs">CHIC</span><br />
                         BOHEME
@@ -73,7 +73,7 @@ export default function HeroSection() {
 
             {/* Floating Sticker 3: Washi Tape Note Bottom Left */}
             <div className="hidden md:block absolute bottom-12 left-16 animate-float-delayed pointer-events-none z-10">
-                <div className="washi-tape px-4 py-2 rounded-sm text-xs font-black text-[#550C18] shadow-md border-l-2 border-[#D86A33]">
+                <div className="washi-tape px-4 py-2 rounded-sm text-xs font-black text-[#5F2142] shadow-md border-l-2 border-[#D86A33]">
                     ★ HECHO A LA MEDIDA ★
                 </div>
             </div>
@@ -81,7 +81,7 @@ export default function HeroSection() {
             {/* Floating Sticker 4: Starburst Bottom Right */}
             <div className="hidden md:flex absolute bottom-16 right-20 animate-float items-center gap-2 pointer-events-none z-10">
                 <span className="text-[#D86A33] text-2xl animate-spin-slow">✦</span>
-                <span className="px-3 py-1 bg-[#550C18] text-[#FFC99C] text-xs font-black rounded-full shadow-md rotate-6">
+                <span className="px-3 py-1 bg-[#5F2142] text-[#FFC99C] text-xs font-black rounded-full shadow-md rotate-6">
                     NUEVA COLECCIÓN
                 </span>
             </div>
@@ -89,13 +89,13 @@ export default function HeroSection() {
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
                 
                 {/* Chic Badge with stitch border */}
-                <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#FFF4EB] border-2 border-dashed border-[#D86A33] text-[#550C18] text-xs sm:text-sm font-black tracking-wider uppercase mb-6 shadow-sm hover:scale-105 transition-transform">
+                <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#FFF4EB] border-2 border-dashed border-[#D86A33] text-[#5F2142] text-xs sm:text-sm font-black tracking-wider uppercase mb-6 shadow-sm hover:scale-105 transition-transform">
                     <span className="text-[#D86A33]">✦</span>
                     <span>La Tienda Chic de la Salud</span>
                     <span className="text-[#D86A33]">✦</span>
                 </div>
 
-                <h1 ref={titleRef} className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-[#550C18] mb-6 leading-[1.1]">
+                <h1 ref={titleRef} className="text-4xl sm:text-6xl md:text-7xl font-black tracking-tight text-[#5F2142] mb-6 leading-[1.1]">
                     Ponle color & buena onda <br className="hidden sm:block" />
                     a tu jornada con <span className="relative inline-block text-[#D86A33] underline decoration-[#FFC99C] decoration-wavy decoration-2">BOHEME</span>
                 </h1>
@@ -114,7 +114,7 @@ export default function HeroSection() {
                     </Link>
                     <Link 
                         href="/nosotros" 
-                        className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-8 py-4 border-2 border-[#550C18] text-base sm:text-lg font-black rounded-full text-[#550C18] hover:bg-[#550C18] hover:text-white transition-all hover:scale-105 active:scale-95 hover:rotate-1 shadow-sm"
+                        className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-8 py-4 border-2 border-[#5F2142] text-base sm:text-lg font-black rounded-full text-[#5F2142] hover:bg-[#5F2142] hover:text-white transition-all hover:scale-105 active:scale-95 hover:rotate-1 shadow-sm"
                     >
                         <span>Quiénes Somos</span>
                         <span>❤</span>

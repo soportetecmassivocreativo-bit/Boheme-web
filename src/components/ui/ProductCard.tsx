@@ -37,7 +37,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         <div className="group bg-white rounded-3xl border border-[#FFC99C]/40 hover:border-[#D86A33]/50 shadow-sm hover:shadow-2xl transition-all duration-300 hover:-translate-y-1.5 flex flex-col overflow-hidden relative">
             {/* Top Washi Tape Corner Accent */}
             <div className="absolute top-2 left-4 z-20 pointer-events-none opacity-80 group-hover:opacity-100 transition-opacity">
-                <span className="washi-tape text-[10px] font-black text-[#550C18] px-2.5 py-0.5 tracking-wider uppercase inline-block -rotate-3">
+                <span className="washi-tape text-[10px] font-black text-[#5F2142] px-2.5 py-0.5 tracking-wider uppercase inline-block -rotate-3">
                     ★ BOHEME
                 </span>
             </div>
@@ -51,7 +51,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                         className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
                     />
                 ) : (
-                    <div className="w-full h-full bg-[#FFF4EB] flex items-center justify-center text-[#550C18] font-bold text-lg">
+                    <div className="w-full h-full bg-[#FFF4EB] flex items-center justify-center text-[#5F2142] font-bold text-lg">
                         BOHEME
                     </div>
                 )}
@@ -67,7 +67,7 @@ export default function ProductCard({ product }: ProductCardProps) {
             {/* Content container */}
             <div className="p-5 pt-2 flex-1 flex flex-col justify-between">
                 <div>
-                    <h3 className="text-lg font-extrabold text-[#550C18] mb-1.5 line-clamp-1 group-hover:text-[#D86A33] transition-colors">
+                    <h3 className="text-lg font-extrabold text-[#5F2142] mb-1.5 line-clamp-1 group-hover:text-[#D86A33] transition-colors">
                         {product.name}
                     </h3>
                     <p className="text-xs text-gray-500 line-clamp-2 mb-4 leading-relaxed font-normal">
@@ -82,15 +82,15 @@ export default function ProductCard({ product }: ProductCardProps) {
                         <div className="flex items-center border border-[#FFC99C]/60 rounded-full bg-[#FFF9F5] p-0.5">
                             <button
                                 onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
-                                className="w-7 h-7 rounded-full flex items-center justify-center text-[#550C18] hover:bg-[#FFC99C]/50 hover:text-[#D86A33] transition-colors"
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-[#5F2142] hover:bg-[#FFC99C]/50 hover:text-[#D86A33] transition-colors"
                                 aria-label="Decrease quantity"
                             >
                                 <Minus size={13} />
                             </button>
-                            <span className="px-1.5 font-black text-xs text-[#550C18] w-6 text-center">{quantity}</span>
+                            <span className="px-1.5 font-black text-xs text-[#5F2142] w-6 text-center">{quantity}</span>
                             <button
                                 onClick={() => setQuantity(prev => prev + 1)}
-                                className="w-7 h-7 rounded-full flex items-center justify-center text-[#550C18] hover:bg-[#FFC99C]/50 hover:text-[#D86A33] transition-colors"
+                                className="w-7 h-7 rounded-full flex items-center justify-center text-[#5F2142] hover:bg-[#FFC99C]/50 hover:text-[#D86A33] transition-colors"
                                 aria-label="Increase quantity"
                             >
                                 <Plus size={13} />
@@ -100,7 +100,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                         {/* Add button */}
                         <button
                             onClick={handleAddToCart}
-                            className="flex-1 bg-[#D86A33] hover:bg-[#550C18] text-white font-bold py-2.5 px-3.5 rounded-full flex items-center justify-center gap-1.5 text-xs transition-all duration-300 shadow-md shadow-[#D86A33]/20 hover:scale-[1.02] active:scale-[0.98]"
+                            className="flex-1 bg-[#D86A33] hover:bg-[#5F2142] text-white font-bold py-2.5 px-3.5 rounded-full flex items-center justify-center gap-1.5 text-xs transition-all duration-300 shadow-md shadow-[#D86A33]/20 hover:scale-[1.02] active:scale-[0.98]"
                         >
                             <ShoppingCart size={15} />
                             <span>Añadir</span>

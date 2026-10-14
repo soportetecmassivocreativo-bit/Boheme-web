@@ -50,14 +50,14 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
             <div className="bg-[#FFF9F5] border-b border-[#FFC99C]/40 py-12 relative overflow-hidden">
                 <div className="absolute top-0 right-10 w-72 h-72 bg-[#FFC99C]/20 rounded-full blur-3xl pointer-events-none"></div>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                    <div className="inline-block washi-tape text-xs font-black text-[#550C18] px-3.5 py-1 tracking-wider uppercase mb-3 -rotate-1 shadow-sm">
+                    <div className="inline-block washi-tape text-xs font-black text-[#5F2142] px-3.5 py-1 tracking-wider uppercase mb-3 -rotate-1 shadow-sm">
                         ★ COLECCIÓN BOHEME 2025 ★
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-black text-[#550C18] capitalize tracking-tight flex items-center gap-3">
+                    <h1 className="text-4xl md:text-5xl font-black text-[#5F2142] capitalize tracking-tight flex items-center gap-3">
                         {category.title}
                         <span className="text-[#D86A33] text-2xl md:text-3xl">✦</span>
                     </h1>
-                    <p className="mt-3 text-base md:text-lg text-[#550C18]/80 max-w-2xl font-light leading-relaxed">
+                    <p className="mt-3 text-base md:text-lg text-[#5F2142]/80 max-w-2xl font-light leading-relaxed">
                         {category.description}
                     </p>
                 </div>
@@ -73,8 +73,8 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                             href={`/categorias/${categoria}`}
                             className={`px-5 py-2.5 rounded-full text-xs font-black whitespace-nowrap transition-all duration-200 border uppercase tracking-wider ${
                                 !subcategoriaId
-                                    ? 'bg-[#550C18] text-[#FFC99C] border-[#550C18] shadow-md -rotate-1 scale-105'
-                                    : 'bg-white text-[#550C18] border-[#FFC99C]/50 hover:border-[#D86A33] hover:text-[#D86A33] hover:scale-105'
+                                    ? 'bg-[#5F2142] text-[#FFC99C] border-[#5F2142] shadow-md -rotate-1 scale-105'
+                                    : 'bg-white text-[#5F2142] border-[#FFC99C]/50 hover:border-[#D86A33] hover:text-[#D86A33] hover:scale-105'
                             }`}
                         >
                             ✦ Todos
@@ -90,7 +90,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                                     className={`px-5 py-2.5 rounded-full text-xs font-black whitespace-nowrap transition-all duration-200 border uppercase tracking-wider ${
                                         isActive
                                             ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-md rotate-1 scale-105'
-                                            : 'bg-white text-[#550C18] border-[#FFC99C]/50 hover:border-[#D86A33] hover:text-[#D86A33] hover:scale-105'
+                                            : 'bg-white text-[#5F2142] border-[#FFC99C]/50 hover:border-[#D86A33] hover:text-[#D86A33] hover:scale-105'
                                     }`}
                                 >
                                     {sub.name}
@@ -104,7 +104,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                 {products.length === 0 ? (
                     <div className="text-center py-20 bg-[#FFF9F5] rounded-3xl border-2 border-dashed border-[#FFC99C]/60 shadow-sm space-y-4 max-w-lg mx-auto">
                         <span className="text-4xl">🌸</span>
-                        <h2 className="text-xl text-[#550C18] font-bold">
+                        <h2 className="text-xl text-[#5F2142] font-bold">
                             No disponible por el momento
                         </h2>
                         <p className="text-sm text-gray-500 font-light">

@@ -3,7 +3,7 @@
 :root {
     --brand-bg: #FFFFFF;
     --brand-terracotta: #D86A33;
-    --brand-wine: #550C18;
+    --brand-wine: #5F2142;
     --brand-peach: #FFC99C;
     --brand-card: #FFFFFF;
 }
@@ -122,5 +122,5 @@ body {
     border-radius: 4px;
 }
 ::-webkit-scrollbar-thumb:hover {
-    background: #550C18;
+    background: #5F2142;
 }

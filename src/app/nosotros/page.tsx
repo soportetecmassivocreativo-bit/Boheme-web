@@ -20,10 +20,10 @@ export default function NosotrosPage() {
             {/* Bottom CTA Box */}
             <section className="pb-24 bg-white relative">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="bg-[#550C18] border-2 border-dashed border-[#FFC99C]/50 text-white rounded-3xl p-8 md:p-14 text-center shadow-2xl relative overflow-hidden">
+                    <div className="bg-[#5F2142] border-2 border-dashed border-[#FFC99C]/50 text-white rounded-3xl p-8 md:p-14 text-center shadow-2xl relative overflow-hidden">
                         {/* Washi Tape Header Pin */}
                         <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20">
-                            <span className="washi-tape text-xs font-black text-[#550C18] px-5 py-1 tracking-widest uppercase inline-block -rotate-1 shadow-md">
+                            <span className="washi-tape text-xs font-black text-[#5F2142] px-5 py-1 tracking-widest uppercase inline-block -rotate-1 shadow-md">
                                 ★ ÚNETE AL ESTILO BOHEME ★
                             </span>
                         </div>
@@ -52,7 +52,7 @@ export default function NosotrosPage() {
                                 </Link>
                                 <Link 
                                     href="/categorias/lanyards" 
-                                    className="px-8 py-3.5 bg-[#FFC99C] hover:bg-[#ffe3cc] text-[#550C18] font-extrabold rounded-full transition-all hover:scale-105 shadow-lg shadow-[#FFC99C]/20 flex items-center justify-center gap-2"
+                                    className="px-8 py-3.5 bg-[#FFC99C] hover:bg-[#ffe3cc] text-[#5F2142] font-extrabold rounded-full transition-all hover:scale-105 shadow-lg shadow-[#FFC99C]/20 flex items-center justify-center gap-2"
                                 >
                                     <span>Ver Lanyards</span>
                                     <span>→</span>

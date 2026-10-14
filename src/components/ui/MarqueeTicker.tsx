@@ -21,9 +21,9 @@ export default function MarqueeTicker({
     items = DEFAULT_ITEMS 
 }: MarqueeTickerProps) {
     const bgClasses = {
-        terracotta: 'bg-[#D86A33] text-white border-y-2 border-[#550C18]/20',
-        wine: 'bg-[#550C18] text-[#FFC99C] border-y-2 border-[#D86A33]/30',
-        peach: 'bg-[#FFF4EB] text-[#550C18] border-y-2 border-[#D86A33]/30'
+        terracotta: 'bg-[#D86A33] text-white border-y-2 border-[#5F2142]/20',
+        wine: 'bg-[#5F2142] text-[#FFC99C] border-y-2 border-[#D86A33]/30',
+        peach: 'bg-[#FFF4EB] text-[#5F2142] border-y-2 border-[#D86A33]/30'
     }[variant];
 
     const starColor = {

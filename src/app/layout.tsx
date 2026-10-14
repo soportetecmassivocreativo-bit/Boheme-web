@@ -21,7 +21,7 @@ export default function RootLayout({
             <head>
                 <script src="https://cdn.tailwindcss.com"></script>
             </head>
-            <body className={`${inter.variable} font-sans antialiased bg-white text-gray-900 selection:bg-[#550C18] selection:text-[#FFC99C]`}>
+            <body className={`${inter.variable} font-sans antialiased bg-white text-gray-900 selection:bg-[#5F2142] selection:text-[#FFC99C]`}>
                 {children}
                 <CartDrawer />
                 <WhatsAppButton />

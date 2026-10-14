@@ -10,17 +10,17 @@ module.exports = {
         extend: {
             colors: {
                 brand: {
-                    bg: '#550C18',
+                    bg: '#5F2142',
                     terracotta: '#D86A33',
                     peach: '#FFC99C',
-                    wine: '#550C18',
-                    'wine-dark': '#3d0710',
-                    'wine-card': '#5e0f1d',
-                    'wine-card-hover': '#6f1423',
+                    wine: '#5F2142',
+                    'wine-dark': '#43142e',
+                    'wine-card': '#6f274e',
+                    'wine-card-hover': '#7e2d59',
                     'orange-dark': '#D86A33',
                     'orange-light': '#FFC99C',
                     orange: '#D86A33',
-                    white: '#550C18'
+                    white: '#5F2142'
                 }
             }
         },

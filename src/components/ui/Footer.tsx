@@ -12,7 +12,7 @@ const WHATSAPP_NUMBER = "584121409976";
 
 export default function Footer() {
     return (
-        <footer className="bg-[#3d0710] text-[#FFF5EE] pt-16 pb-12 border-t border-[#D86A33]/25 relative overflow-hidden">
+        <footer className="bg-[#43142e] text-[#FFF5EE] pt-16 pb-12 border-t border-[#D86A33]/25 relative overflow-hidden">
             {/* Ambient glows with #D86A33 & #FFC99C */}
             <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#D86A33]/10 rounded-full blur-3xl pointer-events-none"></div>
             <div className="absolute bottom-0 left-10 w-80 h-80 bg-[#FFC99C]/10 rounded-full blur-3xl pointer-events-none"></div>
@@ -46,7 +46,7 @@ export default function Footer() {
                                 href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hola BOHEME! Quisiera hacer una consulta:`}
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="w-11 h-11 rounded-full bg-[#550C18] border border-[#D86A33]/40 flex items-center justify-center text-[#FFC99C] hover:text-white hover:bg-[#D86A33] hover:border-[#D86A33] hover:-rotate-6 transition-all duration-300 shadow-md hover:scale-110"
+                                className="w-11 h-11 rounded-full bg-[#5F2142] border border-[#D86A33]/40 flex items-center justify-center text-[#FFC99C] hover:text-white hover:bg-[#D86A33] hover:border-[#D86A33] hover:-rotate-6 transition-all duration-300 shadow-md hover:scale-110"
                                 aria-label="WhatsApp"
                             >
                                 <MessageCircle size={18} />
@@ -55,7 +55,7 @@ export default function Footer() {
                                 href="https://instagram.com" 
                                 target="_blank" 
                                 rel="noopener noreferrer"
-                                className="w-11 h-11 rounded-full bg-[#550C18] border border-[#FFC99C]/40 flex items-center justify-center text-[#D86A33] hover:text-[#550C18] hover:bg-[#FFC99C] hover:border-[#FFC99C] hover:rotate-6 transition-all duration-300 shadow-md hover:scale-110"
+                                className="w-11 h-11 rounded-full bg-[#5F2142] border border-[#FFC99C]/40 flex items-center justify-center text-[#D86A33] hover:text-[#5F2142] hover:bg-[#FFC99C] hover:border-[#FFC99C] hover:rotate-6 transition-all duration-300 shadow-md hover:scale-110"
                                 aria-label="Instagram"
                             >
                                 <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -66,7 +66,7 @@ export default function Footer() {
                             </a>
                             <Link 
                                 href="/categorias/gorros" 
-                                className="w-11 h-11 rounded-full bg-[#550C18] border border-[#D86A33]/40 flex items-center justify-center text-[#FFC99C] hover:text-white hover:bg-[#D86A33] hover:border-[#D86A33] hover:-rotate-3 transition-all duration-300 shadow-md hover:scale-110"
+                                className="w-11 h-11 rounded-full bg-[#5F2142] border border-[#D86A33]/40 flex items-center justify-center text-[#FFC99C] hover:text-white hover:bg-[#D86A33] hover:border-[#D86A33] hover:-rotate-3 transition-all duration-300 shadow-md hover:scale-110"
                                 aria-label="Catálogo"
                             >
                                 <ShoppingBag size={18} />
@@ -115,7 +115,7 @@ export default function Footer() {
 
                     {/* Col 3: Navegación & Empresa (Span 2) */}
                     <div className="lg:col-span-2 space-y-4">
-                        <div className="inline-block washi-tape text-xs font-black text-[#550C18] px-3 py-0.5 rounded rotate-1 mb-2">
+                        <div className="inline-block washi-tape text-xs font-black text-[#5F2142] px-3 py-0.5 rounded rotate-1 mb-2">
                             ★ BOHEME
                         </div>
                         <ul className="space-y-2.5 text-sm text-[#FFF5EE]/80 font-medium">
@@ -148,7 +148,7 @@ export default function Footer() {
 
                     {/* Col 4: Atención & Ubicación (Span 3) */}
                     <div className="lg:col-span-3 space-y-4">
-                        <div className="inline-block bg-[#FFC99C] text-xs font-black text-[#550C18] px-3 py-0.5 rounded-full -rotate-1 mb-2">
+                        <div className="inline-block bg-[#FFC99C] text-xs font-black text-[#5F2142] px-3 py-0.5 rounded-full -rotate-1 mb-2">
                             ★ CONTACTO
                         </div>
                         
@@ -176,7 +176,7 @@ export default function Footer() {
 
                         {/* Badge de confianza */}
                         <div className="pt-2">
-                            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#550C18] border border-[#FFC99C]/40 text-xs font-bold text-[#FFC99C] shadow-sm hover:scale-105 transition-transform">
+                            <span className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#5F2142] border border-[#FFC99C]/40 text-xs font-bold text-[#FFC99C] shadow-sm hover:scale-105 transition-transform">
                                 <span>✦</span> 100% Calidad y Dedicación
                             </span>
                         </div>
