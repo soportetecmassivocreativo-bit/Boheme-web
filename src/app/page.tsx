@@ -299,8 +299,8 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* 5. Infinite Chic Reverse Marquee in Orange Light / Peach */}
-            <MarqueeTicker variant="orange-light" reverse={true} />
+            {/* 5. Infinite Chic Reverse Marquee in Orange (Identical to top marquee) */}
+            <MarqueeTicker variant="orange" reverse={true} />
 
             {/* 6. Identidad / Sobre Nosotros Section (All Light Boxes with #5F2142 & #D86A33 accents) */}
             <AboutSection />
