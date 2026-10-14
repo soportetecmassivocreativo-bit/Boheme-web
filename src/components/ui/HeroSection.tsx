@@ -81,7 +81,7 @@ export default function HeroSection() {
             {/* Floating Sticker 4: Starburst Bottom Right */}
             <div className="hidden md:flex absolute bottom-16 right-20 animate-float items-center gap-2 pointer-events-none z-10">
                 <span className="text-[#D86A33] text-2xl animate-spin-slow">✦</span>
-                <span className="px-3 py-1 bg-[#5F2142] text-[#FFC99C] text-xs font-black rounded-full shadow-md rotate-6">
+                <span className="px-3 py-1 bg-[#FFF9F5] border border-[#5F2142] text-[#5F2142] text-xs font-black rounded-full shadow-xs rotate-6">
                     NUEVA COLECCIÓN
                 </span>
             </div>
@@ -114,7 +114,7 @@ export default function HeroSection() {
                     </Link>
                     <Link 
                         href="/nosotros" 
-                        className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-8 py-4 border-2 border-[#5F2142] text-base sm:text-lg font-black rounded-full text-[#5F2142] hover:bg-[#5F2142] hover:text-white transition-all hover:scale-105 active:scale-95 hover:rotate-1 shadow-sm"
+                        className="w-full sm:w-auto inline-flex justify-center items-center gap-2 px-8 py-4 text-base sm:text-lg font-black rounded-full text-white bg-[#5F2142] hover:bg-[#43142e] transition-all hover:scale-105 active:scale-95 hover:rotate-1 shadow-xl shadow-[#5F2142]/20"
                     >
                         <span>Quiénes Somos</span>
                         <span>❤</span>

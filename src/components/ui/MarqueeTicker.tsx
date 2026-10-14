@@ -1,7 +1,7 @@
 import React from 'react';
 
 interface MarqueeTickerProps {
-    variant?: 'terracotta' | 'wine' | 'peach';
+    variant?: 'orange' | 'orange-light' | 'peach';
     reverse?: boolean;
     items?: string[];
 }
@@ -16,20 +16,20 @@ const DEFAULT_ITEMS = [
 ];
 
 export default function MarqueeTicker({ 
-    variant = 'terracotta', 
+    variant = 'orange', 
     reverse = false, 
     items = DEFAULT_ITEMS 
 }: MarqueeTickerProps) {
     const bgClasses = {
-        terracotta: 'bg-[#D86A33] text-white border-y-2 border-[#5F2142]/20',
-        wine: 'bg-[#5F2142] text-[#FFC99C] border-y-2 border-[#D86A33]/30',
-        peach: 'bg-[#FFF4EB] text-[#5F2142] border-y-2 border-[#D86A33]/30'
+        orange: 'bg-[#D86A33] text-white border-y-2 border-[#5F2142]/20 shadow-xs',
+        'orange-light': 'bg-[#FFF4EB] text-[#5F2142] border-y-2 border-[#D86A33]',
+        peach: 'bg-[#FFF9F5] text-[#D86A33] border-y-2 border-[#D86A33]/60'
     }[variant];
 
     const starColor = {
-        terracotta: 'text-[#FFC99C]',
-        wine: 'text-[#D86A33]',
-        peach: 'text-[#D86A33]'
+        orange: 'text-[#FFC99C]',
+        'orange-light': 'text-[#D86A33]',
+        peach: 'text-[#5F2142]'
     }[variant];
 
     // Duplicate list 4 times for seamless continuous loop
