@@ -65,7 +65,7 @@ export default function HeroSection() {
                 <div className="relative w-24 h-24 rounded-full border-2 border-dashed border-[#D86A33] bg-[#FFF4EB] p-2 flex items-center justify-center text-center shadow-lg -rotate-12 hover:rotate-0 transition-transform">
                     <div className="text-[10px] font-black text-[#5F2142] uppercase tracking-tighter leading-tight">
                         ✦ 100% ✦<br />
-                        <span className="text-[#D86A33] font-extrabold text-xs">CHIC</span><br />
+                        <span className="text-[#D86A33] font-extrabold text-xs">CALIDAD</span><br />
                         BOHEME
                     </div>
                 </div>
@@ -88,10 +88,10 @@ export default function HeroSection() {
 
             <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
                 
-                {/* Chic Badge with stitch border */}
+                {/* Badge with stitch border */}
                 <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#FFF4EB] border-2 border-dashed border-[#D86A33] text-[#5F2142] text-xs sm:text-sm font-black tracking-wider uppercase mb-6 shadow-sm hover:scale-105 transition-transform">
                     <span className="text-[#D86A33]">✦</span>
-                    <span>La Tienda Chic de la Salud</span>
+                    <span>Accesorios Médicos con Estilo</span>
                     <span className="text-[#D86A33]">✦</span>
                 </div>
 
@@ -101,7 +101,7 @@ export default function HeroSection() {
                 </h1>
 
                 <p ref={subtitleRef} className="mt-4 max-w-2xl text-lg sm:text-xl text-gray-600 mx-auto mb-10 leading-relaxed font-normal">
-                    Gorritos quirúrgicos y lanyards personalizados con estilo único, comodidad absoluta y entregas súper puntuales para acompañarte en cada turno.
+                    Gorritos quirúrgicos y lanyards personalizados con estilo único, comodidad absoluta y entregas personalizadas para acompañarte en cada turno.
                 </p>
 
                 <div ref={ctaRef} className="flex flex-col sm:flex-row justify-center items-center gap-4">

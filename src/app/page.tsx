@@ -119,7 +119,7 @@ export default function Home() {
             <Navbar />
             <HeroSection />
 
-            {/* 1. Infinite Chic Marquee Ribbon in Orange (#D86A33) */}
+            {/* 1. Infinite Marquee Ribbon in Orange (#D86A33) */}
             <MarqueeTicker variant="orange" />
 
             {/* 2. Paper Sunshine Style Quick Category Circle Bar on Pure White Background */}
@@ -299,7 +299,7 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* 5. Infinite Chic Reverse Marquee in Orange (Identical to top marquee) */}
+            {/* 5. Infinite Reverse Marquee in Orange (Identical to top marquee) */}
             <MarqueeTicker variant="orange" reverse={true} />
 
             {/* 6. Identidad / Sobre Nosotros Section (All Light Boxes with #5F2142 & #D86A33 accents) */}

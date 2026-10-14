@@ -17,7 +17,7 @@ export default function Footer() {
             <div className="absolute top-0 right-1/4 w-96 h-96 bg-[#D86A33]/10 rounded-full blur-3xl pointer-events-none"></div>
             <div className="absolute bottom-0 left-10 w-80 h-80 bg-[#FFC99C]/10 rounded-full blur-3xl pointer-events-none"></div>
 
-            {/* Giant Background Wordmark / Watermark for Awwwards chic style */}
+            {/* Giant Background Wordmark / Watermark */}
             <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 select-none pointer-events-none text-white/[0.03] font-black text-[18vw] leading-none tracking-tighter whitespace-nowrap z-0">
                 BOHEME
             </div>
@@ -40,7 +40,7 @@ export default function Footer() {
                             Le ponemos color, estilo y buena onda a tu rutina de trabajo. Gorritos quirúrgicos, lanyards y accesorios médicos con diseño único y máxima calidad.
                         </p>
 
-                        {/* Social Buttons with alternating chic sticker badges */}
+                        {/* Social Buttons with alternating sticker badges */}
                         <div className="flex items-center gap-3 pt-2">
                             <a 
                                 href={`https://wa.me/${WHATSAPP_NUMBER}?text=Hola BOHEME! Quisiera hacer una consulta:`}

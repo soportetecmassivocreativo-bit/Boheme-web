@@ -29,7 +29,7 @@ const VALORES_LIST = [
     },
     {
         name: 'Confianza',
-        description: 'Relaciones sólidas respaldadas por nuestra puntualidad, compromiso y dedicación diaria.',
+        description: 'Relaciones sólidas respaldadas por nuestras entregas personalizadas, compromiso y dedicación diaria.',
         icon: Lock,
         color: 'text-[#5F2142]',
         border: 'border-[#5F2142]/30',
@@ -112,7 +112,7 @@ export default function AboutSection() {
                             </p>
                             
                             <p className="text-gray-600 text-base sm:text-lg leading-relaxed font-normal">
-                                Nos apasiona acompañar al gremio de la salud y a profesionales de todo tipo con accesorios hechos a la medida, entregas súper puntuales y un trato cercano que te hace sentir siempre en confianza.
+                                Nos apasiona acompañar al gremio de la salud y a profesionales de todo tipo con accesorios hechos a la medida, entregas personalizadas y un trato cercano que te hace sentir siempre en confianza.
                             </p>
 
                             <ul className="space-y-3.5 pt-2">
@@ -138,7 +138,7 @@ export default function AboutSection() {
                                     <span className="w-5 h-5 rounded-full bg-[#FFF4EB] border border-[#D86A33]/40 text-[#D86A33] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
                                         <Check size={13} strokeWidth={3} />
                                     </span>
-                                    <span>Envíos garantizados a toda Venezuela con entregas súper puntuales.</span>
+                                    <span>Envíos garantizados a toda Venezuela con entregas personalizadas.</span>
                                 </li>
                             </ul>
                         </div>
