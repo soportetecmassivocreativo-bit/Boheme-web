@@ -382,8 +382,308 @@ const MOCK_PRODUCTS: Product[] = [
         image_url: '/cat_accesorios.png',
         categoria_slug: 'accesorios-medicos',
         subcategoria_id: 32
+    },
+
+    // ==========================================
+    // GORROS (Subcategories: 70 - En Stock, 71 - Personalizados)
+    // ==========================================
+    {
+        id: '101',
+        name: 'Gorro Quirúrgico Flores Boheme',
+        description: '100% Algodón transpirable. Diseño floral exclusivo, banda absorbente en la frente y ajuste con elástico y tiras posteriores.',
+        price: 8,
+        image_url: '/cat_gorros.png',
+        categoria_slug: 'gorros',
+        subcategoria_id: 70
+    },
+    {
+        id: '102',
+        name: 'Gorro Quirófano Antifluido Azul Profundo',
+        description: 'Tejido antifluido repelente de líquidos. Máxima frescura, suavidad y durabilidad para largas jornadas de turno.',
+        price: 9,
+        image_url: '/cat_gorros.png',
+        categoria_slug: 'gorros',
+        subcategoria_id: 70
+    },
+    {
+        id: '103',
+        name: 'Gorro Quirúrgico Butterfly Pastel',
+        description: 'Confeccionado en tela suave y liviana con estampado de mariposas en tonos pastel. Ajuste anatómico perfecto.',
+        price: 8.5,
+        image_url: '/cat_gorros.png',
+        categoria_slug: 'gorros',
+        subcategoria_id: 70
+    },
+    {
+        id: '104',
+        name: 'Gorro Satinado Anti-Frizz Rosa Boheme',
+        description: 'Interior forrado en satén de seda para proteger tu cabello del frizz y la estática durante todo tu turno.',
+        price: 10,
+        image_url: '/cat_gorros.png',
+        categoria_slug: 'gorros',
+        subcategoria_id: 70
+    },
+    {
+        id: '105',
+        name: 'Gorro Confort con Botones para Mascarilla',
+        description: 'Incorpora botones laterales para enganchar la mascarilla y evitar dolor o presión en las orejas. Color Lila Boheme.',
+        price: 9,
+        image_url: '/cat_gorros.png',
+        categoria_slug: 'gorros',
+        subcategoria_id: 70
+    },
+    {
+        id: '106',
+        name: 'Gorro Bandana Unisex Lavanda',
+        description: 'Modelo bandana envolvente de fácil ajuste. Excelente para doctores, enfermeros y odontólogos.',
+        price: 8,
+        image_url: '/cat_gorros.png',
+        categoria_slug: 'gorros',
+        subcategoria_id: 70
+    },
+    {
+        id: '107',
+        name: 'Gorro Personalizado con Nombre & Especialidad',
+        description: 'Personalizado a tu gusto con tu nombre, especialidad médica o logo bordado de alta definición.',
+        price: 12,
+        image_url: '/cat_gorros.png',
+        categoria_slug: 'gorros',
+        subcategoria_id: 71
+    },
+    {
+        id: '108',
+        name: 'Gorro Personalizado Full Sublimación',
+        description: 'Diseño temático exclusivo personalizado con los motivos, personajes o identidad que prefieras.',
+        price: 14,
+        image_url: '/cat_gorros.png',
+        categoria_slug: 'gorros',
+        subcategoria_id: 71
+    },
+
+    // ==========================================
+    // LANYARDS (Subcategories: 5 - Básicos, 6 - Personalizados, 7 - Portacarnet)
+    // ==========================================
+    {
+        id: '201',
+        name: 'Lanyard Clásico Boheme con Gancho',
+        description: 'Cinta satinada de 2cm con broche de seguridad antipánico y mosquetón metálico reforzado para llaves y carnet.',
+        price: 3,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'lanyards',
+        subcategoria_id: 5
+    },
+    {
+        id: '202',
+        name: 'Lanyard Sublimado Colores Pastel',
+        description: 'Estampado textil doble faz en tonos pasteles. Suave al tacto con el cuello, hipoalergénico y lavable.',
+        price: 4,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'lanyards',
+        subcategoria_id: 5
+    },
+    {
+        id: '203',
+        name: 'Lanyard Portallaves y Tijera Reforzado',
+        description: 'Diseño especial con doble sujeción para cargar credencial, llaves de locker y tijeras de trauma de forma segura.',
+        price: 4.5,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'lanyards',
+        subcategoria_id: 5
+    },
+    {
+        id: '204',
+        name: 'Lanyard Personalizado Nombre & Servicio',
+        description: 'Personalizado con tu nombre, servicio hospitalario, universidad o institución médica. Consulta colores disponibles.',
+        price: 5,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'lanyards',
+        subcategoria_id: 6
+    },
+    {
+        id: '205',
+        name: 'Portacarnet Rígido Acrílico Transparente',
+        description: 'Protector de credencial en acrílico transparente de alta resistencia. Protege de derrames y dobleces.',
+        price: 2,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'lanyards',
+        subcategoria_id: 7
+    },
+    {
+        id: '206',
+        name: 'Portacarnet Retráctil Yoyo con Pin Médico',
+        description: 'Yoyo retráctil de 60cm con clip metálico para el bolsillo y motivo temático en relieve (Estetoscopio / Jeringa).',
+        price: 3.5,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'lanyards',
+        subcategoria_id: 7
+    },
+
+    // ==========================================
+    // EQUIPOS MÉDICOS (Subcategories: 38 - Tensiometro manual, 40 - Tensiometro digital, 44/45 - Estetoscopio, 46 - Doppler, 48 - Linterna, 50 - Oximetro, 55 - Termometro)
+    // ==========================================
+    {
+        id: '301',
+        name: 'Estetoscopio Doble Campana Profesional',
+        description: 'Excelente acústica para auscultación cardíaca y pulmonar. Olivas blandas ergonómicas y campana de acero inoxidable.',
+        price: 25,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos',
+        subcategoria_id: 45
+    },
+    {
+        id: '302',
+        name: 'Estetoscopio Clínico Liviano',
+        description: 'Modelo ligero ideal para estudiantes, enfermería y uso diario de rutina. Alta sensibilidad acústica.',
+        price: 16,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos',
+        subcategoria_id: 44
+    },
+    {
+        id: '303',
+        name: 'Tensiómetro Manual con Brazalete Adulto',
+        description: 'Kit de tensiómetro aneroide con manómetro de precisión, perilla con válvula de liberación y estuche protector.',
+        price: 22,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos',
+        subcategoria_id: 38
+    },
+    {
+        id: '304',
+        name: 'Tensiómetro Digital Automático de Brazo',
+        description: 'Medición precisa de presión arterial y frecuencia cardíaca con pantalla LCD grande retroiluminada y memoria de lecturas.',
+        price: 30,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos',
+        subcategoria_id: 40
+    },
+    {
+        id: '305',
+        name: 'Linterna Pupilar Médica LED con Escala',
+        description: 'Linterna de diagnóstico tipo bolígrafo con luz blanca LED, clip metálico y escala de dilatación pupilar impresa.',
+        price: 5,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos',
+        subcategoria_id: 48
+    },
+    {
+        id: '306',
+        name: 'Oxímetro de Pulso Digital OLED Portátil',
+        description: 'Mide SpO2 (oxígeno en sangre) y pulso en tiempo real. Pantalla OLED multidireccional con curva pletismográfica.',
+        price: 15,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos',
+        subcategoria_id: 50
+    },
+    {
+        id: '307',
+        name: 'Termómetro Digital Rápido con Punta Flexible',
+        description: 'Lectura precisa en 10 segundos con alarma de fiebre y memoria de última medición. Punta flexible lavable.',
+        price: 6,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos',
+        subcategoria_id: 55
+    },
+    {
+        id: '308',
+        name: 'Doppler Fetal Portátil con Pantalla LCD',
+        description: 'Detector de latidos fetales portátil de alta sensibilidad sonora con altavoz integrado y display digital.',
+        price: 38,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos',
+        subcategoria_id: 46
+    },
+
+    // ==========================================
+    // PRODUCTOS PERSONALIZADOS (Subcategories: 57 - Franelas, 58 - Llaveros, 60 - Cojines, 61 - Cartucheras, 64 - Totebag, 66 - Minilibretas)
+    // ==========================================
+    {
+        id: '401',
+        name: 'Franela Médica Algodón DTF Premium',
+        description: '100% Algodón peinado suave con estampado DTF de alta definición. Personalizable con nombre, carrera o frases médicas.',
+        price: 15,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'productos-personalizados',
+        subcategoria_id: 57
+    },
+    {
+        id: '402',
+        name: 'Totebag Canvas Boheme Personalizada',
+        description: 'Bolsa ecológica de tela canvas reforzada, espaciosa para libros, uniforme, estetoscopio y pertenencias de guardia.',
+        price: 10,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'productos-personalizados',
+        subcategoria_id: 64
+    },
+    {
+        id: '403',
+        name: 'Cartuchera Médica Organizadora Multibolsillos',
+        description: 'Estuche compacto con compartimentos elásticos para bolígrafos, linterna pupilar, tijera de trauma y termómetro.',
+        price: 8,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'productos-personalizados',
+        subcategoria_id: 61
+    },
+    {
+        id: '404',
+        name: 'Llavero Acrílico con Inicial & Profesión',
+        description: 'Llavero personalizado cortado en acrílico cristal con acabado brillante e ilustración médica a elección.',
+        price: 3.5,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'productos-personalizados',
+        subcategoria_id: 58
+    },
+    {
+        id: '405',
+        name: 'Minilibreta Médica con Tablas Clínicas',
+        description: 'Cuaderno de bolsillo con espiral, tapas duras personalizadas e información de referencia rápida para guardias.',
+        price: 4,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'productos-personalizados',
+        subcategoria_id: 66
+    },
+    {
+        id: '406',
+        name: 'Cojín Decorativo Temático Salud',
+        description: 'Cojín mullido estampado con motivos alusivos a medicina y enfermería. Ideal para descanso o consultorio.',
+        price: 12,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'productos-personalizados',
+        subcategoria_id: 60
     }
 ];
+
+// Circuit breaker & timeout helper to prevent hanging when remote database is slow or unreachable
+let supabaseCircuitTripped = false;
+let lastTripTime = 0;
+const CIRCUIT_RESET_MS = 60000; // Wait 60s before retrying database if it fails
+
+async function executeWithTimeout<T>(promise: Promise<T>, timeoutMs = 1200): Promise<T> {
+    let timeoutId: NodeJS.Timeout;
+    const timeoutPromise = new Promise<never>((_, reject) => {
+        timeoutId = setTimeout(() => reject(new Error('Database query timed out')), timeoutMs);
+    });
+    try {
+        return await Promise.race([promise, timeoutPromise]);
+    } finally {
+        clearTimeout(timeoutId!);
+    }
+}
+
+function isCircuitOpen(): boolean {
+    if (!supabaseCircuitTripped) return false;
+    if (Date.now() - lastTripTime > CIRCUIT_RESET_MS) {
+        supabaseCircuitTripped = false;
+        return false;
+    }
+    return true;
+}
+
+function tripCircuit(err?: any) {
+    supabaseCircuitTripped = true;
+    lastTripTime = Date.now();
+    console.warn('Supabase circuit breaker activated. Serving local catalog cache.', err?.message || err);
+}
 
 export async function fetchCategoryProducts(categorySlug: string, subcategoryId?: number): Promise<{
     category: CategoryInfo | null;
@@ -394,8 +694,8 @@ export async function fetchCategoryProducts(categorySlug: string, subcategoryId?
         return { category: null, products: [] };
     }
 
-    // Query Supabase if configured
-    if (isSupabaseConfigured() && supabase) {
+    // Query Supabase if configured and circuit breaker is closed
+    if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
         try {
             let query = supabase
                 .from('products')
@@ -406,10 +706,10 @@ export async function fetchCategoryProducts(categorySlug: string, subcategoryId?
                 query = query.eq('subcategoria_id', subcategoryId);
             }
 
-            const { data, error } = await query;
+            const { data, error } = await executeWithTimeout(query as unknown as Promise<any>, 1200);
 
             if (error) {
-                console.error('Error fetching from Supabase:', error.message);
+                tripCircuit(error);
             } else if (data && data.length > 0) {
                 const products: Product[] = data.map((row: any) => ({
                     id: String(row.id),
@@ -428,11 +728,11 @@ export async function fetchCategoryProducts(categorySlug: string, subcategoryId?
                 return { category, products };
             }
         } catch (error) {
-            console.error('Error fetching from Supabase, falling back to mock data:', error);
+            tripCircuit(error);
         }
     }
 
-    // Fallback to static mock products
+    // Fast and resilient fallback to local catalog products
     let products = MOCK_PRODUCTS.filter(p => p.categoria_slug === categorySlug);
     if (subcategoryId) {
         products = products.filter(p => p.subcategoria_id === subcategoryId);
@@ -442,10 +742,15 @@ export async function fetchCategoryProducts(categorySlug: string, subcategoryId?
 }
 
 export async function fetchAllProducts(): Promise<Product[]> {
-    if (isSupabaseConfigured() && supabase) {
+    if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
         try {
-            const { data, error } = await supabase.from('products').select('*');
-            if (!error && data && data.length > 0) {
+            const { data, error } = await executeWithTimeout(
+                supabase.from('products').select('*') as unknown as Promise<any>,
+                1200
+            );
+            if (error) {
+                tripCircuit(error);
+            } else if (data && data.length > 0) {
                 return data.map((row: any) => ({
                     id: String(row.id),
                     name: String(row.name),
@@ -461,22 +766,23 @@ export async function fetchAllProducts(): Promise<Product[]> {
                 }));
             }
         } catch (error) {
-            console.error('Error fetching all products from Supabase:', error);
+            tripCircuit(error);
         }
     }
     return MOCK_PRODUCTS;
 }
 
 export async function fetchProductById(id: string): Promise<Product | null> {
-    if (isSupabaseConfigured() && supabase) {
+    if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
         try {
-            const { data, error } = await supabase
-                .from('products')
-                .select('*')
-                .eq('id', id)
-                .single();
+            const { data, error } = await executeWithTimeout(
+                supabase.from('products').select('*').eq('id', id).single() as unknown as Promise<any>,
+                1200
+            );
 
-            if (!error && data) {
+            if (error) {
+                tripCircuit(error);
+            } else if (data) {
                 return {
                     id: String(data.id),
                     name: String(data.name),
@@ -492,7 +798,7 @@ export async function fetchProductById(id: string): Promise<Product | null> {
                 };
             }
         } catch (error) {
-            console.error('Error fetching product by id from Supabase:', error);
+            tripCircuit(error);
         }
     }
     return MOCK_PRODUCTS.find(p => p.id === id) || null;
