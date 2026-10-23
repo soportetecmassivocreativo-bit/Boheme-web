@@ -130,7 +130,7 @@ export const CATEGORIES: Record<string, CategoryInfo> = {
 };
 
 // Static Mock Products matching production data
-const MOCK_PRODUCTS: Product[] = [
+let MOCK_PRODUCTS: Product[] = [
     {
         id: '1',
         name: 'Cinta Métrica Retractil',
@@ -803,3 +803,88 @@ export async function fetchProductById(id: string): Promise<Product | null> {
     }
     return MOCK_PRODUCTS.find(p => p.id === id) || null;
 }
+
+export async function createProduct(productData: Omit<Product, 'id'> & { id?: string }): Promise<Product> {
+    const newProduct: Product = {
+        id: productData.id || String(Date.now()),
+        name: productData.name,
+        description: productData.description || '',
+        price: Number(productData.price) || 0,
+        image_url: productData.image_url || '/cat_gorros.png',
+        categoria_slug: productData.categoria_slug,
+        subcategoria_id: productData.subcategoria_id ? Number(productData.subcategoria_id) : undefined,
+        type_color: productData.type_color,
+        genero: productData.genero,
+        modelo: productData.modelo,
+        cinta: productData.cinta
+    };
+
+    if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
+        try {
+            const { data, error } = await executeWithTimeout(
+                supabase.from('products').insert([newProduct]).select().single() as unknown as Promise<any>,
+                2000
+            );
+            if (error) {
+                tripCircuit(error);
+            } else if (data) {
+                newProduct.id = String(data.id);
+            }
+        } catch (error) {
+            tripCircuit(error);
+        }
+    }
+
+    // Always keep local in-memory catalog updated
+    MOCK_PRODUCTS.unshift(newProduct);
+    return newProduct;
+}
+
+export async function updateProduct(id: string, updates: Partial<Product>): Promise<Product | null> {
+    const existingIndex = MOCK_PRODUCTS.findIndex(p => p.id === id);
+
+    if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
+        try {
+            const { error } = await executeWithTimeout(
+                supabase.from('products').update(updates).eq('id', id) as unknown as Promise<any>,
+                2000
+            );
+            if (error) {
+                tripCircuit(error);
+            }
+        } catch (error) {
+            tripCircuit(error);
+        }
+    }
+
+    if (existingIndex !== -1) {
+        MOCK_PRODUCTS[existingIndex] = {
+            ...MOCK_PRODUCTS[existingIndex],
+            ...updates
+        };
+        return MOCK_PRODUCTS[existingIndex];
+    }
+
+    return null;
+}
+
+export async function deleteProduct(id: string): Promise<boolean> {
+    if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
+        try {
+            const { error } = await executeWithTimeout(
+                supabase.from('products').delete().eq('id', id) as unknown as Promise<any>,
+                2000
+            );
+            if (error) {
+                tripCircuit(error);
+            }
+        } catch (error) {
+            tripCircuit(error);
+        }
+    }
+
+    const initialLength = MOCK_PRODUCTS.length;
+    MOCK_PRODUCTS = MOCK_PRODUCTS.filter(p => p.id !== id);
+    return MOCK_PRODUCTS.length < initialLength;
+}
+
