@@ -908,6 +908,9 @@ export interface OrderItem {
     especialidad_personalizada?: string;
     color_preferencia?: string;
     detalles_personalizados?: string;
+    // Taller / Production specific
+    estado_taller?: string;
+    notas_taller?: string;
 }
 
 export interface Order {
@@ -939,6 +942,17 @@ export interface Order {
     // Items
     items: OrderItem[];
     es_manual?: boolean;
+    // Taller & Pedidos Module Fields
+    estado_taller?: string; // 'por_disenar', 'diseno_aprobado', 'en_imprenta', 'por_coser', 'por_embalar', 'por_enviar', 'enviado', 'por_entregar', 'entregado', 'pedido_solicitado'
+    pedido_cerrado?: boolean;
+    fecha_cierre?: string;
+    numero_guia_envio?: string;
+    notas_taller?: string;
+    historial_taller?: Array<{
+        estado: string;
+        fecha: string;
+        notas?: string;
+    }>;
 }
 
 let INVOICE_COUNTER = 1003;
@@ -964,7 +978,10 @@ let ORDERS: Order[] = [
         monto_usd: 24.00,
         tasa_bcv: 886.23,
         monto_bs: 21269.52,
-        estado_pago: 'verificado',
+        estado_pago: 'verificada',
+        estado_taller: 'en_imprenta',
+        pedido_cerrado: false,
+        notas_taller: 'Arte aprobado por WhatsApp. En imprenta para sublimar patrón floral.',
         items: [
             {
                 name: 'Gorro Quirúrgico Flores Boheme',
@@ -1006,7 +1023,10 @@ let ORDERS: Order[] = [
         monto_usd: 40.00,
         tasa_bcv: 886.23,
         monto_bs: 35449.20,
-        estado_pago: 'pendiente',
+        estado_pago: 'por_verificar',
+        estado_taller: 'por_entregar',
+        pedido_cerrado: false,
+        notas_taller: 'Equipos médicos verificados y embalados para entrega local.',
         items: [
             {
                 name: 'Estetoscopio Doble Campana Profesional',
@@ -1019,6 +1039,37 @@ let ORDERS: Order[] = [
                 price: 15.00,
                 quantity: 1,
                 categoria_slug: 'equipos-medicos'
+            }
+        ]
+    },
+    {
+        id: 'ord-1000',
+        numero_factura: 'BHM-1000',
+        created_at: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 days ago
+        cliente_nombre: 'Dra. Valentina',
+        cliente_apellido: 'Gómez',
+        cliente_cedula: 'V-25.147.852',
+        cliente_telefono: '0424-4567890',
+        tipo_entrega: 'local',
+        direccion_entrega: 'Policlínica La Viña, Consultorio 14, Valencia',
+        metodo_pago: 'pago_movil',
+        banco_emisor: 'Mercantil',
+        telefono_o_email_emisor: '0424-4567890',
+        referencia_pago: '554312',
+        monto_usd: 16.00,
+        tasa_bcv: 885.50,
+        monto_bs: 14168.00,
+        estado_pago: 'verificada',
+        estado_taller: 'entregado',
+        pedido_cerrado: true,
+        fecha_cierre: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+        notas_taller: 'Entregado en recepción con firma de la doctora.',
+        items: [
+            {
+                name: 'Gorro Quirúrgico Básico Verde Quirófano',
+                price: 8.00,
+                quantity: 2,
+                categoria_slug: 'gorros'
             }
         ]
     }
@@ -1105,7 +1156,15 @@ export async function createOrder(orderData: Omit<Order, 'id' | 'numero_factura'
         id: orderData.id || `ord-${Date.now()}`,
         numero_factura: orderData.numero_factura || `BHM-${INVOICE_COUNTER}`,
         created_at: orderData.created_at || new Date().toISOString(),
-        estado_pago: orderData.estado_pago || 'por_verificar'
+        estado_pago: orderData.estado_pago || 'por_verificar',
+        estado_taller: orderData.estado_taller || (
+            orderData.items && orderData.items.some(i => i.is_personalizado || i.nombre_personalizado || (i.categoria_slug === 'gorros' && !i.name.toLowerCase().includes('básico'))) 
+                ? 'por_disenar' 
+                : (orderData.items && orderData.items.some(i => i.categoria_slug === 'gorros')) 
+                    ? 'por_coser' 
+                    : 'pedido_solicitado'
+        ),
+        pedido_cerrado: orderData.pedido_cerrado || false
     };
 
     ORDERS.unshift(newOrder);

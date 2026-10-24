@@ -43,11 +43,28 @@ import {
     UploadCloud,
     FolderUp,
     Star,
-    Upload
+    Upload,
+    Scissors,
+    ClipboardList,
+    Printer,
+    PackageCheck,
+    CheckCheck,
+    RotateCcw,
+    ArrowRight
 } from 'lucide-react';
 import { Product, CATEGORIES, Order, OrderItem } from '@/lib/db';
 import { parseImages } from '@/lib/utils';
 import { SiteSettings } from '@/lib/settings';
+import {
+    WORKSHOP_STAGES,
+    WorkshopProductType,
+    determineItemWorkshopType,
+    getOrderWorkshopType,
+    getWorkshopTypeLabel,
+    getOrderWorkflowSteps,
+    getDefaultWorkshopStatus,
+    getStageInfo
+} from '@/lib/workshop';
 
 // Sections without "TODOS"
 const SECTIONS = [
@@ -65,7 +82,7 @@ const PRESET_IMAGES = [
     { label: 'Banner Lifestyle', url: '/hero_bg.png' }
 ];
 
-type AdminTab = 'dashboard' | 'facturado' | 'productos' | 'configuracion';
+type AdminTab = 'dashboard' | 'facturado' | 'taller' | 'productos' | 'configuracion';
 
 export default function AdminPage() {
     const router = useRouter();
@@ -130,6 +147,18 @@ export default function AdminPage() {
     const [isUploadingImages, setIsUploadingImages] = useState(false);
     const [showManualUrlInput, setShowManualUrlInput] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Taller & Pedidos Module State
+    const [tallerTab, setTallerTab] = useState<'activos' | 'cerrados' | 'todos'>('activos');
+    const [filterTallerType, setFilterTallerType] = useState<string>('all');
+    const [filterTallerStage, setFilterTallerStage] = useState<string>('all');
+    const [filterTallerDelivery, setFilterTallerDelivery] = useState<'all' | 'local' | 'nacional'>('all');
+    const [tallerSearch, setTallerSearch] = useState<string>('');
+    const [selectedWorkshopOrder, setSelectedWorkshopOrder] = useState<Order | null>(null);
+    const [editingWorkshopNotesOrder, setEditingWorkshopNotesOrder] = useState<Order | null>(null);
+    const [workshopNotesInput, setWorkshopNotesInput] = useState<string>('');
+    const [editingGuideOrder, setEditingGuideOrder] = useState<Order | null>(null);
+    const [guideNumberInput, setGuideNumberInput] = useState<string>('');
 
     // Order View & Manual Invoice Modals
     const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
@@ -721,6 +750,194 @@ export default function AdminPage() {
     };
 
     // ==========================================
+    // TALLER & PEDIDOS HANDLERS
+    // ==========================================
+    const handleUpdateWorkshopStatus = async (orderId: string, newStatus: string) => {
+        setActionLoading(true);
+        try {
+            const res = await fetch(`/api/orders/${orderId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ estado_taller: newStatus })
+            });
+            if (res.ok) {
+                showToast(`✓ Estatus en taller: ${getStageInfo(newStatus).label}`);
+                loadData();
+            } else {
+                alert('Error al actualizar estatus de taller.');
+            }
+        } catch {
+            alert('Error de conexión con el servidor.');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleToggleCloseOrder = async (order: Order, close: boolean) => {
+        setActionLoading(true);
+        try {
+            const res = await fetch(`/api/orders/${order.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    pedido_cerrado: close, 
+                    fecha_cierre: close ? new Date().toISOString() : undefined,
+                    ...(close && order.estado_taller !== 'entregado' && order.estado_taller !== 'enviado' ? { estado_taller: 'entregado' } : {})
+                })
+            });
+            if (res.ok) {
+                showToast(close ? `✓ Pedido ${order.numero_factura} marcado como CERRADO` : `✓ Pedido ${order.numero_factura} reabierto en taller`);
+                loadData();
+            } else {
+                alert('Error al cambiar estatus de cierre.');
+            }
+        } catch {
+            alert('Error de conexión.');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleSaveWorkshopNotes = async (orderId: string) => {
+        setActionLoading(true);
+        try {
+            const res = await fetch(`/api/orders/${orderId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ notas_taller: workshopNotesInput.trim() })
+            });
+            if (res.ok) {
+                showToast('✓ Bitácora de taller actualizada');
+                setEditingWorkshopNotesOrder(null);
+                loadData();
+            } else {
+                alert('Error al guardar notas de taller');
+            }
+        } catch {
+            alert('Error de conexión');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handleSaveGuideNumber = async (orderId: string) => {
+        setActionLoading(true);
+        try {
+            const res = await fetch(`/api/orders/${orderId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ numero_guia_envio: guideNumberInput.trim() })
+            });
+            if (res.ok) {
+                showToast('✓ Número de guía de envío guardado');
+                setEditingGuideOrder(null);
+                loadData();
+            } else {
+                alert('Error al guardar número de guía');
+            }
+        } catch {
+            alert('Error de conexión');
+        } finally {
+            setActionLoading(false);
+        }
+    };
+
+    const handlePrintWorkshopSheet = (order: Order) => {
+        const printWindow = window.open('', '_blank');
+        if (!printWindow) {
+            alert('Por favor habilita las ventanas emergentes en tu navegador para imprimir la orden de trabajo.');
+            return;
+        }
+        const printContent = `
+            <!DOCTYPE html>
+            <html>
+            <head>
+                <title>Ficha Técnica Taller - ${order.numero_factura}</title>
+                <style>
+                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 28px; color: #111; line-height: 1.4; }
+                    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #5F2142; padding-bottom: 12px; margin-bottom: 16px; }
+                    .title { font-size: 20px; font-weight: 900; color: #5F2142; }
+                    .badge { display: inline-block; padding: 4px 10px; background: #FFF4EB; border: 1px solid #D86A33; color: #D86A33; border-radius: 9999px; font-weight: bold; font-size: 12px; }
+                    .section { margin-bottom: 16px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
+                    .section-title { font-size: 12px; font-weight: 900; text-transform: uppercase; color: #5F2142; margin-bottom: 8px; border-bottom: 1px dashed #eee; padding-bottom: 4px; }
+                    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; }
+                    .item-card { border: 1px solid #ddd; border-radius: 6px; padding: 10px; margin-bottom: 8px; background: #fafafa; }
+                    .checklist { display: flex; gap: 14px; margin-top: 14px; font-size: 11px; font-weight: bold; flex-wrap: wrap; }
+                    .box { width: 14px; height: 14px; border: 1.5px solid #333; display: inline-block; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
+                    @media print { button { display: none; } body { padding: 0; } }
+                </style>
+            </head>
+            <body>
+                <div class="header">
+                    <div>
+                        <div class="title">BOHEME • FICHA TÉCNICA DE PRODUCCIÓN & TALLER</div>
+                        <div style="font-size: 12px; color: #666;">Orden de Fabricación y Confección • Factura ${order.numero_factura}</div>
+                    </div>
+                    <div>
+                        <span class="badge">${order.tipo_entrega === 'nacional' ? `ENVÍO NACIONAL (${order.empresa_envio || 'MRW'})` : 'ENTREGA LOCAL (VALENCIA)'}</span>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div class="section-title">Datos del Cliente & Destino</div>
+                    <div class="grid">
+                        <div><strong>Cliente:</strong> ${order.cliente_nombre} ${order.cliente_apellido}</div>
+                        <div><strong>Cédula:</strong> ${order.cliente_cedula}</div>
+                        <div><strong>Teléfono:</strong> ${order.cliente_telefono}</div>
+                        <div><strong>Fecha de Pedido:</strong> ${new Date(order.created_at).toLocaleDateString()}</div>
+                        <div style="grid-column: span 2;"><strong>Dirección / Destino:</strong> ${order.direccion_entrega} ${order.ciudad ? `(${order.ciudad}, ${order.estado})` : ''}</div>
+                        ${order.numero_guia_envio ? `<div><strong>Guía de Envío:</strong> ${order.numero_guia_envio}</div>` : ''}
+                    </div>
+                </div>
+
+                <div class="section">
+                    <div class="section-title">Prendas y Especificaciones de Personalización</div>
+                    ${order.items.map((it, idx) => `
+                        <div class="item-card">
+                            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 13px;">
+                                <span>${idx + 1}. ${it.name} (Cantidad: ${it.quantity})</span>
+                                <span style="color: #5F2142;">${it.is_personalizado ? '★ PERSONALIZADO' : 'ESTÁNDAR'}</span>
+                            </div>
+                            ${it.nombre_personalizado ? `<div style="font-size: 12px; margin-top: 4px;"><strong>• Nombre a bordar / imprimir:</strong> <span style="font-size: 14px; color: #5F2142; font-weight: 900; background: #fff3e6; padding: 1px 4px; border-radius: 3px;">${it.nombre_personalizado}</span></div>` : ''}
+                            ${it.especialidad_personalizada ? `<div style="font-size: 12px;"><strong>• Especialidad / Profesión:</strong> ${it.especialidad_personalizada}</div>` : ''}
+                            ${it.color_preferencia ? `<div style="font-size: 12px;"><strong>• Color de tela / bordado:</strong> ${it.color_preferencia}</div>` : ''}
+                            ${it.detalles_personalizados ? `<div style="font-size: 12px;"><strong>• Notas adicionales:</strong> ${it.detalles_personalizados}</div>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+
+                ${order.notas_taller ? `
+                    <div class="section">
+                        <div class="section-title">Bitácora / Notas de Taller</div>
+                        <div style="font-size: 12px;">${order.notas_taller}</div>
+                    </div>
+                ` : ''}
+
+                <div class="section">
+                    <div class="section-title">Control de Estaciones y Calidad</div>
+                    <div class="checklist">
+                        <div><span class="box"></span> 1. Diseño Aprobado</div>
+                        <div><span class="box"></span> 2. Imprenta / Sublimado</div>
+                        <div><span class="box"></span> 3. Confección / Costura</div>
+                        <div><span class="box"></span> 4. Acabado & Limpieza</div>
+                        <div><span class="box"></span> 5. Embalaje</div>
+                        <div><span class="box"></span> 6. Despacho / Entrega</div>
+                    </div>
+                    <div style="margin-top: 28px; display: flex; justify-content: space-between; font-size: 11px; color: #555;">
+                        <div>Firma Responsable Taller: _____________________</div>
+                        <div>Firma Control de Calidad: _____________________</div>
+                    </div>
+                </div>
+
+                <script>window.onload = function() { window.print(); };</script>
+            </body>
+            </html>
+        `;
+        printWindow.document.write(printContent);
+        printWindow.document.close();
+    };
+
+    // ==========================================
     // FILTER LOGIC FOR BILLING (Facturado)
     // ==========================================
     const filteredOrders = orders.filter(order => {
@@ -784,6 +1001,58 @@ export default function AdminPage() {
     const pendingOrdersCount = orders.filter(o => normalizeStatus(o.estado_pago) === 'por_verificar').length;
     const verifiedOrdersCount = orders.filter(o => normalizeStatus(o.estado_pago) === 'verificada').length;
     const rejectedOrdersCount = orders.filter(o => normalizeStatus(o.estado_pago) === 'rechazada').length;
+
+    // Taller & Pedidos Filter and Metrics
+    const totalTallerActivos = orders.filter(o => !o.pedido_cerrado).length;
+    const totalTallerCerrados = orders.filter(o => o.pedido_cerrado).length;
+    const totalTallerPorDisenar = orders.filter(o => !o.pedido_cerrado && (o.estado_taller === 'por_disenar' || o.estado_taller === 'diseno_aprobado')).length;
+    const totalTallerEnImprenta = orders.filter(o => !o.pedido_cerrado && o.estado_taller === 'en_imprenta').length;
+    const totalTallerPorCoser = orders.filter(o => !o.pedido_cerrado && o.estado_taller === 'por_coser').length;
+    const totalTallerPorEntregar = orders.filter(o => !o.pedido_cerrado && (o.estado_taller === 'por_entregar' || o.estado_taller === 'por_embalar' || o.estado_taller === 'por_enviar' || o.estado_taller === 'enviado')).length;
+
+    const filteredTallerOrders = orders.filter(order => {
+        // 1. Tab filter (activos vs cerrados vs todos)
+        if (tallerTab === 'activos' && order.pedido_cerrado) return false;
+        if (tallerTab === 'cerrados' && !order.pedido_cerrado) return false;
+
+        // 2. Type filter
+        if (filterTallerType !== 'all') {
+            const orderType = getOrderWorkshopType(order);
+            if (orderType !== filterTallerType) return false;
+        }
+
+        // 3. Stage filter
+        if (filterTallerStage !== 'all') {
+            const currentStage = order.estado_taller || getDefaultWorkshopStatus(order.items, order.tipo_entrega);
+            if (currentStage !== filterTallerStage) return false;
+        }
+
+        // 4. Delivery filter (local vs nacional)
+        if (filterTallerDelivery !== 'all') {
+            if (order.tipo_entrega !== filterTallerDelivery) return false;
+        }
+
+        // 5. Search text
+        if (tallerSearch.trim()) {
+            const q = tallerSearch.toLowerCase();
+            const matchesText = 
+                order.numero_factura.toLowerCase().includes(q) ||
+                order.cliente_nombre.toLowerCase().includes(q) ||
+                order.cliente_apellido.toLowerCase().includes(q) ||
+                order.cliente_cedula.toLowerCase().includes(q) ||
+                order.cliente_telefono.toLowerCase().includes(q) ||
+                (order.notas_taller && order.notas_taller.toLowerCase().includes(q)) ||
+                (order.numero_guia_envio && order.numero_guia_envio.toLowerCase().includes(q)) ||
+                order.items.some(it => 
+                    it.name.toLowerCase().includes(q) ||
+                    (it.nombre_personalizado && it.nombre_personalizado.toLowerCase().includes(q)) ||
+                    (it.especialidad_personalizada && it.especialidad_personalizada.toLowerCase().includes(q))
+                );
+            if (!matchesText) return false;
+        }
+
+        return true;
+    });
 
     // Filter products by active section only (NO "TODOS")
     const sectionProducts = products.filter(p => {
@@ -892,6 +1161,25 @@ export default function AdminPage() {
                             {pendingOrdersCount > 0 && (
                                 <span className="px-2 py-0.5 rounded-full bg-[#D86A33] text-white text-[10px] font-bold">
                                     {pendingOrdersCount}
+                                </span>
+                            )}
+                        </button>
+
+                        <button
+                            onClick={() => { setActiveTab('taller'); setSidebarOpen(false); }}
+                            className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all ${
+                                activeTab === 'taller'
+                                    ? 'bg-[#5F2142] text-white shadow-md'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-[#FFF4EB] dark:hover:bg-white/5'
+                            }`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Scissors size={16} />
+                                <span>Taller y Pedidos</span>
+                            </div>
+                            {totalTallerActivos > 0 && (
+                                <span className="px-2 py-0.5 rounded-full bg-[#D86A33] text-white text-[10px] font-bold animate-pulse">
+                                    {totalTallerActivos}
                                 </span>
                             )}
                         </button>
@@ -1400,6 +1688,652 @@ export default function AdminPage() {
                                 </div>
                             )}
                         </div>
+                    </div>
+                )}
+
+                {/* ========================================================= */}
+                {/* TAB: TALLER Y PEDIDOS (Gestión de Producción y Despacho)  */}
+                {/* ========================================================= */}
+                {activeTab === 'taller' && (
+                    <div className="space-y-6">
+                        {/* Header & Sub-Tabs */}
+                        <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between gap-4 pb-2 border-b border-gray-100 dark:border-white/10">
+                            <div>
+                                <div className="flex items-center gap-2.5">
+                                    <div className="w-10 h-10 rounded-2xl bg-[#5F2142] text-white flex items-center justify-center shadow-md shadow-[#5F2142]/20">
+                                        <Scissors size={20} />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-2xl sm:text-3xl font-black text-[#5F2142] dark:text-[#FFC99C] tracking-tight">
+                                            Taller & Producción de Pedidos
+                                        </h1>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                            Alimentado directamente de Facturado. Confección, corte, bordado y despacho.
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* View Switcher: Activos vs Cerrados vs Todos */}
+                            <div className="flex items-center gap-2 self-stretch sm:self-auto overflow-x-auto pb-1 sm:pb-0">
+                                <div className="flex p-1 rounded-2xl bg-gray-100 dark:bg-white/5 border border-gray-200 dark:border-white/10">
+                                    <button
+                                        type="button"
+                                        onClick={() => setTallerTab('activos')}
+                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                                            tallerTab === 'activos'
+                                                ? 'bg-[#5F2142] text-white shadow-xs'
+                                                : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
+                                        }`}
+                                    >
+                                        <Scissors size={13} />
+                                        <span>En Producción</span>
+                                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${tallerTab === 'activos' ? 'bg-[#D86A33] text-white' : 'bg-gray-200 dark:bg-white/10'}`}>
+                                            {totalTallerActivos}
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setTallerTab('cerrados')}
+                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                                            tallerTab === 'cerrados'
+                                                ? 'bg-[#5F2142] text-white shadow-xs'
+                                                : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
+                                        }`}
+                                    >
+                                        <CheckCheck size={13} />
+                                        <span>Historial Cerrados</span>
+                                        <span className={`px-1.5 py-0.2 rounded-full text-[10px] ${tallerTab === 'cerrados' ? 'bg-green-600 text-white' : 'bg-gray-200 dark:bg-white/10'}`}>
+                                            {totalTallerCerrados}
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() => setTallerTab('todos')}
+                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 ${
+                                            tallerTab === 'todos'
+                                                ? 'bg-[#5F2142] text-white shadow-xs'
+                                                : 'text-gray-600 dark:text-gray-300 hover:text-black dark:hover:text-white'
+                                        }`}
+                                    >
+                                        <Layers size={13} />
+                                        <span>Todos ({orders.length})</span>
+                                    </button>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => loadData()}
+                                    className="p-2.5 rounded-2xl border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-gray-600 dark:text-gray-300 transition-all hover:bg-gray-50 dark:hover:bg-white/5"
+                                    title="Actualizar datos del taller"
+                                >
+                                    <RefreshCw size={15} />
+                                </button>
+                            </div>
+                        </div>
+
+                        {/* ========================================================= */}
+                        {/* KPI SUMMARY CARDS (REPORTE VISUAL DEL TALLER)             */}
+                        {/* ========================================================= */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+                            <div className={`p-4 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs`}>
+                                <div className="flex items-center justify-between text-gray-400 mb-1">
+                                    <span className="text-[10px] font-black uppercase tracking-wider">Activos en Taller</span>
+                                    <Scissors size={14} className="text-[#D86A33]" />
+                                </div>
+                                <div className="text-2xl font-black text-[#5F2142] dark:text-[#FFC99C]">
+                                    {totalTallerActivos}
+                                </div>
+                                <div className="text-[10px] text-gray-400 font-semibold mt-0.5">Pedidos en curso</div>
+                            </div>
+
+                            <div className={`p-4 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs`}>
+                                <div className="flex items-center justify-between text-gray-400 mb-1">
+                                    <span className="text-[10px] font-black uppercase tracking-wider">Por Diseñar</span>
+                                    <Sparkles size={14} className="text-amber-500" />
+                                </div>
+                                <div className="text-2xl font-black text-amber-600 dark:text-amber-400">
+                                    {totalTallerPorDisenar}
+                                </div>
+                                <div className="text-[10px] text-gray-400 font-semibold mt-0.5">Arte & aprobación</div>
+                            </div>
+
+                            <div className={`p-4 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs`}>
+                                <div className="flex items-center justify-between text-gray-400 mb-1">
+                                    <span className="text-[10px] font-black uppercase tracking-wider">En Imprenta</span>
+                                    <Printer size={14} className="text-purple-500" />
+                                </div>
+                                <div className="text-2xl font-black text-purple-600 dark:text-purple-400">
+                                    {totalTallerEnImprenta}
+                                </div>
+                                <div className="text-[10px] text-gray-400 font-semibold mt-0.5">Sublimación / corte</div>
+                            </div>
+
+                            <div className={`p-4 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs`}>
+                                <div className="flex items-center justify-between text-gray-400 mb-1">
+                                    <span className="text-[10px] font-black uppercase tracking-wider">Por Coser</span>
+                                    <div className="text-sm">🧵</div>
+                                </div>
+                                <div className="text-2xl font-black text-pink-600 dark:text-pink-400">
+                                    {totalTallerPorCoser}
+                                </div>
+                                <div className="text-[10px] text-gray-400 font-semibold mt-0.5">Mesa de costura</div>
+                            </div>
+
+                            <div className={`p-4 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs`}>
+                                <div className="flex items-center justify-between text-gray-400 mb-1">
+                                    <span className="text-[10px] font-black uppercase tracking-wider">Por Despachar</span>
+                                    <Truck size={14} className="text-cyan-500" />
+                                </div>
+                                <div className="text-2xl font-black text-cyan-600 dark:text-cyan-400">
+                                    {totalTallerPorEntregar}
+                                </div>
+                                <div className="text-[10px] text-gray-400 font-semibold mt-0.5">Entrega local o agencia</div>
+                            </div>
+
+                            <div className={`p-4 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs`}>
+                                <div className="flex items-center justify-between text-gray-400 mb-1">
+                                    <span className="text-[10px] font-black uppercase tracking-wider">Cerrados</span>
+                                    <CheckCircle2 size={14} className="text-emerald-500" />
+                                </div>
+                                <div className="text-2xl font-black text-emerald-600 dark:text-emerald-400">
+                                    {totalTallerCerrados}
+                                </div>
+                                <div className="text-[10px] text-gray-400 font-semibold mt-0.5">Pedidos completados</div>
+                            </div>
+                        </div>
+
+                        {/* ========================================================= */}
+                        {/* MULTI-FILTER & SEARCH BAR                                */}
+                        {/* ========================================================= */}
+                        <div className={`p-4 sm:p-5 rounded-3xl ${bgCard} border ${borderDefault} shadow-sm space-y-3`}>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                                {/* Filtro por Tipo de Producto */}
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
+                                        Tipo de Producto:
+                                    </label>
+                                    <select
+                                        value={filterTallerType}
+                                        onChange={(e) => setFilterTallerType(e.target.value)}
+                                        className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${inputStyle}`}
+                                    >
+                                        <option value="all">Todos los Tipos de Producto</option>
+                                        <option value="gorros_personalizados">🧢 Gorritos Personalizados</option>
+                                        <option value="gorros_especiales">🧢 Gorros Especiales</option>
+                                        <option value="gorros_basicos">🧢 Gorritos Básicos</option>
+                                        <option value="lanyards_personalizados">🎀 Lanyards Personalizados</option>
+                                        <option value="productos_personalizados">✨ Productos Personalizados</option>
+                                        <option value="resto_nacional">📦 Stock Tienda (Envío Nacional)</option>
+                                        <option value="resto_local">🏠 Stock Tienda (Entrega Local)</option>
+                                    </select>
+                                </div>
+
+                                {/* Filtro por Etapa de Taller */}
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
+                                        Etapa de Taller:
+                                    </label>
+                                    <select
+                                        value={filterTallerStage}
+                                        onChange={(e) => setFilterTallerStage(e.target.value)}
+                                        className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${inputStyle}`}
+                                    >
+                                        <option value="all">Todas las Etapas</option>
+                                        {Object.values(WORKSHOP_STAGES).map(st => (
+                                            <option key={st.key} value={st.key}>{st.icon} {st.label}</option>
+                                        ))}
+                                    </select>
+                                </div>
+
+                                {/* Filtro por Modalidad de Entrega */}
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
+                                        Modalidad de Entrega:
+                                    </label>
+                                    <select
+                                        value={filterTallerDelivery}
+                                        onChange={(e) => setFilterTallerDelivery(e.target.value as any)}
+                                        className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${inputStyle}`}
+                                    >
+                                        <option value="all">Todas las Modalidades</option>
+                                        <option value="local">🏠 Entrega Local (Valencia)</option>
+                                        <option value="nacional">🚚 Envío Nacional (MRW, Zoom, etc.)</option>
+                                    </select>
+                                </div>
+
+                                {/* Búsqueda de Texto en Vivo */}
+                                <div>
+                                    <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
+                                        Buscar en Taller:
+                                    </label>
+                                    <div className="relative">
+                                        <input
+                                            type="text"
+                                            value={tallerSearch}
+                                            onChange={(e) => setTallerSearch(e.target.value)}
+                                            placeholder="# Factura, cliente, bordado..."
+                                            className={`w-full pl-8 pr-7 py-2 rounded-xl border text-xs font-medium outline-none ${inputStyle}`}
+                                        />
+                                        <Search size={13} className="absolute left-2.5 top-2.5 text-gray-400" />
+                                        {tallerSearch && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setTallerSearch('')}
+                                                className="absolute right-2.5 top-2.5 text-gray-400 hover:text-black dark:hover:text-white"
+                                            >
+                                                <X size={12} />
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* ========================================================= */}
+                        {/* ORDERS WORKSHOP CARDS (FICHAS DE TALLER)                  */}
+                        {/* ========================================================= */}
+                        {filteredTallerOrders.length === 0 ? (
+                            <div className={`p-12 text-center rounded-3xl ${bgCard} border ${borderDefault} shadow-xs`}>
+                                <div className="w-16 h-16 rounded-full bg-amber-50 dark:bg-white/5 text-[#D86A33] flex items-center justify-center mx-auto mb-3">
+                                    <Scissors size={28} />
+                                </div>
+                                <h3 className="text-lg font-black text-gray-900 dark:text-white mb-1">
+                                    No se encontraron pedidos en esta vista
+                                </h3>
+                                <p className="text-xs text-gray-500 max-w-md mx-auto mb-4">
+                                    Prueba cambiando los filtros de etapa de taller o realiza una nueva búsqueda.
+                                </p>
+                                <button
+                                    onClick={() => {
+                                        setFilterTallerType('all');
+                                        setFilterTallerStage('all');
+                                        setFilterTallerDelivery('all');
+                                        setTallerSearch('');
+                                    }}
+                                    className="px-5 py-2 rounded-full border border-gray-200 dark:border-white/10 text-xs font-bold hover:border-[#D86A33]"
+                                >
+                                    Restablecer Filtros
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="space-y-4">
+                                {filteredTallerOrders.map((order) => {
+                                    const workshopType = getOrderWorkshopType(order);
+                                    const steps = getOrderWorkflowSteps(order);
+                                    const currentStageKey = order.estado_taller || steps[0];
+                                    const currentStage = getStageInfo(currentStageKey);
+                                    const currentIndex = steps.indexOf(currentStageKey);
+                                    const nextStageKey = currentIndex >= 0 && currentIndex < steps.length - 1 ? steps[currentIndex + 1] : null;
+                                    
+                                    // WhatsApp direct customer link
+                                    const waPhone = (order.cliente_telefono || '').replace(/\D/g, '');
+                                    const waTarget = waPhone.startsWith('58') ? waPhone : `58${waPhone.startsWith('0') ? waPhone.slice(1) : waPhone}`;
+                                    const waText = encodeURIComponent(`¡Hola ${order.cliente_nombre}! Te escribimos del Taller de BOHEME respecto a tu pedido #${order.numero_factura}.`);
+
+                                    return (
+                                        <div
+                                            key={order.id}
+                                            className={`rounded-3xl ${bgCard} border ${
+                                                order.pedido_cerrado
+                                                    ? 'border-gray-200 dark:border-white/5 opacity-85'
+                                                    : borderDefault
+                                            } shadow-xs overflow-hidden transition-all`}
+                                        >
+                                            {/* CARD TOP RIBBON */}
+                                            <div className="p-4 sm:p-5 pb-3 border-b border-gray-100 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    {/* Factura # */}
+                                                    <span className="font-mono font-black text-sm text-[#5F2142] dark:text-[#FFC99C] px-3 py-1 rounded-xl bg-[#5F2142]/10 dark:bg-[#FFC99C]/10 border border-[#5F2142]/20">
+                                                        #{order.numero_factura}
+                                                    </span>
+
+                                                    {/* Fecha */}
+                                                    <span className="text-[11px] text-gray-400 font-semibold flex items-center gap-1">
+                                                        <Clock size={12} />
+                                                        {new Date(order.created_at).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                    </span>
+
+                                                    {/* Badge Pago Facturado */}
+                                                    {normalizeStatus(order.estado_pago) === 'verificada' ? (
+                                                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
+                                                            <CheckCircle2 size={11} /> Pago Verificado
+                                                        </span>
+                                                    ) : normalizeStatus(order.estado_pago) === 'rechazada' ? (
+                                                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300 border border-red-300 dark:border-red-800 flex items-center gap-1">
+                                                            <XCircle size={11} /> Pago Rechazado
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
+                                                            <Clock3 size={11} /> Pago Por Verificar
+                                                        </span>
+                                                    )}
+
+                                                    {/* Modalidad de Entrega */}
+                                                    {order.tipo_entrega === 'nacional' ? (
+                                                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-300 dark:border-blue-800 flex items-center gap-1">
+                                                            <Truck size={11} /> Envío Nacional ({order.empresa_envio || 'MRW'})
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-300 dark:border-purple-800 flex items-center gap-1">
+                                                            <Store size={11} /> Entrega Local (Valencia)
+                                                        </span>
+                                                    )}
+
+                                                    {/* Tipo de Producto principal */}
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10">
+                                                        {getWorkshopTypeLabel(workshopType)}
+                                                    </span>
+                                                </div>
+
+                                                {/* Status Pill & Action Buttons */}
+                                                <div className="flex items-center gap-2 self-end md:self-auto">
+                                                    {/* Badge Estatus Actual */}
+                                                    <span className={`text-xs font-black px-3 py-1 rounded-xl border flex items-center gap-1.5 ${currentStage.badgeBg}`}>
+                                                        <span>{currentStage.icon}</span>
+                                                        <span>{currentStage.label}</span>
+                                                    </span>
+
+                                                    {/* Imprimir Ficha de Taller */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handlePrintWorkshopSheet(order)}
+                                                        className="p-2 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#5F2142] text-gray-700 dark:text-gray-300 transition-all hover:bg-gray-50 dark:hover:bg-white/5"
+                                                        title="Imprimir Ficha Técnica de Producción para el taller"
+                                                    >
+                                                        <Printer size={15} />
+                                                    </button>
+
+                                                    {/* Botón Cerrar / Reabrir Pedido */}
+                                                    {order.pedido_cerrado ? (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleToggleCloseOrder(order, false)}
+                                                            disabled={actionLoading}
+                                                            className="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-white/10 hover:border-[#D86A33] text-gray-600 dark:text-gray-300 font-bold text-xs inline-flex items-center gap-1"
+                                                            title="Reabrir este pedido en producción"
+                                                        >
+                                                            <RotateCcw size={12} />
+                                                            <span>Reabrir</span>
+                                                        </button>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleToggleCloseOrder(order, true)}
+                                                            disabled={actionLoading}
+                                                            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs inline-flex items-center gap-1.5 transition-all"
+                                                            title="Marcar pedido como completado y cerrado"
+                                                        >
+                                                            <CheckCheck size={13} />
+                                                            <span>Cerrar Pedido</span>
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </div>
+
+                                            {/* CLIENT & COURIER BAR */}
+                                            <div className="px-4 sm:px-5 py-3 bg-gray-50/70 dark:bg-white/2 border-b border-gray-100 dark:border-white/10 text-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
+                                                    <div>
+                                                        <span className="text-gray-400 font-semibold">Cliente: </span>
+                                                        <strong className="text-gray-900 dark:text-white font-black">
+                                                            {order.cliente_nombre} {order.cliente_apellido}
+                                                        </strong>
+                                                        <span className="text-gray-400 font-normal ml-1">({order.cliente_cedula})</span>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="text-gray-400 font-semibold">Telf:</span>
+                                                        <span className="font-bold text-[#5F2142] dark:text-[#FFC99C]">{order.cliente_telefono}</span>
+                                                        <a
+                                                            href={`https://wa.me/${waTarget}?text=${waText}`}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="px-2 py-0.5 rounded-lg bg-green-500 hover:bg-green-600 text-white font-bold text-[10px] inline-flex items-center gap-1 transition-all shadow-2xs"
+                                                            title="Abrir chat de WhatsApp con el cliente"
+                                                        >
+                                                            WhatsApp
+                                                        </a>
+                                                    </div>
+
+                                                    <div>
+                                                        <span className="text-gray-400 font-semibold">Destino: </span>
+                                                        <span className="font-medium text-gray-700 dark:text-gray-200">
+                                                            {order.direccion_entrega} {order.ciudad ? `(${order.ciudad}, ${order.estado})` : ''}
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                {/* Envío Nacional: Número de Guía */}
+                                                {order.tipo_entrega === 'nacional' && (
+                                                    <div className="flex items-center gap-2 shrink-0">
+                                                        {order.numero_guia_envio ? (
+                                                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200">
+                                                                <Truck size={13} className="text-cyan-600" />
+                                                                <span className="font-mono font-bold text-xs">Guía: {order.numero_guia_envio}</span>
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => { setEditingGuideOrder(order); setGuideNumberInput(order.numero_guia_envio || ''); }}
+                                                                    className="text-cyan-600 hover:text-cyan-900 ml-1"
+                                                                    title="Editar guía de envío"
+                                                                >
+                                                                    <Edit2 size={11} />
+                                                                </button>
+                                                            </div>
+                                                        ) : (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => { setEditingGuideOrder(order); setGuideNumberInput(''); }}
+                                                                className="px-2.5 py-1 rounded-xl border border-dashed border-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 font-bold text-[11px] inline-flex items-center gap-1"
+                                                            >
+                                                                <Plus size={11} /> Registrar Guía de Envío
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                )}
+                                            </div>
+
+                                            {/* BODY: ITEMS LIST + PERSONALIZATION HIGHLIGHT */}
+                                            <div className="p-4 sm:p-5 space-y-4">
+                                                <div>
+                                                    <span className="block text-[11px] font-black uppercase tracking-wider text-gray-400 mb-2">
+                                                        Prendas a Confeccionar & Detalles de Taller ({order.items.length}):
+                                                    </span>
+                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                        {order.items.map((item, itIdx) => {
+                                                            const itemType = determineItemWorkshopType(item, order.tipo_entrega);
+                                                            const hasCustom = item.is_personalizado || item.nombre_personalizado || item.especialidad_personalizada || item.detalles_personalizados;
+
+                                                            return (
+                                                                <div
+                                                                    key={itIdx}
+                                                                    className={`p-3.5 rounded-2xl border ${
+                                                                        hasCustom
+                                                                            ? 'border-[#D86A33]/40 bg-[#FFF9F5] dark:bg-white/3'
+                                                                            : 'border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/1'
+                                                                    } space-y-2.5`}
+                                                                >
+                                                                    <div className="flex items-start justify-between gap-2">
+                                                                        <div className="flex items-center gap-2.5">
+                                                                            <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-white/10 overflow-hidden shrink-0 border border-gray-300 dark:border-white/10">
+                                                                                {item.image_url ? (
+                                                                                    <img src={parseImages(item.image_url)[0]} alt={item.name} className="w-full h-full object-cover" />
+                                                                                ) : (
+                                                                                    <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold text-xs">
+                                                                                        BHM
+                                                                                    </div>
+                                                                                )}
+                                                                            </div>
+                                                                            <div>
+                                                                                <div className="font-black text-gray-900 dark:text-white text-xs leading-tight">
+                                                                                    {item.quantity}x {item.name}
+                                                                                </div>
+                                                                                <span className="text-[10px] text-gray-400 font-semibold">
+                                                                                    ${item.price} c/u • Ref: {item.categoria_slug || 'General'}
+                                                                                </span>
+                                                                            </div>
+                                                                        </div>
+
+                                                                        <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-[#5F2142]/10 text-[#5F2142] dark:text-[#FFC99C] shrink-0">
+                                                                            {getWorkshopTypeLabel(itemType)}
+                                                                        </span>
+                                                                    </div>
+
+                                                                    {/* PERSONALIZATION CALLOUT BOX (CRITICAL FOR WORKSHOP) */}
+                                                                    {hasCustom && (
+                                                                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1 text-xs">
+                                                                            {item.nombre_personalizado && (
+                                                                                <div className="flex items-baseline gap-1.5">
+                                                                                    <span className="text-[10px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider shrink-0">
+                                                                                        Bordado / Nombre:
+                                                                                    </span>
+                                                                                    <span className="font-black text-[#5F2142] dark:text-[#FFC99C] text-sm bg-white dark:bg-neutral-800 px-2 py-0.5 rounded-md border border-amber-300 dark:border-amber-700 shadow-2xs">
+                                                                                        {item.nombre_personalizado}
+                                                                                    </span>
+                                                                                </div>
+                                                                            )}
+                                                                            {item.especialidad_personalizada && (
+                                                                                <div className="flex items-baseline gap-1.5 text-[11px]">
+                                                                                    <span className="font-bold text-gray-500 shrink-0">Especialidad:</span>
+                                                                                    <span className="font-bold text-gray-900 dark:text-white">{item.especialidad_personalizada}</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {item.color_preferencia && (
+                                                                                <div className="flex items-baseline gap-1.5 text-[11px]">
+                                                                                    <span className="font-bold text-gray-500 shrink-0">Telas / Hilos:</span>
+                                                                                    <span className="font-medium text-gray-800 dark:text-gray-200">{item.color_preferencia}</span>
+                                                                                </div>
+                                                                            )}
+                                                                            {item.detalles_personalizados && (
+                                                                                <div className="flex items-baseline gap-1.5 text-[11px]">
+                                                                                    <span className="font-bold text-gray-500 shrink-0">Observaciones:</span>
+                                                                                    <span className="font-medium text-gray-700 dark:text-gray-300">{item.detalles_personalizados}</span>
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    )}
+                                                                </div>
+                                                            );
+                                                        })}
+                                                    </div>
+                                                </div>
+
+                                                {/* ========================================================= */}
+                                                {/* WORKFLOW PIPELINE (STEPPER INTERACTIVO DE 1 CLIC)         */}
+                                                {/* ========================================================= */}
+                                                <div className="pt-2">
+                                                    <div className="flex items-center justify-between mb-2">
+                                                        <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
+                                                            Flujo de Producción & Despacho:
+                                                        </span>
+                                                        <span className="text-[10px] text-gray-400 font-medium">
+                                                            Haz clic en cualquier fase para avanzar o cambiar estatus
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="p-3 sm:p-4 rounded-2xl bg-gray-50 dark:bg-white/3 border border-gray-200 dark:border-white/10 space-y-3">
+                                                        {/* Horizontal Stepper Chips */}
+                                                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                                                            {steps.map((stepKey, sIdx) => {
+                                                                const stInfo = getStageInfo(stepKey);
+                                                                const isPassed = sIdx < currentIndex;
+                                                                const isCurrent = sIdx === currentIndex;
+                                                                const isUpcoming = sIdx > currentIndex;
+
+                                                                return (
+                                                                    <button
+                                                                        key={stepKey}
+                                                                        type="button"
+                                                                        onClick={() => handleUpdateWorkshopStatus(order.id, stepKey)}
+                                                                        disabled={actionLoading}
+                                                                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                                                                            isCurrent
+                                                                                ? 'bg-[#5F2142] text-white shadow-md ring-2 ring-[#D86A33] scale-105'
+                                                                                : isPassed
+                                                                                    ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300 hover:bg-emerald-200'
+                                                                                    : 'bg-white dark:bg-neutral-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-white/10 hover:border-[#5F2142] hover:text-[#5F2142]'
+                                                                        }`}
+                                                                        title={`Cambiar a: ${stInfo.label}`}
+                                                                    >
+                                                                        <span>{stInfo.icon}</span>
+                                                                        <span>{stInfo.label}</span>
+                                                                        {isPassed && <Check size={11} className="text-emerald-700 dark:text-emerald-300 ml-0.5" />}
+                                                                        {isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-[#D86A33] animate-ping" />}
+                                                                    </button>
+                                                                );
+                                                            })}
+                                                        </div>
+
+                                                        {/* Stepper Footer Controls */}
+                                                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-200 dark:border-white/10 text-xs">
+                                                            <div className="text-gray-500 font-medium">
+                                                                Fase actual: <strong className="text-[#5F2142] dark:text-[#FFC99C]">{currentStage.label}</strong> ({currentStage.description})
+                                                            </div>
+
+                                                            <div className="flex items-center gap-2">
+                                                                {nextStageKey ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleUpdateWorkshopStatus(order.id, nextStageKey)}
+                                                                        disabled={actionLoading}
+                                                                        className="px-3.5 py-1.5 rounded-xl bg-[#D86A33] hover:bg-[#c25925] text-white font-black text-xs shadow-xs inline-flex items-center gap-1.5 transition-all"
+                                                                    >
+                                                                        <span>Avanzar a {getStageInfo(nextStageKey).label}</span>
+                                                                        <ArrowRight size={13} />
+                                                                    </button>
+                                                                ) : !order.pedido_cerrado ? (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleToggleCloseOrder(order, true)}
+                                                                        disabled={actionLoading}
+                                                                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs inline-flex items-center gap-1.5 transition-all"
+                                                                    >
+                                                                        <CheckCheck size={13} />
+                                                                        <span>¡Producción Completa! Cerrar Pedido</span>
+                                                                    </button>
+                                                                ) : null}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+
+                                                {/* ========================================================= */}
+                                                {/* WORKSHOP NOTES / BITÁCORA STRIP                          */}
+                                                {/* ========================================================= */}
+                                                <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                                                    <div className="flex-1 flex items-start sm:items-center gap-2">
+                                                        <span className="font-bold text-gray-400 uppercase text-[10px] tracking-wider shrink-0">
+                                                            Bitácora:
+                                                        </span>
+                                                        {order.notas_taller ? (
+                                                            <span className="italic text-gray-700 dark:text-gray-300 font-medium bg-gray-100 dark:bg-white/5 px-2.5 py-1 rounded-xl">
+                                                                "{order.notas_taller}"
+                                                            </span>
+                                                        ) : (
+                                                            <span className="text-gray-400 italic">Sin notas de taller registradas.</span>
+                                                        )}
+                                                    </div>
+
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setEditingWorkshopNotesOrder(order);
+                                                            setWorkshopNotesInput(order.notas_taller || '');
+                                                        }}
+                                                        className="px-3 py-1 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#5F2142] text-xs font-bold text-gray-600 dark:text-gray-300 inline-flex items-center gap-1 shrink-0"
+                                                    >
+                                                        <Edit2 size={11} />
+                                                        <span>{order.notas_taller ? 'Modificar Bitácora' : '+ Agregar Nota'}</span>
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        )}
                     </div>
                 )}
 
@@ -3323,6 +4257,118 @@ export default function AdminPage() {
                                 className="px-6 py-2.5 rounded-full bg-red-600 text-white text-xs font-black"
                             >
                                 {actionLoading ? 'Eliminando...' : 'Sí, eliminar'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: EDITAR BITÁCORA / NOTAS DE TALLER */}
+            {editingWorkshopNotesOrder && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className={`rounded-3xl max-w-md w-full p-6 ${bgCard} border ${borderDefault} shadow-2xl space-y-4`}>
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-white/10">
+                            <div>
+                                <h4 className="text-base font-black text-[#5F2142] dark:text-[#FFC99C]">
+                                    Bitácora de Taller • #{editingWorkshopNotesOrder.numero_factura}
+                                </h4>
+                                <p className="text-xs text-gray-400">Notas internas para costureras, bordadores o impresores</p>
+                            </div>
+                            <button
+                                onClick={() => setEditingWorkshopNotesOrder(null)}
+                                className="w-7 h-7 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                Observaciones de Producción:
+                            </label>
+                            <textarea
+                                rows={4}
+                                value={workshopNotesInput}
+                                onChange={(e) => setWorkshopNotesInput(e.target.value)}
+                                placeholder="Ej: Patrón floral cortado, bordado en hilo blanco listo, pendiente costura de dobladillo..."
+                                className={`w-full p-3 rounded-2xl border text-xs font-medium outline-none ${inputStyle}`}
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100 dark:border-white/10">
+                            <button
+                                type="button"
+                                onClick={() => setEditingWorkshopNotesOrder(null)}
+                                className="px-4 py-2 rounded-full border border-gray-300 dark:border-white/10 text-xs font-bold"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleSaveWorkshopNotes(editingWorkshopNotesOrder.id)}
+                                disabled={actionLoading}
+                                className="px-5 py-2 rounded-full bg-[#5F2142] hover:bg-[#43142e] text-white text-xs font-black shadow-md"
+                            >
+                                {actionLoading ? 'Guardando...' : 'Guardar en Bitácora'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: REGISTRAR GUÍA DE ENVÍO NACIONAL */}
+            {editingGuideOrder && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className={`rounded-3xl max-w-sm w-full p-6 ${bgCard} border ${borderDefault} shadow-2xl space-y-4`}>
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-white/10">
+                            <div>
+                                <h4 className="text-base font-black text-cyan-700 dark:text-cyan-300 flex items-center gap-1.5">
+                                    <Truck size={17} />
+                                    <span>Guía de Envío Nacional</span>
+                                </h4>
+                                <p className="text-xs text-gray-400">
+                                    #{editingGuideOrder.numero_factura} • {editingGuideOrder.empresa_envio || 'MRW'}
+                                </p>
+                            </div>
+                            <button
+                                onClick={() => setEditingGuideOrder(null)}
+                                className="w-7 h-7 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500"
+                            >
+                                <X size={14} />
+                            </button>
+                        </div>
+
+                        <div>
+                            <label className="block text-xs font-bold text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                Número de Guía / Tracking:
+                            </label>
+                            <input
+                                type="text"
+                                value={guideNumberInput}
+                                onChange={(e) => setGuideNumberInput(e.target.value)}
+                                placeholder="Ej: 0204-8849201"
+                                className={`w-full px-3 py-2.5 rounded-2xl border text-xs font-mono font-bold outline-none ${inputStyle}`}
+                            />
+                            <p className="text-[10px] text-gray-400 mt-1">
+                                Destino: {editingGuideOrder.direccion_entrega} ({editingGuideOrder.ciudad || ''})
+                            </p>
+                        </div>
+
+                        <div className="flex items-center justify-end gap-2.5 pt-2 border-t border-gray-100 dark:border-white/10">
+                            <button
+                                type="button"
+                                onClick={() => setEditingGuideOrder(null)}
+                                className="px-4 py-2 rounded-full border border-gray-300 dark:border-white/10 text-xs font-bold"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleSaveGuideNumber(editingGuideOrder.id)}
+                                disabled={actionLoading}
+                                className="px-5 py-2 rounded-full bg-cyan-600 hover:bg-cyan-700 text-white text-xs font-black shadow-md"
+                            >
+                                {actionLoading ? 'Guardando...' : 'Guardar Guía'}
                             </button>
                         </div>
                     </div>
