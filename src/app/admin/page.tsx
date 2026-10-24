@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { 
@@ -39,7 +39,11 @@ import {
     RefreshCw,
     Sliders,
     Wallet,
-    Save
+    Save,
+    UploadCloud,
+    FolderUp,
+    Star,
+    Upload
 } from 'lucide-react';
 import { Product, CATEGORIES, Order, OrderItem } from '@/lib/db';
 import { parseImages } from '@/lib/utils';
@@ -122,6 +126,10 @@ export default function AdminPage() {
     const [formSubcategory, setFormSubcategory] = useState<number | undefined>(70);
     const [formImages, setFormImages] = useState<string[]>([]);
     const [newImageUrl, setNewImageUrl] = useState('');
+    const [isDragging, setIsDragging] = useState(false);
+    const [isUploadingImages, setIsUploadingImages] = useState(false);
+    const [showManualUrlInput, setShowManualUrlInput] = useState(false);
+    const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Order View & Manual Invoice Modals
     const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
@@ -355,10 +363,10 @@ export default function AdminPage() {
         const catInfo = CATEGORIES[activeSection];
         setFormSubcategory(catInfo?.subcategories[0]?.id);
         
-        // Default cover image for this section
-        const defaultImg = activeSection === 'gorros' ? '/cat_gorros.png' : activeSection === 'equipos-medicos' ? '/cat_equipos.png' : '/cat_accesorios.png';
-        setFormImages([defaultImg]);
+        // Start fresh so admin can drop/select images directly
+        setFormImages([]);
         setNewImageUrl('');
+        setShowManualUrlInput(false);
         setIsProductModalOpen(true);
     };
 
@@ -370,9 +378,82 @@ export default function AdminPage() {
         setFormCategory(product.categoria_slug);
         setFormSubcategory(product.subcategoria_id);
         const imgs = parseImages(product.image_url);
-        setFormImages(imgs.length > 0 ? imgs.slice(0, 10) : ['/cat_gorros.png']);
+        setFormImages(imgs.length > 0 ? imgs.slice(0, 10) : []);
         setNewImageUrl('');
+        setShowManualUrlInput(false);
         setIsProductModalOpen(true);
+    };
+
+    const handleSetCoverImage = (index: number) => {
+        if (index === 0) return;
+        setFormImages(prev => {
+            const copy = [...prev];
+            const [selected] = copy.splice(index, 1);
+            return [selected, ...copy];
+        });
+        showToast('✓ Portada principal actualizada');
+    };
+
+    const handleFilesSelected = async (fileList: FileList | File[]) => {
+        const rawFiles = Array.from(fileList);
+        const imageFiles = rawFiles.filter(f => f.type.startsWith('image/'));
+
+        if (imageFiles.length === 0) {
+            alert('Por favor selecciona únicamente archivos de imagen válidos (PNG, JPG, WEBP, etc.).');
+            return;
+        }
+
+        const remainingSlots = 10 - formImages.length;
+        if (remainingSlots <= 0) {
+            alert('Has alcanzado el límite máximo de 10 imágenes para este producto. Elimina alguna para agregar nuevas.');
+            return;
+        }
+
+        const filesToProcess = imageFiles.slice(0, remainingSlots);
+        if (imageFiles.length > remainingSlots) {
+            alert(`Solo se procesarán ${remainingSlots} imagen(es) para no exceder el límite máximo de 10.`);
+        }
+
+        setIsUploadingImages(true);
+
+        try {
+            const formData = new FormData();
+            filesToProcess.forEach(f => formData.append('files', f));
+
+            const res = await fetch('/api/admin/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.urls && data.urls.length > 0) {
+                    setFormImages(prev => [...prev, ...data.urls]);
+                    showToast(`✓ ${data.urls.length} foto(s) agregada(s) exitosamente`);
+                    setIsUploadingImages(false);
+                    return;
+                }
+            }
+            throw new Error('Upload fallback');
+        } catch {
+            // Robust fallback to FileReader base64
+            try {
+                const readers = filesToProcess.map(file => new Promise<string>((resolve, reject) => {
+                    const reader = new FileReader();
+                    reader.onload = (e) => resolve(e.target?.result as string);
+                    reader.onerror = reject;
+                    reader.readAsDataURL(file);
+                }));
+
+                const base64List = await Promise.all(readers);
+                setFormImages(prev => [...prev, ...base64List]);
+                showToast(`✓ ${base64List.length} foto(s) cargada(s) desde tu dispositivo`);
+            } catch {
+                alert('No se pudieron procesar las imágenes seleccionadas.');
+            }
+        } finally {
+            setIsUploadingImages(false);
+        }
     };
 
     const handleAddImage = (urlToAdd: string) => {
@@ -2380,75 +2461,219 @@ export default function AdminPage() {
                             )}
 
                             {/* Image Manager: UP TO 10 IMAGES */}
-                            <div className={`p-4 rounded-2xl ${bgSubCard} border ${borderDefault} space-y-3`}>
+                            <div className={`p-4 sm:p-5 rounded-3xl ${bgSubCard} border ${borderDefault} space-y-4`}>
                                 <div className="flex items-center justify-between">
-                                    <label className="block font-black text-[#5F2142] dark:text-[#FFC99C] uppercase tracking-wider">
-                                        Galería de Imágenes ({formImages.length} / 10)
-                                    </label>
-                                    <span className="text-[10px] text-gray-400 font-bold">Máximo 10 fotos</span>
+                                    <div className="flex items-center gap-2">
+                                        <div className="w-8 h-8 rounded-xl bg-[#5F2142]/10 dark:bg-[#FFC99C]/10 text-[#5F2142] dark:text-[#FFC99C] flex items-center justify-center">
+                                            <ImageIcon size={18} />
+                                        </div>
+                                        <div>
+                                            <label className="block font-black text-sm text-[#5F2142] dark:text-[#FFC99C] uppercase tracking-wider">
+                                                Galería de Fotos ({formImages.length} de 10)
+                                            </label>
+                                            <p className="text-[10px] text-gray-400 font-medium">Sube hasta 10 fotos desde tu computadora o celular</p>
+                                        </div>
+                                    </div>
+                                    <span className="text-[11px] font-black px-2.5 py-1 rounded-full bg-[#D86A33]/10 text-[#D86A33]">
+                                        {10 - formImages.length} disponibles
+                                    </span>
                                 </div>
 
-                                {/* Add image URL input */}
+                                {/* DROP ZONE / ARRASTRAR O SELECCIONAR DESDE LOCAL (ESTILO FREE PDF CONVERTER) */}
                                 {formImages.length < 10 ? (
-                                    <div className="flex gap-2">
+                                    <div
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            setIsDragging(true);
+                                        }}
+                                        onDragLeave={(e) => {
+                                            e.preventDefault();
+                                            setIsDragging(false);
+                                        }}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            setIsDragging(false);
+                                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                                handleFilesSelected(e.dataTransfer.files);
+                                            }
+                                        }}
+                                        className={`relative rounded-3xl p-6 sm:p-7 text-center transition-all border-2 border-dashed ${
+                                            isDragging
+                                                ? 'border-[#D86A33] bg-[#D86A33]/15 scale-[1.01] shadow-lg'
+                                                : 'border-blue-400/50 dark:border-blue-500/30 bg-gradient-to-b from-blue-500/10 via-blue-500/5 to-transparent dark:from-blue-600/10 dark:via-transparent hover:border-[#D86A33] hover:bg-blue-500/15'
+                                        }`}
+                                    >
+                                        {/* Hidden File Input */}
                                         <input
-                                            type="text"
-                                            value={newImageUrl}
-                                            onChange={(e) => setNewImageUrl(e.target.value)}
-                                            placeholder="/cat_gorros.png o URL externa..."
-                                            className={`flex-1 px-3 py-2 rounded-xl border text-xs font-medium ${inputStyle}`}
+                                            ref={fileInputRef}
+                                            type="file"
+                                            multiple
+                                            accept="image/*"
+                                            className="hidden"
+                                            onChange={(e) => {
+                                                if (e.target.files && e.target.files.length > 0) {
+                                                    handleFilesSelected(e.target.files);
+                                                }
+                                                e.target.value = '';
+                                            }}
                                         />
-                                        <button
-                                            type="button"
-                                            onClick={() => handleAddImage(newImageUrl)}
-                                            className="px-4 py-2 rounded-xl bg-[#5F2142] text-white font-bold text-xs"
-                                        >
-                                            + Añadir
-                                        </button>
-                                    </div>
-                                ) : (
-                                    <p className="text-[11px] text-amber-600 font-bold">
-                                        ✓ Límite de 10 imágenes alcanzado. Elimina una para añadir otra.
-                                    </p>
-                                )}
 
-                                {/* Preset Image buttons */}
-                                {formImages.length < 10 && (
-                                    <div className="flex flex-wrap gap-1.5 pt-1">
-                                        <span className="text-[10px] text-gray-400 font-bold self-center">Añadir rápida:</span>
-                                        {PRESET_IMAGES.map((img) => (
+                                        {/* Central Graphic: Stack of image file cards like the reference */}
+                                        <div className="flex items-center justify-center mb-3">
+                                            <div className="relative w-16 h-12 flex items-center justify-center">
+                                                <div className="absolute w-10 h-12 rounded-lg bg-blue-100 dark:bg-blue-900/60 border border-blue-300 dark:border-blue-700 -rotate-12 transform shadow-xs flex items-center justify-center text-blue-600 dark:text-blue-400">
+                                                    <ImageIcon size={18} />
+                                                </div>
+                                                <div className="absolute w-10 h-12 rounded-lg bg-purple-100 dark:bg-purple-900/60 border border-purple-300 dark:border-purple-700 rotate-12 transform shadow-xs flex items-center justify-center text-purple-600 dark:text-purple-400">
+                                                    <Sparkles size={16} />
+                                                </div>
+                                                <div className="relative z-10 w-11 h-13 rounded-xl bg-white dark:bg-neutral-800 border-2 border-[#D86A33] shadow-md flex flex-col items-center justify-center text-[#D86A33]">
+                                                    <UploadCloud size={20} />
+                                                    <span className="text-[7px] font-black uppercase tracking-tighter mt-0.5">FOTO</span>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        {/* Prominent Action Button: CHOOSE FILES / SELECCIONAR FOTOS */}
+                                        <div className="inline-flex items-center justify-center">
                                             <button
                                                 type="button"
-                                                key={img.url}
-                                                onClick={() => handleAddImage(img.url)}
-                                                className="text-[10px] px-2 py-0.5 rounded-lg border border-gray-300 dark:border-white/10 hover:border-[#D86A33]"
+                                                onClick={() => fileInputRef.current?.click()}
+                                                disabled={isUploadingImages}
+                                                className="px-6 py-3 rounded-2xl bg-white dark:bg-neutral-800 text-gray-900 dark:text-white font-black text-xs sm:text-sm shadow-md hover:shadow-lg border-2 border-gray-200 dark:border-white/10 hover:border-[#D86A33] inline-flex items-center gap-2 group transition-all"
                                             >
-                                                + {img.label}
-                                            </button>
-                                        ))}
-                                    </div>
-                                )}
-
-                                {/* Thumbnails Gallery */}
-                                <div className="grid grid-cols-5 gap-2 pt-2">
-                                    {formImages.map((url, idx) => (
-                                        <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border border-gray-300 dark:border-white/20 bg-gray-100 dark:bg-white/5 group">
-                                            <img src={url} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
-                                            {idx === 0 && (
-                                                <span className="absolute top-1 left-1 bg-[#D86A33] text-white text-[8px] font-black px-1 rounded">
-                                                    Portada
-                                                </span>
-                                            )}
-                                            <button
-                                                type="button"
-                                                onClick={() => handleRemoveImage(idx)}
-                                                className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
-                                                title="Eliminar imagen"
-                                            >
-                                                <X size={11} />
+                                                <FolderUp size={18} className="text-[#D86A33] group-hover:scale-110 transition-transform" />
+                                                <span>{isUploadingImages ? 'Procesando fotos...' : 'CHOOSE FILES / SELECCIONAR FOTOS'}</span>
                                             </button>
                                         </div>
-                                    ))}
+
+                                        {/* Helper Text: or drop files here */}
+                                        <p className="text-xs font-bold text-gray-700 dark:text-gray-200 mt-2.5">
+                                            or drop files here (o arrastra tus fotos aquí)
+                                        </p>
+                                        <p className="text-[10px] text-gray-400 font-semibold mt-1">
+                                            Soporta JPG, PNG, WEBP, GIF • Puedes subir varias fotos a la vez
+                                        </p>
+
+                                        {/* Uploading Spinner Overlay */}
+                                        {isUploadingImages && (
+                                            <div className="absolute inset-0 bg-white/85 dark:bg-black/85 rounded-3xl flex flex-col items-center justify-center backdrop-blur-xs z-20">
+                                                <RefreshCw size={26} className="animate-spin text-[#D86A33] mb-2" />
+                                                <span className="text-xs font-black text-[#5F2142] dark:text-[#FFC99C]">Cargando y optimizando fotos...</span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 text-center">
+                                        <p className="text-xs text-amber-800 dark:text-amber-300 font-black">
+                                            ✓ Límite de 10 fotos alcanzado para este producto
+                                        </p>
+                                        <p className="text-[10px] text-amber-600 dark:text-amber-400 mt-0.5">
+                                            Si deseas agregar otra foto, primero elimina alguna de la galería de abajo.
+                                        </p>
+                                    </div>
+                                )}
+
+                                {/* Galería de Fotos cargadas */}
+                                {formImages.length > 0 && (
+                                    <div className="pt-2">
+                                        <div className="flex items-center justify-between mb-2">
+                                            <span className="text-xs font-black text-gray-700 dark:text-gray-300">
+                                                Fotos añadidas ({formImages.length} de 10):
+                                            </span>
+                                            <span className="text-[10px] text-gray-400 font-semibold">
+                                                La foto marcada como <strong className="text-[#D86A33]">★ Portada</strong> será la imagen principal
+                                            </span>
+                                        </div>
+                                        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                                            {formImages.map((url, idx) => (
+                                                <div 
+                                                    key={idx} 
+                                                    className={`relative aspect-square rounded-2xl overflow-hidden border-2 bg-gray-100 dark:bg-white/5 group shadow-xs transition-all ${
+                                                        idx === 0 
+                                                            ? 'border-[#D86A33] ring-2 ring-[#D86A33]/30' 
+                                                            : 'border-gray-200 dark:border-white/10 hover:border-[#5F2142]'
+                                                    }`}
+                                                >
+                                                    <img src={url} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                                                    
+                                                    {/* Badge o botón para asignar Portada */}
+                                                    {idx === 0 ? (
+                                                        <span className="absolute top-1.5 left-1.5 bg-[#D86A33] text-white text-[8px] font-black px-2 py-0.5 rounded-full shadow-md flex items-center gap-1">
+                                                            ★ Portada
+                                                        </span>
+                                                    ) : (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleSetCoverImage(idx)}
+                                                            className="absolute bottom-1.5 left-1.5 right-1.5 py-1 px-1 rounded-lg bg-black/80 hover:bg-[#D86A33] text-white text-[9px] font-bold opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1 shadow-md"
+                                                            title="Convertir en portada principal"
+                                                        >
+                                                            <Star size={10} /> Portada
+                                                        </button>
+                                                    )}
+
+                                                    {/* Botón Eliminar Foto */}
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveImage(idx)}
+                                                        className="absolute top-1.5 right-1.5 w-6 h-6 rounded-full bg-red-600/90 hover:bg-red-600 text-white flex items-center justify-center opacity-85 group-hover:opacity-100 transition-opacity shadow-md"
+                                                        title="Eliminar esta foto"
+                                                    >
+                                                        <X size={12} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Opción secundaria: URL web directa o presets rápidos */}
+                                <div className="pt-2 border-t border-gray-100 dark:border-white/10">
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowManualUrlInput(!showManualUrlInput)}
+                                        className="text-[11px] text-gray-500 hover:text-[#5F2142] dark:hover:text-[#FFC99C] font-bold inline-flex items-center gap-1.5 transition-colors"
+                                    >
+                                        <span>{showManualUrlInput ? '▼ Ocultar opciones de URL / Presets' : '▶ ¿Deseas pegar una URL web o fotos predeterminadas?'}</span>
+                                    </button>
+
+                                    {showManualUrlInput && (
+                                        <div className="mt-2 space-y-2.5 p-3 rounded-2xl bg-gray-50 dark:bg-white/5 border border-gray-200 dark:border-white/10">
+                                            {formImages.length < 10 && (
+                                                <div className="flex gap-2">
+                                                    <input
+                                                        type="text"
+                                                        value={newImageUrl}
+                                                        onChange={(e) => setNewImageUrl(e.target.value)}
+                                                        placeholder="https://ejemplo.com/foto.jpg o /cat_gorros.png..."
+                                                        className={`flex-1 px-3 py-2 rounded-xl border text-xs font-medium ${inputStyle}`}
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleAddImage(newImageUrl)}
+                                                        className="px-4 py-2 rounded-xl bg-[#5F2142] text-white font-bold text-xs hover:bg-[#43142e] transition-colors"
+                                                    >
+                                                        + Añadir URL
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            <div className="flex flex-wrap gap-1.5 pt-1">
+                                                <span className="text-[10px] text-gray-400 font-bold self-center">Fotos predeterminadas:</span>
+                                                {PRESET_IMAGES.map((img) => (
+                                                    <button
+                                                        type="button"
+                                                        key={img.url}
+                                                        onClick={() => handleAddImage(img.url)}
+                                                        className="text-[10px] px-2 py-0.5 rounded-lg border border-gray-300 dark:border-white/10 hover:border-[#D86A33] transition-colors"
+                                                    >
+                                                        + {img.label}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             </div>
 
