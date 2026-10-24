@@ -68,6 +68,7 @@ export default function CheckoutModal() {
     const [cedula, setCedula] = useState('');
     const [telefono, setTelefono] = useState('');
     const [tipoEntrega, setTipoEntrega] = useState<'local' | 'nacional'>('local');
+    const [municipioLocal, setMunicipioLocal] = useState<'Municipio Miranda' | 'Municipio Colina'>('Municipio Miranda');
     const [direccionLocal, setDireccionLocal] = useState('');
     const [empresaEnvio, setEmpresaEnvio] = useState('MRW');
     const [estado, setEstado] = useState('');
@@ -249,7 +250,8 @@ export default function CheckoutModal() {
 
         msg += `🚚 *DATOS DE ENTREGA:*\n`;
         if (tipoEntrega === 'local') {
-            msg += `• *Modalidad:* Entrega Local / Retiro Personal\n`;
+            msg += `• *Modalidad:* Entrega Local (${municipioLocal})\n`;
+            msg += `• *Municipio:* ${municipioLocal}\n`;
             msg += `• *Dirección / Punto de Entrega:* ${direccionLocal.trim()}\n`;
         } else {
             msg += `• *Modalidad:* Envío Nacional\n`;
@@ -289,7 +291,7 @@ export default function CheckoutModal() {
                     cliente_cedula: cedula.trim(),
                     cliente_telefono: telefono.trim(),
                     tipo_entrega: tipoEntrega,
-                    direccion_entrega: tipoEntrega === 'local' ? direccionLocal.trim() : direccionAgencia.trim(),
+                    direccion_entrega: tipoEntrega === 'local' ? `${municipioLocal} - ${direccionLocal.trim()}` : direccionAgencia.trim(),
                     empresa_envio: tipoEntrega === 'nacional' ? empresaEnvio : undefined,
                     estado: tipoEntrega === 'nacional' ? estado.trim() : undefined,
                     ciudad: tipoEntrega === 'nacional' ? ciudad.trim() : undefined,
@@ -535,8 +537,8 @@ export default function CheckoutModal() {
                                                 : 'bg-white border-gray-200 text-gray-600 hover:border-gray-300'
                                         }`}
                                     >
-                                        <div className="font-black text-xs sm:text-sm">📍 Entrega Local / Retiro</div>
-                                        <div className="text-[11px] text-gray-500 mt-0.5">En la ciudad o entrega personal</div>
+                                        <div className="font-black text-xs sm:text-sm">📍 Entrega Local</div>
+                                        <div className="text-[11px] text-gray-500 mt-0.5">Mcpio. Miranda y Mcpio. Colina</div>
                                     </button>
 
                                     <button
@@ -554,18 +556,55 @@ export default function CheckoutModal() {
                                 </div>
 
                                 {tipoEntrega === 'local' ? (
-                                    <div>
-                                        <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1">
-                                            Dirección o Zona de Entrega Acordada *
-                                        </label>
-                                        <textarea
-                                            rows={2}
-                                            required
-                                            value={direccionLocal}
-                                            onChange={(e) => setDireccionLocal(e.target.value)}
-                                            placeholder="Indica tu dirección o punto de encuentro preferido..."
-                                            className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm font-medium"
-                                        />
+                                    <div className="space-y-3 p-4 rounded-2xl bg-[#FFF9F5]/70 border border-[#FFC99C]/40">
+                                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-[#5F2142] font-bold flex items-center gap-2">
+                                            <span>📍</span>
+                                            <span>La entrega local aplica <strong>únicamente para Municipio Miranda y Municipio Colina</strong>.</span>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1.5">
+                                                Selecciona tu Municipio *
+                                            </label>
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setMunicipioLocal('Municipio Miranda')}
+                                                    className={`p-2.5 rounded-xl border text-xs font-black transition-all ${
+                                                        municipioLocal === 'Municipio Miranda'
+                                                            ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-xs'
+                                                            : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
+                                                    }`}
+                                                >
+                                                    Municipio Miranda (Coro)
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setMunicipioLocal('Municipio Colina')}
+                                                    className={`p-2.5 rounded-xl border text-xs font-black transition-all ${
+                                                        municipioLocal === 'Municipio Colina'
+                                                            ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-xs'
+                                                            : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
+                                                    }`}
+                                                >
+                                                    Municipio Colina (La Vela)
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1">
+                                                Dirección o Punto de Encuentro ({municipioLocal}) *
+                                            </label>
+                                            <textarea
+                                                rows={2}
+                                                required
+                                                value={direccionLocal}
+                                                onChange={(e) => setDireccionLocal(e.target.value)}
+                                                placeholder={`Indica sector, calle o punto de referencia en ${municipioLocal}...`}
+                                                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm font-medium bg-white"
+                                            />
+                                        </div>
                                     </div>
                                 ) : (
                                     <div className="space-y-3.5 p-4 rounded-2xl bg-[#FFF9F5]/70 border border-[#FFC99C]/40">

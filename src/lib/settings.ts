@@ -59,7 +59,7 @@ const DEFAULT_SETTINGS: SiteSettings = {
         telefonoWhatsapp: '584121409976',
         mensajeWhatsappIntro: '¡Hola! He formalizado mi pedido en la web de BOHEME.',
         instagram: '@boheme_ve',
-        direccionFisica: 'Valencia, Estado Carabobo, Venezuela',
+        direccionFisica: 'Municipio Miranda (Coro) y Municipio Colina (La Vela), Estado Falcón, Venezuela',
         monedaPrincipal: 'USD'
     },
     lastUpdated: new Date().toISOString()

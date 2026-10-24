@@ -99,7 +99,7 @@ export const WORKSHOP_STAGES: Record<string, WorkshopStage> = {
         icon: '🛍️',
         color: 'text-emerald-700 dark:text-emerald-300',
         badgeBg: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800',
-        description: 'Listo para retiro en tienda o entrega personalizada en Valencia.'
+        description: 'Listo para entrega local en Municipio Miranda o Municipio Colina.'
     },
     entregado: {
         key: 'entregado',
@@ -178,7 +178,7 @@ export function getWorkshopTypeLabel(type: WorkshopProductType): string {
         case 'lanyards_personalizados': return 'Lanyard Personalizado';
         case 'productos_personalizados': return 'Producto Personalizado';
         case 'resto_nacional': return 'Stock (Envío Nacional)';
-        case 'resto_local': return 'Stock (Entrega Local)';
+        case 'resto_local': return 'Stock (Municipio Miranda / Colina)';
         default: return 'Producto Taller';
     }
 }

@@ -34,6 +34,8 @@ import {
     Eye,
     Menu,
     ChevronRight,
+    ChevronDown,
+    ChevronUp,
     Settings,
     DollarSign,
     RefreshCw,
@@ -159,6 +161,7 @@ export default function AdminPage() {
     const [workshopNotesInput, setWorkshopNotesInput] = useState<string>('');
     const [editingGuideOrder, setEditingGuideOrder] = useState<Order | null>(null);
     const [guideNumberInput, setGuideNumberInput] = useState<string>('');
+    const [expandedOrderIds, setExpandedOrderIds] = useState<Record<string, boolean>>({});
 
     // Order View & Manual Invoice Modals
     const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
@@ -874,7 +877,7 @@ export default function AdminPage() {
                         <div style="font-size: 12px; color: #666;">Orden de Fabricación y Confección • Factura ${order.numero_factura}</div>
                     </div>
                     <div>
-                        <span class="badge">${order.tipo_entrega === 'nacional' ? `ENVÍO NACIONAL (${order.empresa_envio || 'MRW'})` : 'ENTREGA LOCAL (VALENCIA)'}</span>
+                        <span class="badge">${order.tipo_entrega === 'nacional' ? `ENVÍO NACIONAL (${order.empresa_envio || 'MRW'})` : 'ENTREGA LOCAL (MCPIO. MIRANDA / MCPIO. COLINA)'}</span>
                     </div>
                 </div>
                 
@@ -935,6 +938,29 @@ export default function AdminPage() {
         `;
         printWindow.document.write(printContent);
         printWindow.document.close();
+    };
+
+    const toggleOrderExpanded = (orderId: string) => {
+        setExpandedOrderIds(prev => ({
+            ...prev,
+            [orderId]: !prev[orderId]
+        }));
+    };
+
+    const selectOnlyOrderToView = (orderId: string) => {
+        setExpandedOrderIds({
+            [orderId]: true
+        });
+    };
+
+    const expandAllWorkshopOrders = () => {
+        const all: Record<string, boolean> = {};
+        orders.forEach(o => { all[o.id] = true; });
+        setExpandedOrderIds(all);
+    };
+
+    const collapseAllWorkshopOrders = () => {
+        setExpandedOrderIds({});
     };
 
     // ==========================================
@@ -1899,7 +1925,7 @@ export default function AdminPage() {
                                         className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${inputStyle}`}
                                     >
                                         <option value="all">Todas las Modalidades</option>
-                                        <option value="local">🏠 Entrega Local (Valencia)</option>
+                                        <option value="local">🏠 Entrega Local (Mcpio. Miranda / Mcpio. Colina)</option>
                                         <option value="nacional">🚚 Envío Nacional (MRW, Zoom, etc.)</option>
                                     </select>
                                 </div>
@@ -1959,8 +1985,42 @@ export default function AdminPage() {
                                 </button>
                             </div>
                         ) : (
-                            <div className="space-y-4">
+                            <div className="space-y-3">
+                                {/* Barra de controles de minimización / expansión masiva */}
+                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 px-1 pb-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xs font-black text-gray-700 dark:text-gray-300">
+                                            Pedidos ({filteredTallerOrders.length}):
+                                        </span>
+                                        <span className="text-[11px] text-gray-400 font-medium">
+                                            Haz clic sobre cualquier pedido para visualizarlo o minimizarlo
+                                        </span>
+                                    </div>
+
+                                    <div className="flex items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={collapseAllWorkshopOrders}
+                                            className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#5F2142] text-xs font-bold text-gray-600 dark:text-gray-300 inline-flex items-center gap-1.5 transition-all bg-white dark:bg-neutral-800 shadow-2xs"
+                                            title="Minimizar todos los pedidos de la lista"
+                                        >
+                                            <ChevronUp size={13} />
+                                            <span>Minimizar Todos</span>
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={expandAllWorkshopOrders}
+                                            className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-xs font-bold text-gray-600 dark:text-gray-300 inline-flex items-center gap-1.5 transition-all bg-white dark:bg-neutral-800 shadow-2xs"
+                                            title="Expandir y visualizar todos los pedidos"
+                                        >
+                                            <ChevronDown size={13} />
+                                            <span>Expandir Todos</span>
+                                        </button>
+                                    </div>
+                                </div>
+
                                 {filteredTallerOrders.map((order) => {
+                                    const isExpanded = Boolean(expandedOrderIds[order.id]);
                                     const workshopType = getOrderWorkshopType(order);
                                     const steps = getOrderWorkflowSteps(order);
                                     const currentStageKey = order.estado_taller || steps[0];
@@ -1973,362 +2033,422 @@ export default function AdminPage() {
                                     const waTarget = waPhone.startsWith('58') ? waPhone : `58${waPhone.startsWith('0') ? waPhone.slice(1) : waPhone}`;
                                     const waText = encodeURIComponent(`¡Hola ${order.cliente_nombre}! Te escribimos del Taller de BOHEME respecto a tu pedido #${order.numero_factura}.`);
 
+                                    const totalPrendas = order.items.reduce((sum, it) => sum + it.quantity, 0);
+
                                     return (
                                         <div
                                             key={order.id}
                                             className={`rounded-3xl ${bgCard} border ${
                                                 order.pedido_cerrado
                                                     ? 'border-gray-200 dark:border-white/5 opacity-85'
-                                                    : borderDefault
+                                                    : isExpanded
+                                                        ? 'border-[#D86A33]/50 ring-2 ring-[#D86A33]/15 shadow-md'
+                                                        : borderDefault
                                             } shadow-xs overflow-hidden transition-all`}
                                         >
-                                            {/* CARD TOP RIBBON */}
-                                            <div className="p-4 sm:p-5 pb-3 border-b border-gray-100 dark:border-white/10 flex flex-col md:flex-row md:items-center justify-between gap-3">
-                                                <div className="flex flex-wrap items-center gap-2">
+                                            {/* BARRA DE RESUMEN (CABECERA CLICKEABLE PARA MINIMIZAR / EXPANDIR) */}
+                                            <div
+                                                onClick={() => toggleOrderExpanded(order.id)}
+                                                className={`p-3.5 sm:p-4.5 transition-colors cursor-pointer select-none ${
+                                                    isExpanded 
+                                                        ? 'border-b border-gray-100 dark:border-white/10 bg-gray-50/50 dark:bg-white/2' 
+                                                        : 'hover:bg-gray-50/70 dark:hover:bg-white/2'
+                                                } flex flex-col lg:flex-row lg:items-center justify-between gap-3`}
+                                            >
+                                                {/* Left Info Column */}
+                                                <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+                                                    {/* Chevron expand/collapse icon */}
+                                                    <div className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all ${
+                                                        isExpanded 
+                                                            ? 'bg-[#5F2142] text-white shadow-2xs' 
+                                                            : 'bg-gray-100 dark:bg-white/10 text-gray-500 hover:bg-[#5F2142] hover:text-white'
+                                                    }`}>
+                                                        {isExpanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+                                                    </div>
+
                                                     {/* Factura # */}
                                                     <span className="font-mono font-black text-sm text-[#5F2142] dark:text-[#FFC99C] px-3 py-1 rounded-xl bg-[#5F2142]/10 dark:bg-[#FFC99C]/10 border border-[#5F2142]/20">
                                                         #{order.numero_factura}
                                                     </span>
 
+                                                    {/* Cliente */}
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="font-black text-xs sm:text-sm text-gray-900 dark:text-white">
+                                                            {order.cliente_nombre} {order.cliente_apellido}
+                                                        </span>
+                                                        <span className="text-[11px] text-gray-400 font-medium hidden sm:inline">
+                                                            ({order.cliente_cedula})
+                                                        </span>
+                                                    </div>
+
                                                     {/* Fecha */}
                                                     <span className="text-[11px] text-gray-400 font-semibold flex items-center gap-1">
-                                                        <Clock size={12} />
-                                                        {new Date(order.created_at).toLocaleDateString('es-VE', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                                        <Clock size={11} />
+                                                        {new Date(order.created_at).toLocaleDateString('es-VE', { day: '2-digit', month: 'short' })}
                                                     </span>
-
-                                                    {/* Badge Pago Facturado */}
-                                                    {normalizeStatus(order.estado_pago) === 'verificada' ? (
-                                                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center gap-1">
-                                                            <CheckCircle2 size={11} /> Pago Verificado
-                                                        </span>
-                                                    ) : normalizeStatus(order.estado_pago) === 'rechazada' ? (
-                                                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-red-100 text-red-800 dark:bg-red-950/40 dark:text-red-300 border border-red-300 dark:border-red-800 flex items-center gap-1">
-                                                            <XCircle size={11} /> Pago Rechazado
-                                                        </span>
-                                                    ) : (
-                                                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-300 dark:border-amber-800 flex items-center gap-1">
-                                                            <Clock3 size={11} /> Pago Por Verificar
-                                                        </span>
-                                                    )}
 
                                                     {/* Modalidad de Entrega */}
                                                     {order.tipo_entrega === 'nacional' ? (
                                                         <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 dark:bg-blue-950/40 dark:text-blue-300 border border-blue-300 dark:border-blue-800 flex items-center gap-1">
-                                                            <Truck size={11} /> Envío Nacional ({order.empresa_envio || 'MRW'})
+                                                            <Truck size={10} /> Envío Nacional ({order.empresa_envio || 'MRW'})
                                                         </span>
                                                     ) : (
                                                         <span className="text-[10px] font-black px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800 dark:bg-purple-950/40 dark:text-purple-300 border border-purple-300 dark:border-purple-800 flex items-center gap-1">
-                                                            <Store size={11} /> Entrega Local (Valencia)
+                                                            <Store size={10} /> Entrega Local (Mcpio. Miranda / Mcpio. Colina)
                                                         </span>
                                                     )}
 
-                                                    {/* Tipo de Producto principal */}
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10">
-                                                        {getWorkshopTypeLabel(workshopType)}
+                                                    {/* Resumen de Prendas */}
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10 hidden md:inline-block">
+                                                        {totalPrendas} prenda(s) • {getWorkshopTypeLabel(workshopType)}
                                                     </span>
                                                 </div>
 
-                                                {/* Status Pill & Action Buttons */}
-                                                <div className="flex items-center gap-2 self-end md:self-auto">
-                                                    {/* Badge Estatus Actual */}
+                                                {/* Right Status & Selection Column */}
+                                                <div className="flex items-center gap-2 self-end lg:self-auto" onClick={(e) => e.stopPropagation()}>
+                                                    {/* Estatus Actual */}
                                                     <span className={`text-xs font-black px-3 py-1 rounded-xl border flex items-center gap-1.5 ${currentStage.badgeBg}`}>
                                                         <span>{currentStage.icon}</span>
                                                         <span>{currentStage.label}</span>
                                                     </span>
 
-                                                    {/* Imprimir Ficha de Taller */}
+                                                    {/* Estatus Pago */}
+                                                    {normalizeStatus(order.estado_pago) === 'verificada' ? (
+                                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800">
+                                                            ✓ Pago OK
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300 border border-amber-300 dark:border-amber-800">
+                                                            ⏳ Pago Pend.
+                                                        </span>
+                                                    )}
+
+                                                    {/* Imprimir Ficha */}
                                                     <button
                                                         type="button"
                                                         onClick={() => handlePrintWorkshopSheet(order)}
-                                                        className="p-2 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#5F2142] text-gray-700 dark:text-gray-300 transition-all hover:bg-gray-50 dark:hover:bg-white/5"
-                                                        title="Imprimir Ficha Técnica de Producción para el taller"
+                                                        className="p-1.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#5F2142] text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-white/5"
+                                                        title="Imprimir Ficha de Taller"
                                                     >
-                                                        <Printer size={15} />
+                                                        <Printer size={14} />
                                                     </button>
 
-                                                    {/* Botón Cerrar / Reabrir Pedido */}
-                                                    {order.pedido_cerrado ? (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleToggleCloseOrder(order, false)}
-                                                            disabled={actionLoading}
-                                                            className="px-3 py-1.5 rounded-xl border border-gray-300 dark:border-white/10 hover:border-[#D86A33] text-gray-600 dark:text-gray-300 font-bold text-xs inline-flex items-center gap-1"
-                                                            title="Reabrir este pedido en producción"
-                                                        >
-                                                            <RotateCcw size={12} />
-                                                            <span>Reabrir</span>
-                                                        </button>
-                                                    ) : (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleToggleCloseOrder(order, true)}
-                                                            disabled={actionLoading}
-                                                            className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs inline-flex items-center gap-1.5 transition-all"
-                                                            title="Marcar pedido como completado y cerrado"
-                                                        >
-                                                            <CheckCheck size={13} />
-                                                            <span>Cerrar Pedido</span>
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            </div>
-
-                                            {/* CLIENT & COURIER BAR */}
-                                            <div className="px-4 sm:px-5 py-3 bg-gray-50/70 dark:bg-white/2 border-b border-gray-100 dark:border-white/10 text-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
-                                                <div className="flex flex-wrap items-center gap-x-4 gap-y-1">
-                                                    <div>
-                                                        <span className="text-gray-400 font-semibold">Cliente: </span>
-                                                        <strong className="text-gray-900 dark:text-white font-black">
-                                                            {order.cliente_nombre} {order.cliente_apellido}
-                                                        </strong>
-                                                        <span className="text-gray-400 font-normal ml-1">({order.cliente_cedula})</span>
-                                                    </div>
-
-                                                    <div className="flex items-center gap-1.5">
-                                                        <span className="text-gray-400 font-semibold">Telf:</span>
-                                                        <span className="font-bold text-[#5F2142] dark:text-[#FFC99C]">{order.cliente_telefono}</span>
-                                                        <a
-                                                            href={`https://wa.me/${waTarget}?text=${waText}`}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="px-2 py-0.5 rounded-lg bg-green-500 hover:bg-green-600 text-white font-bold text-[10px] inline-flex items-center gap-1 transition-all shadow-2xs"
-                                                            title="Abrir chat de WhatsApp con el cliente"
-                                                        >
-                                                            WhatsApp
-                                                        </a>
-                                                    </div>
-
-                                                    <div>
-                                                        <span className="text-gray-400 font-semibold">Destino: </span>
-                                                        <span className="font-medium text-gray-700 dark:text-gray-200">
-                                                            {order.direccion_entrega} {order.ciudad ? `(${order.ciudad}, ${order.estado})` : ''}
-                                                        </span>
-                                                    </div>
-                                                </div>
-
-                                                {/* Envío Nacional: Número de Guía */}
-                                                {order.tipo_entrega === 'nacional' && (
-                                                    <div className="flex items-center gap-2 shrink-0">
-                                                        {order.numero_guia_envio ? (
-                                                            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200">
-                                                                <Truck size={13} className="text-cyan-600" />
-                                                                <span className="font-mono font-bold text-xs">Guía: {order.numero_guia_envio}</span>
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => { setEditingGuideOrder(order); setGuideNumberInput(order.numero_guia_envio || ''); }}
-                                                                    className="text-cyan-600 hover:text-cyan-900 ml-1"
-                                                                    title="Editar guía de envío"
-                                                                >
-                                                                    <Edit2 size={11} />
-                                                                </button>
-                                                            </div>
-                                                        ) : (
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => { setEditingGuideOrder(order); setGuideNumberInput(''); }}
-                                                                className="px-2.5 py-1 rounded-xl border border-dashed border-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 font-bold text-[11px] inline-flex items-center gap-1"
-                                                            >
-                                                                <Plus size={11} /> Registrar Guía de Envío
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            {/* BODY: ITEMS LIST + PERSONALIZATION HIGHLIGHT */}
-                                            <div className="p-4 sm:p-5 space-y-4">
-                                                <div>
-                                                    <span className="block text-[11px] font-black uppercase tracking-wider text-gray-400 mb-2">
-                                                        Prendas a Confeccionar & Detalles de Taller ({order.items.length}):
-                                                    </span>
-                                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                                        {order.items.map((item, itIdx) => {
-                                                            const itemType = determineItemWorkshopType(item, order.tipo_entrega);
-                                                            const hasCustom = item.is_personalizado || item.nombre_personalizado || item.especialidad_personalizada || item.detalles_personalizados;
-
-                                                            return (
-                                                                <div
-                                                                    key={itIdx}
-                                                                    className={`p-3.5 rounded-2xl border ${
-                                                                        hasCustom
-                                                                            ? 'border-[#D86A33]/40 bg-[#FFF9F5] dark:bg-white/3'
-                                                                            : 'border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/1'
-                                                                    } space-y-2.5`}
-                                                                >
-                                                                    <div className="flex items-start justify-between gap-2">
-                                                                        <div className="flex items-center gap-2.5">
-                                                                            <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-white/10 overflow-hidden shrink-0 border border-gray-300 dark:border-white/10">
-                                                                                {item.image_url ? (
-                                                                                    <img src={parseImages(item.image_url)[0]} alt={item.name} className="w-full h-full object-cover" />
-                                                                                ) : (
-                                                                                    <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold text-xs">
-                                                                                        BHM
-                                                                                    </div>
-                                                                                )}
-                                                                            </div>
-                                                                            <div>
-                                                                                <div className="font-black text-gray-900 dark:text-white text-xs leading-tight">
-                                                                                    {item.quantity}x {item.name}
-                                                                                </div>
-                                                                                <span className="text-[10px] text-gray-400 font-semibold">
-                                                                                    ${item.price} c/u • Ref: {item.categoria_slug || 'General'}
-                                                                                </span>
-                                                                            </div>
-                                                                        </div>
-
-                                                                        <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-[#5F2142]/10 text-[#5F2142] dark:text-[#FFC99C] shrink-0">
-                                                                            {getWorkshopTypeLabel(itemType)}
-                                                                        </span>
-                                                                    </div>
-
-                                                                    {/* PERSONALIZATION CALLOUT BOX (CRITICAL FOR WORKSHOP) */}
-                                                                    {hasCustom && (
-                                                                        <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1 text-xs">
-                                                                            {item.nombre_personalizado && (
-                                                                                <div className="flex items-baseline gap-1.5">
-                                                                                    <span className="text-[10px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider shrink-0">
-                                                                                        Bordado / Nombre:
-                                                                                    </span>
-                                                                                    <span className="font-black text-[#5F2142] dark:text-[#FFC99C] text-sm bg-white dark:bg-neutral-800 px-2 py-0.5 rounded-md border border-amber-300 dark:border-amber-700 shadow-2xs">
-                                                                                        {item.nombre_personalizado}
-                                                                                    </span>
-                                                                                </div>
-                                                                            )}
-                                                                            {item.especialidad_personalizada && (
-                                                                                <div className="flex items-baseline gap-1.5 text-[11px]">
-                                                                                    <span className="font-bold text-gray-500 shrink-0">Especialidad:</span>
-                                                                                    <span className="font-bold text-gray-900 dark:text-white">{item.especialidad_personalizada}</span>
-                                                                                </div>
-                                                                            )}
-                                                                            {item.color_preferencia && (
-                                                                                <div className="flex items-baseline gap-1.5 text-[11px]">
-                                                                                    <span className="font-bold text-gray-500 shrink-0">Telas / Hilos:</span>
-                                                                                    <span className="font-medium text-gray-800 dark:text-gray-200">{item.color_preferencia}</span>
-                                                                                </div>
-                                                                            )}
-                                                                            {item.detalles_personalizados && (
-                                                                                <div className="flex items-baseline gap-1.5 text-[11px]">
-                                                                                    <span className="font-bold text-gray-500 shrink-0">Observaciones:</span>
-                                                                                    <span className="font-medium text-gray-700 dark:text-gray-300">{item.detalles_personalizados}</span>
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                    )}
-                                                                </div>
-                                                            );
-                                                        })}
-                                                    </div>
-                                                </div>
-
-                                                {/* ========================================================= */}
-                                                {/* WORKFLOW PIPELINE (STEPPER INTERACTIVO DE 1 CLIC)         */}
-                                                {/* ========================================================= */}
-                                                <div className="pt-2">
-                                                    <div className="flex items-center justify-between mb-2">
-                                                        <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
-                                                            Flujo de Producción & Despacho:
-                                                        </span>
-                                                        <span className="text-[10px] text-gray-400 font-medium">
-                                                            Haz clic en cualquier fase para avanzar o cambiar estatus
-                                                        </span>
-                                                    </div>
-
-                                                    <div className="p-3 sm:p-4 rounded-2xl bg-gray-50 dark:bg-white/3 border border-gray-200 dark:border-white/10 space-y-3">
-                                                        {/* Horizontal Stepper Chips */}
-                                                        <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
-                                                            {steps.map((stepKey, sIdx) => {
-                                                                const stInfo = getStageInfo(stepKey);
-                                                                const isPassed = sIdx < currentIndex;
-                                                                const isCurrent = sIdx === currentIndex;
-                                                                const isUpcoming = sIdx > currentIndex;
-
-                                                                return (
-                                                                    <button
-                                                                        key={stepKey}
-                                                                        type="button"
-                                                                        onClick={() => handleUpdateWorkshopStatus(order.id, stepKey)}
-                                                                        disabled={actionLoading}
-                                                                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
-                                                                            isCurrent
-                                                                                ? 'bg-[#5F2142] text-white shadow-md ring-2 ring-[#D86A33] scale-105'
-                                                                                : isPassed
-                                                                                    ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300 hover:bg-emerald-200'
-                                                                                    : 'bg-white dark:bg-neutral-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-white/10 hover:border-[#5F2142] hover:text-[#5F2142]'
-                                                                        }`}
-                                                                        title={`Cambiar a: ${stInfo.label}`}
-                                                                    >
-                                                                        <span>{stInfo.icon}</span>
-                                                                        <span>{stInfo.label}</span>
-                                                                        {isPassed && <Check size={11} className="text-emerald-700 dark:text-emerald-300 ml-0.5" />}
-                                                                        {isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-[#D86A33] animate-ping" />}
-                                                                    </button>
-                                                                );
-                                                            })}
-                                                        </div>
-
-                                                        {/* Stepper Footer Controls */}
-                                                        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-200 dark:border-white/10 text-xs">
-                                                            <div className="text-gray-500 font-medium">
-                                                                Fase actual: <strong className="text-[#5F2142] dark:text-[#FFC99C]">{currentStage.label}</strong> ({currentStage.description})
-                                                            </div>
-
-                                                            <div className="flex items-center gap-2">
-                                                                {nextStageKey ? (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleUpdateWorkshopStatus(order.id, nextStageKey)}
-                                                                        disabled={actionLoading}
-                                                                        className="px-3.5 py-1.5 rounded-xl bg-[#D86A33] hover:bg-[#c25925] text-white font-black text-xs shadow-xs inline-flex items-center gap-1.5 transition-all"
-                                                                    >
-                                                                        <span>Avanzar a {getStageInfo(nextStageKey).label}</span>
-                                                                        <ArrowRight size={13} />
-                                                                    </button>
-                                                                ) : !order.pedido_cerrado ? (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => handleToggleCloseOrder(order, true)}
-                                                                        disabled={actionLoading}
-                                                                        className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs inline-flex items-center gap-1.5 transition-all"
-                                                                    >
-                                                                        <CheckCheck size={13} />
-                                                                        <span>¡Producción Completa! Cerrar Pedido</span>
-                                                                    </button>
-                                                                ) : null}
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-
-                                                {/* ========================================================= */}
-                                                {/* WORKSHOP NOTES / BITÁCORA STRIP                          */}
-                                                {/* ========================================================= */}
-                                                <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
-                                                    <div className="flex-1 flex items-start sm:items-center gap-2">
-                                                        <span className="font-bold text-gray-400 uppercase text-[10px] tracking-wider shrink-0">
-                                                            Bitácora:
-                                                        </span>
-                                                        {order.notas_taller ? (
-                                                            <span className="italic text-gray-700 dark:text-gray-300 font-medium bg-gray-100 dark:bg-white/5 px-2.5 py-1 rounded-xl">
-                                                                "{order.notas_taller}"
-                                                            </span>
-                                                        ) : (
-                                                            <span className="text-gray-400 italic">Sin notas de taller registradas.</span>
-                                                        )}
-                                                    </div>
-
+                                                    {/* Botón Seleccionar / Visualizar */}
                                                     <button
                                                         type="button"
-                                                        onClick={() => {
-                                                            setEditingWorkshopNotesOrder(order);
-                                                            setWorkshopNotesInput(order.notas_taller || '');
-                                                        }}
-                                                        className="px-3 py-1 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#5F2142] text-xs font-bold text-gray-600 dark:text-gray-300 inline-flex items-center gap-1 shrink-0"
+                                                        onClick={() => toggleOrderExpanded(order.id)}
+                                                        className={`px-3 py-1.5 rounded-xl font-black text-xs transition-all inline-flex items-center gap-1.5 ${
+                                                            isExpanded
+                                                                ? 'bg-[#5F2142] text-white shadow-xs'
+                                                                : 'bg-white dark:bg-neutral-800 border border-gray-200 dark:border-white/10 text-gray-700 dark:text-gray-200 hover:border-[#D86A33]'
+                                                        }`}
                                                     >
-                                                        <Edit2 size={11} />
-                                                        <span>{order.notas_taller ? 'Modificar Bitácora' : '+ Agregar Nota'}</span>
+                                                        <Eye size={12} />
+                                                        <span>{isExpanded ? 'Minimizar ▲' : 'Visualizar ▼'}</span>
                                                     </button>
                                                 </div>
                                             </div>
+
+                                            {/* CONTENIDO DETALLADO (VISIBLE SOLO AL EXPANDIR / SELECCIONAR) */}
+                                            {isExpanded && (
+                                                <div className="animate-fadeIn">
+                                                    {/* ACTION BAR: CERRAR / REABRIR PEDIDO */}
+                                                    <div className="px-4 sm:px-5 py-2.5 bg-gray-50/80 dark:bg-white/3 border-b border-gray-100 dark:border-white/10 flex items-center justify-between gap-3 text-xs">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className="text-gray-400 font-medium">Estado del pedido:</span>
+                                                            {order.pedido_cerrado ? (
+                                                                <span className="font-black text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                                                                    <CheckCircle2 size={13} /> Pedido Cerrado / Finalizado
+                                                                </span>
+                                                            ) : (
+                                                                <span className="font-black text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                                                    <Scissors size={13} /> En Producción Activa
+                                                                </span>
+                                                            )}
+                                                        </div>
+
+                                                        <div>
+                                                            {order.pedido_cerrado ? (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleToggleCloseOrder(order, false)}
+                                                                    disabled={actionLoading}
+                                                                    className="px-3.5 py-1.5 rounded-xl border border-gray-300 dark:border-white/10 hover:border-[#D86A33] text-gray-700 dark:text-gray-200 font-bold text-xs inline-flex items-center gap-1.5 bg-white dark:bg-neutral-800"
+                                                                >
+                                                                    <RotateCcw size={12} />
+                                                                    <span>Reabrir en Taller</span>
+                                                                </button>
+                                                            ) : (
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleToggleCloseOrder(order, true)}
+                                                                    disabled={actionLoading}
+                                                                    className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs inline-flex items-center gap-1.5 transition-all"
+                                                                >
+                                                                    <CheckCheck size={13} />
+                                                                    <span>Marcar como Pedido Cerrado</span>
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </div>
+
+                                                    {/* CLIENT & COURIER BAR */}
+                                                    <div className="px-4 sm:px-5 py-3.5 bg-white dark:bg-transparent border-b border-gray-100 dark:border-white/10 text-xs flex flex-col md:flex-row md:items-center justify-between gap-3">
+                                                        <div className="flex flex-wrap items-center gap-x-4 gap-y-1.5">
+                                                            <div>
+                                                                <span className="text-gray-400 font-semibold">Cliente: </span>
+                                                                <strong className="text-gray-900 dark:text-white font-black">
+                                                                    {order.cliente_nombre} {order.cliente_apellido}
+                                                                </strong>
+                                                                <span className="text-gray-400 font-normal ml-1">({order.cliente_cedula})</span>
+                                                            </div>
+
+                                                            <div className="flex items-center gap-1.5">
+                                                                <span className="text-gray-400 font-semibold">Telf:</span>
+                                                                <span className="font-bold text-[#5F2142] dark:text-[#FFC99C]">{order.cliente_telefono}</span>
+                                                                <a
+                                                                    href={`https://wa.me/${waTarget}?text=${waText}`}
+                                                                    target="_blank"
+                                                                    rel="noopener noreferrer"
+                                                                    className="px-2.5 py-0.5 rounded-lg bg-green-500 hover:bg-green-600 text-white font-bold text-[10px] inline-flex items-center gap-1 transition-all shadow-2xs"
+                                                                    title="Abrir chat de WhatsApp con el cliente"
+                                                                >
+                                                                    WhatsApp Cliente
+                                                                </a>
+                                                            </div>
+
+                                                            <div>
+                                                                <span className="text-gray-400 font-semibold">Destino: </span>
+                                                                <span className="font-medium text-gray-700 dark:text-gray-200">
+                                                                    {order.direccion_entrega} {order.ciudad ? `(${order.ciudad}, ${order.estado})` : ''}
+                                                                </span>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* Envío Nacional: Número de Guía */}
+                                                        {order.tipo_entrega === 'nacional' && (
+                                                            <div className="flex items-center gap-2 shrink-0">
+                                                                {order.numero_guia_envio ? (
+                                                                    <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-cyan-50 dark:bg-cyan-950/40 border border-cyan-200 dark:border-cyan-800 text-cyan-900 dark:text-cyan-200">
+                                                                        <Truck size={13} className="text-cyan-600" />
+                                                                        <span className="font-mono font-bold text-xs">Guía: {order.numero_guia_envio}</span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => { setEditingGuideOrder(order); setGuideNumberInput(order.numero_guia_envio || ''); }}
+                                                                            className="text-cyan-600 hover:text-cyan-900 ml-1"
+                                                                            title="Editar guía de envío"
+                                                                        >
+                                                                            <Edit2 size={11} />
+                                                                        </button>
+                                                                    </div>
+                                                                ) : (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => { setEditingGuideOrder(order); setGuideNumberInput(''); }}
+                                                                        className="px-2.5 py-1 rounded-xl border border-dashed border-cyan-400 hover:bg-cyan-50 dark:hover:bg-cyan-950/30 text-cyan-700 dark:text-cyan-300 font-bold text-[11px] inline-flex items-center gap-1"
+                                                                    >
+                                                                        <Plus size={11} /> Registrar Guía MRW/Zoom
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    {/* BODY: ITEMS LIST + PERSONALIZATION HIGHLIGHT */}
+                                                    <div className="p-4 sm:p-5 space-y-4">
+                                                        <div>
+                                                            <span className="block text-[11px] font-black uppercase tracking-wider text-gray-400 mb-2">
+                                                                Prendas a Confeccionar & Detalles de Taller ({order.items.length}):
+                                                            </span>
+                                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                {order.items.map((item, itIdx) => {
+                                                                    const itemType = determineItemWorkshopType(item, order.tipo_entrega);
+                                                                    const hasCustom = item.is_personalizado || item.nombre_personalizado || item.especialidad_personalizada || item.detalles_personalizados;
+
+                                                                    return (
+                                                                        <div
+                                                                            key={itIdx}
+                                                                            className={`p-3.5 rounded-2xl border ${
+                                                                                hasCustom
+                                                                                    ? 'border-[#D86A33]/40 bg-[#FFF9F5] dark:bg-white/3'
+                                                                                    : 'border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/1'
+                                                                            } space-y-2.5`}
+                                                                        >
+                                                                            <div className="flex items-start justify-between gap-2">
+                                                                                <div className="flex items-center gap-2.5">
+                                                                                    <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-white/10 overflow-hidden shrink-0 border border-gray-300 dark:border-white/10">
+                                                                                        {item.image_url ? (
+                                                                                            <img src={parseImages(item.image_url)[0]} alt={item.name} className="w-full h-full object-cover" />
+                                                                                        ) : (
+                                                                                            <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold text-xs">
+                                                                                                BHM
+                                                                                            </div>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    <div>
+                                                                                        <div className="font-black text-gray-900 dark:text-white text-xs leading-tight">
+                                                                                            {item.quantity}x {item.name}
+                                                                                        </div>
+                                                                                        <span className="text-[10px] text-gray-400 font-semibold">
+                                                                                            ${item.price} c/u • Ref: {item.categoria_slug || 'General'}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+
+                                                                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-[#5F2142]/10 text-[#5F2142] dark:text-[#FFC99C] shrink-0">
+                                                                                    {getWorkshopTypeLabel(itemType)}
+                                                                                </span>
+                                                                            </div>
+
+                                                                            {/* PERSONALIZATION CALLOUT BOX (CRITICAL FOR WORKSHOP) */}
+                                                                            {hasCustom && (
+                                                                                <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1 text-xs">
+                                                                                    {item.nombre_personalizado && (
+                                                                                        <div className="flex items-baseline gap-1.5">
+                                                                                            <span className="text-[10px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider shrink-0">
+                                                                                                Bordado / Nombre:
+                                                                                            </span>
+                                                                                            <span className="font-black text-[#5F2142] dark:text-[#FFC99C] text-sm bg-white dark:bg-neutral-800 px-2 py-0.5 rounded-md border border-amber-300 dark:border-amber-700 shadow-2xs">
+                                                                                                {item.nombre_personalizado}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {item.especialidad_personalizada && (
+                                                                                        <div className="flex items-baseline gap-1.5 text-[11px]">
+                                                                                            <span className="font-bold text-gray-500 shrink-0">Especialidad:</span>
+                                                                                            <span className="font-bold text-gray-900 dark:text-white">{item.especialidad_personalizada}</span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {item.color_preferencia && (
+                                                                                        <div className="flex items-baseline gap-1.5 text-[11px]">
+                                                                                            <span className="font-bold text-gray-500 shrink-0">Telas / Hilos:</span>
+                                                                                            <span className="font-medium text-gray-800 dark:text-gray-200">{item.color_preferencia}</span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {item.detalles_personalizados && (
+                                                                                        <div className="flex items-baseline gap-1.5 text-[11px]">
+                                                                                            <span className="font-bold text-gray-500 shrink-0">Observaciones:</span>
+                                                                                            <span className="font-medium text-gray-700 dark:text-gray-300">{item.detalles_personalizados}</span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+                                                                        </div>
+                                                                    );
+                                                                })}
+                                                            </div>
+                                                        </div>
+
+                                                        {/* ========================================================= */}
+                                                        {/* WORKFLOW PIPELINE (STEPPER INTERACTIVO DE 1 CLIC)         */}
+                                                        {/* ========================================================= */}
+                                                        <div className="pt-2">
+                                                            <div className="flex items-center justify-between mb-2">
+                                                                <span className="text-[11px] font-black uppercase tracking-wider text-gray-400">
+                                                                    Flujo de Producción & Despacho:
+                                                                </span>
+                                                                <span className="text-[10px] text-gray-400 font-medium">
+                                                                    Haz clic en cualquier fase para avanzar o cambiar estatus
+                                                                </span>
+                                                            </div>
+
+                                                            <div className="p-3 sm:p-4 rounded-2xl bg-gray-50 dark:bg-white/3 border border-gray-200 dark:border-white/10 space-y-3">
+                                                                {/* Horizontal Stepper Chips */}
+                                                                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2">
+                                                                    {steps.map((stepKey, sIdx) => {
+                                                                        const stInfo = getStageInfo(stepKey);
+                                                                        const isPassed = sIdx < currentIndex;
+                                                                        const isCurrent = sIdx === currentIndex;
+
+                                                                        return (
+                                                                            <button
+                                                                                key={stepKey}
+                                                                                type="button"
+                                                                                onClick={() => handleUpdateWorkshopStatus(order.id, stepKey)}
+                                                                                disabled={actionLoading}
+                                                                                className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 cursor-pointer ${
+                                                                                    isCurrent
+                                                                                        ? 'bg-[#5F2142] text-white shadow-md ring-2 ring-[#D86A33] scale-105'
+                                                                                        : isPassed
+                                                                                            ? 'bg-emerald-100 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-300 hover:bg-emerald-200'
+                                                                                            : 'bg-white dark:bg-neutral-800 text-gray-500 dark:text-gray-400 border border-gray-200 dark:border-white/10 hover:border-[#5F2142] hover:text-[#5F2142]'
+                                                                                }`}
+                                                                                title={`Cambiar a: ${stInfo.label}`}
+                                                                            >
+                                                                                <span>{stInfo.icon}</span>
+                                                                                <span>{stInfo.label}</span>
+                                                                                {isPassed && <Check size={11} className="text-emerald-700 dark:text-emerald-300 ml-0.5" />}
+                                                                                {isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-[#D86A33] animate-ping" />}
+                                                                            </button>
+                                                                        );
+                                                                    })}
+                                                                </div>
+
+                                                                {/* Stepper Footer Controls */}
+                                                                <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-200 dark:border-white/10 text-xs">
+                                                                    <div className="text-gray-500 font-medium">
+                                                                        Fase actual: <strong className="text-[#5F2142] dark:text-[#FFC99C]">{currentStage.label}</strong> ({currentStage.description})
+                                                                    </div>
+
+                                                                    <div className="flex items-center gap-2">
+                                                                        {nextStageKey ? (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleUpdateWorkshopStatus(order.id, nextStageKey)}
+                                                                                disabled={actionLoading}
+                                                                                className="px-3.5 py-1.5 rounded-xl bg-[#D86A33] hover:bg-[#c25925] text-white font-black text-xs shadow-xs inline-flex items-center gap-1.5 transition-all"
+                                                                            >
+                                                                                <span>Avanzar a {getStageInfo(nextStageKey).label}</span>
+                                                                                <ArrowRight size={13} />
+                                                                            </button>
+                                                                        ) : !order.pedido_cerrado ? (
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => handleToggleCloseOrder(order, true)}
+                                                                                disabled={actionLoading}
+                                                                                className="px-3.5 py-1.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-xs shadow-xs inline-flex items-center gap-1.5 transition-all"
+                                                                            >
+                                                                                <CheckCheck size={13} />
+                                                                                <span>¡Producción Completa! Cerrar Pedido</span>
+                                                                            </button>
+                                                                        ) : null}
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+
+                                                        {/* ========================================================= */}
+                                                        {/* WORKSHOP NOTES / BITÁCORA STRIP                          */}
+                                                        {/* ========================================================= */}
+                                                        <div className="pt-2 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 text-xs">
+                                                            <div className="flex-1 flex items-start sm:items-center gap-2">
+                                                                <span className="font-bold text-gray-400 uppercase text-[10px] tracking-wider shrink-0">
+                                                                    Bitácora:
+                                                                </span>
+                                                                {order.notas_taller ? (
+                                                                    <span className="italic text-gray-700 dark:text-gray-300 font-medium bg-gray-100 dark:bg-white/5 px-2.5 py-1 rounded-xl">
+                                                                        "{order.notas_taller}"
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="text-gray-400 italic">Sin notas de taller registradas.</span>
+                                                                )}
+                                                            </div>
+
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => {
+                                                                    setEditingWorkshopNotesOrder(order);
+                                                                    setWorkshopNotesInput(order.notas_taller || '');
+                                                                }}
+                                                                className="px-3 py-1 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#5F2142] text-xs font-bold text-gray-600 dark:text-gray-300 inline-flex items-center gap-1 shrink-0"
+                                                            >
+                                                                <Edit2 size={11} />
+                                                                <span>{order.notas_taller ? 'Modificar Bitácora' : '+ Agregar Nota'}</span>
+                                                            </button>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            )}
                                         </div>
                                     );
                                 })}
