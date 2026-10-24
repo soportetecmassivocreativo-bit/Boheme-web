@@ -37,6 +37,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 price: product.price,
                 quantity: quantity,
                 image_url: product.image_url,
+                categoria_slug: product.categoria_slug,
                 type_color: product.type_color,
                 genero: product.genero,
                 modelo: product.modelo,

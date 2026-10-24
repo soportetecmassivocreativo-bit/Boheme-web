@@ -40,6 +40,7 @@ export default function PersonalizeModal({ product, isOpen, onClose }: Personali
             price: product.price,
             quantity: quantity,
             image_url: product.image_url,
+            categoria_slug: product.categoria_slug,
             is_personalizado: true,
             nombre_personalizado: nombreBordado.trim(),
             especialidad_personalizada: especialidad.trim(),

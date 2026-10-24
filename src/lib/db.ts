@@ -888,3 +888,173 @@ export async function deleteProduct(id: string): Promise<boolean> {
     return MOCK_PRODUCTS.length < initialLength;
 }
 
+// ==========================================
+// BILLING / ORDERS MODULE (Facturado & Pagos)
+// ==========================================
+
+export interface OrderItem {
+    id?: string;
+    name: string;
+    price: number;
+    quantity: number;
+    image_url?: string;
+    categoria_slug?: string;
+    is_personalizado?: boolean;
+    nombre_personalizado?: string;
+    especialidad_personalizada?: string;
+    color_preferencia?: string;
+    detalles_personalizados?: string;
+}
+
+export interface Order {
+    id: string;
+    numero_factura: string; // e.g. BHM-1001
+    created_at: string; // ISO date string
+    cliente_nombre: string;
+    cliente_apellido: string;
+    cliente_cedula: string;
+    cliente_telefono: string;
+    tipo_entrega: 'local' | 'nacional';
+    direccion_entrega: string;
+    empresa_envio?: string;
+    estado?: string;
+    ciudad?: string;
+    persona_retira?: string;
+    cedula_retira?: string;
+    // Payment details
+    metodo_pago: 'pago_movil' | 'binance';
+    banco_emisor?: string;
+    telefono_o_email_emisor: string;
+    referencia_pago: string;
+    monto_usd: number;
+    tasa_bcv: number;
+    monto_bs: number;
+    // Verification Status
+    estado_pago: 'pendiente' | 'verificado' | 'rechazado';
+    notas_admin?: string;
+    // Items
+    items: OrderItem[];
+    es_manual?: boolean;
+}
+
+let INVOICE_COUNTER = 1003;
+
+let ORDERS: Order[] = [
+    {
+        id: 'ord-1001',
+        numero_factura: 'BHM-1001',
+        created_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5 hours ago
+        cliente_nombre: 'Dra. María',
+        cliente_apellido: 'Fernández',
+        cliente_cedula: 'V-21.458.962',
+        cliente_telefono: '0414-3458921',
+        tipo_entrega: 'nacional',
+        empresa_envio: 'MRW',
+        estado: 'Carabobo',
+        ciudad: 'Valencia',
+        direccion_entrega: 'Agencia MRW San Diego #0204',
+        metodo_pago: 'pago_movil',
+        banco_emisor: 'Banesco',
+        telefono_o_email_emisor: '0414-3458921',
+        referencia_pago: '849201',
+        monto_usd: 24.00,
+        tasa_bcv: 886.23,
+        monto_bs: 21269.52,
+        estado_pago: 'verificado',
+        items: [
+            {
+                name: 'Gorro Quirúrgico Flores Boheme',
+                price: 8.00,
+                quantity: 1,
+                categoria_slug: 'gorros'
+            },
+            {
+                name: 'Gorro Personalizado con Nombre & Especialidad',
+                price: 12.00,
+                quantity: 1,
+                categoria_slug: 'gorros',
+                is_personalizado: true,
+                nombre_personalizado: 'Dra. María Fernández',
+                especialidad_personalizada: 'Pediatría',
+                color_preferencia: 'Lila Boheme con bordado blanco'
+            },
+            {
+                name: 'Lanyard Clásico Boheme con Gancho',
+                price: 4.00,
+                quantity: 1,
+                categoria_slug: 'lanyards'
+            }
+        ]
+    },
+    {
+        id: 'ord-1002',
+        numero_factura: 'BHM-1002',
+        created_at: new Date(Date.now() - 1000 * 60 * 90).toISOString(), // 90 mins ago
+        cliente_nombre: 'Dr. Alejandro',
+        cliente_apellido: 'Torres',
+        cliente_cedula: 'V-18.963.214',
+        cliente_telefono: '0412-9874561',
+        tipo_entrega: 'local',
+        direccion_entrega: 'Centro Médico Quirúrgico, Piso 3, Consultorio 312',
+        metodo_pago: 'binance',
+        telefono_o_email_emisor: 'ale.torres.md@gmail.com',
+        referencia_pago: 'TXID-872910398',
+        monto_usd: 40.00,
+        tasa_bcv: 886.23,
+        monto_bs: 35449.20,
+        estado_pago: 'pendiente',
+        items: [
+            {
+                name: 'Estetoscopio Doble Campana Profesional',
+                price: 25.00,
+                quantity: 1,
+                categoria_slug: 'equipos-medicos'
+            },
+            {
+                name: 'Oxímetro de Pulso Digital OLED Portátil',
+                price: 15.00,
+                quantity: 1,
+                categoria_slug: 'equipos-medicos'
+            }
+        ]
+    }
+];
+
+export async function fetchOrders(): Promise<Order[]> {
+    return [...ORDERS];
+}
+
+export async function createOrder(orderData: Omit<Order, 'id' | 'numero_factura' | 'created_at'> & { id?: string; numero_factura?: string; created_at?: string }): Promise<Order> {
+    INVOICE_COUNTER += 1;
+    const newOrder: Order = {
+        ...orderData,
+        id: orderData.id || `ord-${Date.now()}`,
+        numero_factura: orderData.numero_factura || `BHM-${INVOICE_COUNTER}`,
+        created_at: orderData.created_at || new Date().toISOString(),
+        estado_pago: orderData.estado_pago || 'pendiente'
+    };
+
+    ORDERS.unshift(newOrder);
+    return newOrder;
+}
+
+export async function updateOrderStatus(id: string, estado_pago: 'pendiente' | 'verificado' | 'rechazado', notas_admin?: string): Promise<Order | null> {
+    const orderIndex = ORDERS.findIndex(o => o.id === id);
+    if (orderIndex === -1) return null;
+
+    ORDERS[orderIndex] = {
+        ...ORDERS[orderIndex],
+        estado_pago,
+        notas_admin: notas_admin !== undefined ? notas_admin : ORDERS[orderIndex].notas_admin
+    };
+
+    return ORDERS[orderIndex];
+}
+
+export async function deleteOrder(id: string): Promise<boolean> {
+    const initialLen = ORDERS.length;
+    ORDERS = ORDERS.filter(o => o.id !== id);
+    return ORDERS.length < initialLen;
+}
+
+

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useCartStore } from '@/lib/store';
 import { 
     X, 
@@ -17,7 +17,8 @@ import {
     ExternalLink,
     Building2,
     Phone,
-    FileText
+    FileText,
+    TrendingUp
 } from 'lucide-react';
 
 const WHATSAPP_NUMBER = "584121409976";
@@ -42,6 +43,9 @@ export default function CheckoutModal() {
 
     // Steps: 1 = Datos & Envío, 2 = Pago & Comprobante, 3 = Éxito
     const [step, setStep] = useState<1 | 2 | 3>(1);
+
+    // BCV Rate state
+    const [bcvRate, setBcvRate] = useState<number>(886.23);
 
     // Copy feedback state
     const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -69,10 +73,24 @@ export default function CheckoutModal() {
 
     // Validation errors
     const [formError, setFormError] = useState<string | null>(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    // Fetch official BCV rate on mount
+    useEffect(() => {
+        fetch('/api/bcv')
+            .then(res => res.json())
+            .then(data => {
+                if (data && typeof data.rate === 'number' && data.rate > 0) {
+                    setBcvRate(data.rate);
+                }
+            })
+            .catch(() => {});
+    }, []);
 
     if (!isCheckoutOpen) return null;
 
     const totalUSD = items.reduce((acc, item) => acc + (item.price * item.quantity), 0);
+    const totalBs = totalUSD * bcvRate;
 
     const handleCopy = (text: string, fieldId: string) => {
         navigator.clipboard.writeText(text);
@@ -138,16 +156,23 @@ export default function CheckoutModal() {
     const handleNextToPayment = (e: React.FormEvent) => {
         e.preventDefault();
         if (validateStep1()) {
+            // Auto fill initial suggested amount for the selected method
+            if (metodoPago === 'pago_movil') {
+                setMontoPagado(`Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+            } else {
+                setMontoPagado(`$${totalUSD.toFixed(2)} USDT`);
+            }
             setStep(2);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
     };
 
-    const handleCerrarPedido = (e: React.FormEvent) => {
+    const handleCerrarPedido = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validateStep2()) return;
+        setIsSubmitting(true);
 
-        // Build WhatsApp Message
+        // 1. Build WhatsApp Message
         let msg = `🌸 *NUEVO PEDIDO FORMALIZADO - BOHEME* 🌸\n`;
         msg += `━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
@@ -186,7 +211,8 @@ export default function CheckoutModal() {
             if (item.modelo) msg += `   ▫️ *Modelo:* ${item.modelo}\n`;
         });
 
-        msg += `\n💰 *TOTAL DEL PEDIDO:* $${totalUSD.toFixed(2)}\n\n`;
+        const formattedBs = totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        msg += `\n💰 *TOTAL DEL PEDIDO:* $${totalUSD.toFixed(2)} USD  ≈  *Bs. ${formattedBs}* (Tasa BCV: ${bcvRate} Bs/$)\n\n`;
 
         msg += `🚚 *DATOS DE ENTREGA:*\n`;
         if (tipoEntrega === 'local') {
@@ -219,10 +245,56 @@ export default function CheckoutModal() {
         msg += `\n━━━━━━━━━━━━━━━━━━━━━━\n`;
         msg += `📎 *Adjunto a continuación la captura del comprobante de pago.* ¡Quedo atento a la confirmación!`;
 
+        // 2. Register Order in Admin Billing Module (Facturado)
+        try {
+            await fetch('/api/orders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    cliente_nombre: nombre.trim(),
+                    cliente_apellido: apellido.trim(),
+                    cliente_cedula: cedula.trim(),
+                    cliente_telefono: telefono.trim(),
+                    tipo_entrega: tipoEntrega,
+                    direccion_entrega: tipoEntrega === 'local' ? direccionLocal.trim() : direccionAgencia.trim(),
+                    empresa_envio: tipoEntrega === 'nacional' ? empresaEnvio : undefined,
+                    estado: tipoEntrega === 'nacional' ? estado.trim() : undefined,
+                    ciudad: tipoEntrega === 'nacional' ? ciudad.trim() : undefined,
+                    persona_retira: personaRetira.trim() || undefined,
+                    cedula_retira: cedulaRetira.trim() || undefined,
+                    metodo_pago: metodoPago,
+                    banco_emisor: bancoEmisor.trim() || undefined,
+                    telefono_o_email_emisor: telefonoOEmailEmisor.trim(),
+                    referencia_pago: referenciaPago.trim(),
+                    monto_usd: totalUSD,
+                    tasa_bcv: bcvRate,
+                    monto_bs: totalBs,
+                    estado_pago: 'pendiente',
+                    items: items.map(it => ({
+                        id: it.id,
+                        name: it.name,
+                        price: it.price,
+                        quantity: it.quantity,
+                        image_url: it.image_url,
+                        categoria_slug: it.categoria_slug,
+                        is_personalizado: it.is_personalizado,
+                        nombre_personalizado: it.nombre_personalizado,
+                        especialidad_personalizada: it.especialidad_personalizada,
+                        color_preferencia: it.color_preferencia,
+                        detalles_personalizados: it.detalles_personalizados
+                    }))
+                })
+            });
+        } catch (err) {
+            console.error('Error saving order into admin billing module:', err);
+        }
+
+        // 3. Open WhatsApp with formatted text
         const encodedMessage = encodeURIComponent(msg);
         window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`, '_blank');
 
-        // Transition to success view and clear cart
+        // 4. Show success screen and clear cart
+        setIsSubmitting(false);
         setStep(3);
         clearCart();
     };
@@ -304,8 +376,9 @@ export default function CheckoutModal() {
                                         <ShoppingBag size={14} className="text-[#D86A33]" />
                                         <span>Resumen de tu Carrito ({items.length} productos)</span>
                                     </span>
-                                    <span className="text-[#D86A33] text-sm">Total: ${totalUSD.toFixed(2)}</span>
+                                    <span className="text-[#D86A33] text-sm">Total: ${totalUSD.toFixed(2)} USD</span>
                                 </div>
+
                                 <div className="text-xs text-gray-600 divide-y divide-gray-200/50 pt-1">
                                     {items.map((it) => (
                                         <div key={it.cart_item_id} className="py-1.5 flex justify-between items-start gap-2">
@@ -321,6 +394,17 @@ export default function CheckoutModal() {
                                             <span className="font-bold text-[#5F2142] shrink-0">${(it.price * it.quantity).toFixed(2)}</span>
                                         </div>
                                     ))}
+                                </div>
+
+                                {/* BCV Rate Preview Pill */}
+                                <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between text-[11px]">
+                                    <span className="text-gray-500 font-medium flex items-center gap-1">
+                                        <TrendingUp size={12} className="text-[#D86A33]" />
+                                        <span>Tasa oficial BCV: <strong>{bcvRate} Bs/$</strong></span>
+                                    </span>
+                                    <span className="font-black text-[#5F2142]">
+                                        ≈ Bs. {totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </span>
                                 </div>
                             </div>
 
@@ -533,21 +617,34 @@ export default function CheckoutModal() {
                         </form>
                     )}
 
-                    {/* ================= STEP 2: PAGO Y COMPROBANTE ================= */}
+                    {/* ================= STEP 2: PAGO Y COMPROBANTE CON TASA BCV ================= */}
                     {step === 2 && (
                         <form id="step2-form" onSubmit={handleCerrarPedido} className="space-y-6">
-                            {/* Total To Pay Banner */}
-                            <div className="bg-[#FFF4EB] p-4 sm:p-5 rounded-2xl border-2 border-dashed border-[#D86A33] flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                <div>
-                                    <div className="text-xs font-black text-[#5F2142] uppercase tracking-wider">
-                                        Monto Total a Transferir
+                            {/* Total To Pay Banner with BCV Conversion */}
+                            <div className="bg-[#FFF4EB] p-4 sm:p-5 rounded-2xl border-2 border-dashed border-[#D86A33] space-y-2">
+                                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
+                                    <div>
+                                        <div className="text-xs font-black text-[#5F2142] uppercase tracking-wider">
+                                            Monto Total a Pagar
+                                        </div>
+                                        <div className="text-3xl font-black text-[#D86A33]">
+                                            ${totalUSD.toFixed(2)} USD
+                                        </div>
                                     </div>
-                                    <div className="text-3xl font-black text-[#D86A33]">
-                                        ${totalUSD.toFixed(2)} USD
+
+                                    <div className="text-right sm:text-right">
+                                        <span className="text-[11px] text-gray-500 uppercase tracking-wider font-bold block">
+                                            Equivalente en Bolívares
+                                        </span>
+                                        <span className="text-xl sm:text-2xl font-black text-[#5F2142]">
+                                            Bs. {totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                        </span>
                                     </div>
                                 </div>
-                                <div className="text-xs text-gray-600 bg-white/90 backdrop-blur-xs px-3.5 py-2 rounded-xl border border-[#FFC99C] font-medium">
-                                    Pago en Bolívares a tasa oficial o Binance USDT
+
+                                <div className="flex items-center justify-between text-[11px] text-gray-600 bg-white/90 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-[#FFC99C] font-medium">
+                                    <span>Tasa oficial BCV aplicada: <strong>{bcvRate} Bs/$</strong></span>
+                                    <span className="text-[#D86A33] font-bold">100% oficial</span>
                                 </div>
                             </div>
 
@@ -562,7 +659,10 @@ export default function CheckoutModal() {
                                     {/* Pago Movil Option */}
                                     <button
                                         type="button"
-                                        onClick={() => { setMetodoPago('pago_movil'); setMontoPagado(`$${totalUSD.toFixed(2)}`); }}
+                                        onClick={() => { 
+                                            setMetodoPago('pago_movil'); 
+                                            setMontoPagado(`Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`); 
+                                        }}
                                         className={`p-4 rounded-2xl border-2 text-left transition-all ${
                                             metodoPago === 'pago_movil'
                                                 ? 'bg-[#FFF9F5] border-[#D86A33] shadow-md shadow-[#D86A33]/15'
@@ -583,7 +683,10 @@ export default function CheckoutModal() {
                                     {/* Binance Option */}
                                     <button
                                         type="button"
-                                        onClick={() => { setMetodoPago('binance'); setMontoPagado(`${totalUSD.toFixed(2)}`); }}
+                                        onClick={() => { 
+                                            setMetodoPago('binance'); 
+                                            setMontoPagado(`$${totalUSD.toFixed(2)} USDT`); 
+                                        }}
                                         className={`p-4 rounded-2xl border-2 text-left transition-all ${
                                             metodoPago === 'binance'
                                                 ? 'bg-[#FFF9F5] border-[#D86A33] shadow-md shadow-[#D86A33]/15'
@@ -612,6 +715,28 @@ export default function CheckoutModal() {
 
                                 {metodoPago === 'pago_movil' ? (
                                     <div className="space-y-2.5">
+                                        {/* Monto exacto en Bs with Copy */}
+                                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FFF4EB] border border-[#D86A33]/30 text-xs">
+                                            <div>
+                                                <span className="text-[#D86A33] font-black block text-[10px] uppercase">Monto a Transferir en Bs.</span>
+                                                <span className="font-black text-[#5F2142] text-sm sm:text-base">
+                                                    Bs. {totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleCopy(totalBs.toFixed(2), 'pm_monto')}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                                    copiedField === 'pm_monto'
+                                                        ? 'bg-green-600 text-white shadow-xs'
+                                                        : 'bg-white text-[#5F2142] border border-gray-300 hover:border-[#D86A33]'
+                                                }`}
+                                            >
+                                                {copiedField === 'pm_monto' ? <Check size={13} /> : <Copy size={13} />}
+                                                <span>{copiedField === 'pm_monto' ? '¡Copiado!' : 'Copiar Bs.'}</span>
+                                            </button>
+                                        </div>
+
                                         {/* Banco */}
                                         <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 text-xs">
                                             <div>
@@ -663,6 +788,28 @@ export default function CheckoutModal() {
                                     </div>
                                 ) : (
                                     <div className="space-y-2.5">
+                                        {/* Monto exacto USDT */}
+                                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FFF4EB] border border-[#D86A33]/30 text-xs">
+                                            <div>
+                                                <span className="text-[#D86A33] font-black block text-[10px] uppercase">Monto a Transferir</span>
+                                                <span className="font-black text-[#5F2142] text-sm sm:text-base">
+                                                    ${totalUSD.toFixed(2)} USDT
+                                                </span>
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleCopy(totalUSD.toFixed(2), 'bin_monto')}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                                    copiedField === 'bin_monto'
+                                                        ? 'bg-green-600 text-white shadow-xs'
+                                                        : 'bg-white text-[#5F2142] border border-gray-300 hover:border-[#D86A33]'
+                                                }`}
+                                            >
+                                                {copiedField === 'bin_monto' ? <Check size={13} /> : <Copy size={13} />}
+                                                <span>{copiedField === 'bin_monto' ? '¡Copiado!' : 'Copiar Monto'}</span>
+                                            </button>
+                                        </div>
+
                                         {/* Binance Email with Copy */}
                                         <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 text-xs">
                                             <div>
@@ -746,7 +893,7 @@ export default function CheckoutModal() {
                                             required
                                             value={montoPagado}
                                             onChange={(e) => setMontoPagado(e.target.value)}
-                                            placeholder={`Ej: $${totalUSD.toFixed(2)} o en Bs.`}
+                                            placeholder={`Ej: Bs. ${totalBs.toFixed(2)} o $${totalUSD.toFixed(2)}`}
                                             className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm font-medium bg-white"
                                         />
                                     </div>
@@ -775,7 +922,7 @@ export default function CheckoutModal() {
                                 ¡Pedido Formalizado con Éxito!
                             </h3>
                             <p className="text-sm text-gray-600 max-w-md mx-auto leading-relaxed font-normal">
-                                Tu orden ha sido generada y el mensaje fue enviado a nuestro WhatsApp oficial. 
+                                Tu orden ha sido registrada en nuestro sistema y enviada a nuestro WhatsApp oficial. 
                                 Recuerda enviar la <strong>captura del comprobante</strong> en el chat para iniciar la preparación de tus prendas.
                             </p>
 
@@ -835,9 +982,10 @@ export default function CheckoutModal() {
                             <button
                                 type="submit"
                                 form="step2-form"
-                                className="px-7 py-3 rounded-full bg-[#25D366] hover:bg-[#20ba59] text-white text-xs sm:text-sm font-black transition-all hover:scale-105 shadow-lg shadow-[#25D366]/30 flex items-center gap-2"
+                                disabled={isSubmitting}
+                                className="px-7 py-3 rounded-full bg-[#25D366] hover:bg-[#20ba59] text-white text-xs sm:text-sm font-black transition-all hover:scale-105 shadow-lg shadow-[#25D366]/30 flex items-center gap-2 disabled:opacity-50"
                             >
-                                <span>Cerrar Pedido y Enviar a WhatsApp</span>
+                                <span>{isSubmitting ? 'Registrando Pedido...' : 'Cerrar Pedido y Enviar a WhatsApp'}</span>
                                 <span>💬</span>
                             </button>
                         )}
