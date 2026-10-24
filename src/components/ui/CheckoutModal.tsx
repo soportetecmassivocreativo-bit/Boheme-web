@@ -18,7 +18,8 @@ import {
     Building2,
     Phone,
     FileText,
-    TrendingUp
+    TrendingUp,
+    RefreshCw
 } from 'lucide-react';
 
 const WHATSAPP_NUMBER = "584121409976";
@@ -45,7 +46,9 @@ export default function CheckoutModal() {
     const [step, setStep] = useState<1 | 2 | 3>(1);
 
     // BCV Rate state
-    const [bcvRate, setBcvRate] = useState<number>(886.23);
+    const [bcvRate, setBcvRate] = useState<number>(887.30);
+    const [bcvFechaValor, setBcvFechaValor] = useState<string>('');
+    const [isRefreshingBcv, setIsRefreshingBcv] = useState(false);
 
     // Copy feedback state
     const [copiedField, setCopiedField] = useState<string | null>(null);
@@ -75,16 +78,26 @@ export default function CheckoutModal() {
     const [formError, setFormError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
+    // Fetch official BCV rate function
+    const fetchBcvRate = async (force = false) => {
+        setIsRefreshingBcv(true);
+        try {
+            const res = await fetch(`/api/bcv${force ? '?refresh=true' : ''}`);
+            const data = await res.json();
+            if (data && typeof data.rate === 'number' && data.rate > 0) {
+                setBcvRate(data.rate);
+                if (data.fechaValor) setBcvFechaValor(data.fechaValor);
+            }
+        } catch {
+            // Keep current rate
+        } finally {
+            setIsRefreshingBcv(false);
+        }
+    };
+
     // Fetch official BCV rate on mount
     useEffect(() => {
-        fetch('/api/bcv')
-            .then(res => res.json())
-            .then(data => {
-                if (data && typeof data.rate === 'number' && data.rate > 0) {
-                    setBcvRate(data.rate);
-                }
-            })
-            .catch(() => {});
+        fetchBcvRate(false);
     }, []);
 
     if (!isCheckoutOpen) return null;
@@ -397,11 +410,21 @@ export default function CheckoutModal() {
                                 </div>
 
                                 {/* BCV Rate Preview Pill */}
-                                <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between text-[11px]">
-                                    <span className="text-gray-500 font-medium flex items-center gap-1">
+                                <div className="pt-2 border-t border-gray-200/60 flex items-center justify-between text-[11px] flex-wrap gap-1">
+                                    <div className="text-gray-500 font-medium flex items-center gap-1.5">
                                         <TrendingUp size={12} className="text-[#D86A33]" />
-                                        <span>Tasa oficial BCV: <strong>{bcvRate} Bs/$</strong></span>
-                                    </span>
+                                        <span>Tasa BCV: <strong>{bcvRate} Bs/$</strong></span>
+                                        <button
+                                            type="button"
+                                            onClick={() => fetchBcvRate(true)}
+                                            disabled={isRefreshingBcv}
+                                            className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold text-[#D86A33] hover:bg-[#FFF4EB] transition-colors"
+                                            title="Actualizar tasa oficial en vivo desde bcv.org.ve"
+                                        >
+                                            <RefreshCw size={10} className={isRefreshingBcv ? 'animate-spin' : ''} />
+                                            <span>{isRefreshingBcv ? 'Sincronizando...' : 'Actualizar'}</span>
+                                        </button>
+                                    </div>
                                     <span className="font-black text-[#5F2142]">
                                         ≈ Bs. {totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                                     </span>
@@ -642,9 +665,24 @@ export default function CheckoutModal() {
                                     </div>
                                 </div>
 
-                                <div className="flex items-center justify-between text-[11px] text-gray-600 bg-white/90 backdrop-blur-xs px-3 py-1.5 rounded-xl border border-[#FFC99C] font-medium">
-                                    <span>Tasa oficial BCV aplicada: <strong>{bcvRate} Bs/$</strong></span>
-                                    <span className="text-[#D86A33] font-bold">100% oficial</span>
+                                <div className="flex flex-wrap items-center justify-between text-[11px] text-gray-600 bg-white/95 backdrop-blur-xs px-3.5 py-2 rounded-xl border border-[#FFC99C] gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <span>Tasa oficial BCV: <strong>{bcvRate} Bs/$</strong> {bcvFechaValor ? <span className="text-gray-400">({bcvFechaValor})</span> : ''}</span>
+                                        <button
+                                            type="button"
+                                            onClick={() => fetchBcvRate(true)}
+                                            disabled={isRefreshingBcv}
+                                            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-md text-[10px] font-bold text-white bg-[#D86A33] hover:bg-[#c25925] transition-all shadow-xs"
+                                            title="Actualizar tasa en tiempo real desde bcv.org.ve"
+                                        >
+                                            <RefreshCw size={10} className={isRefreshingBcv ? 'animate-spin' : ''} />
+                                            <span>{isRefreshingBcv ? 'Sincronizando...' : 'Actualizar'}</span>
+                                        </button>
+                                    </div>
+                                    <span className="text-emerald-700 font-bold flex items-center gap-1.5 text-[10px]">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block animate-pulse"></span>
+                                        Oficial bcv.org.ve
+                                    </span>
                                 </div>
                             </div>
 

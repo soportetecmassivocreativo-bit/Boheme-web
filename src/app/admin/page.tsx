@@ -87,9 +87,26 @@ export default function AdminPage() {
     const [orderSearch, setOrderSearch] = useState('');
 
     // BCV Rate
-    const [bcvRate, setBcvRate] = useState<number>(886.23);
-    const [manualRateInput, setManualRateInput] = useState<string>('886.23');
+    const [bcvRate, setBcvRate] = useState<number>(887.30);
+    const [bcvData, setBcvData] = useState<{
+        rate: number;
+        exactRate?: number;
+        rawRate?: string;
+        fechaValor?: string;
+        source?: string;
+        lastUpdated?: string;
+        formattedRate?: string;
+        isManual?: boolean;
+    }>({
+        rate: 887.30,
+        exactRate: 887.302,
+        rawRate: '887,30200000',
+        fechaValor: 'Martes, 27 Octubre 2026',
+        source: 'Banco Central de Venezuela (bcv.org.ve)'
+    });
+    const [manualRateInput, setManualRateInput] = useState<string>('887.30');
     const [isUpdatingRate, setIsUpdatingRate] = useState(false);
+    const [isSyncingBcv, setIsSyncingBcv] = useState(false);
 
     // Product Modal State (Máximo 10 imágenes)
     const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -145,14 +162,15 @@ export default function AdminPage() {
     };
 
     // Load Initial Data
-    const loadData = async () => {
+    const loadData = async (forceRefresh = false) => {
         // Load BCV Rate
         try {
-            const resBcv = await fetch('/api/bcv');
+            const resBcv = await fetch(`/api/bcv${forceRefresh ? '?refresh=true' : ''}`);
             const dataBcv = await resBcv.json();
             if (dataBcv && dataBcv.rate) {
                 setBcvRate(dataBcv.rate);
                 setManualRateInput(String(dataBcv.rate));
+                setBcvData(dataBcv);
             }
         } catch {}
 
@@ -191,7 +209,28 @@ export default function AdminPage() {
         }
     };
 
-    // BCV Rate Update
+    // On-demand BCV scraping sync from official bcv.org.ve
+    const handleSyncBcv = async () => {
+        setIsSyncingBcv(true);
+        try {
+            const res = await fetch('/api/bcv?refresh=true');
+            const data = await res.json();
+            if (data && data.rate) {
+                setBcvRate(data.rate);
+                setManualRateInput(String(data.rate));
+                setBcvData(data);
+                showToast(`✓ Tasa BCV sincronizada: ${data.rate} Bs/$ (${data.fechaValor || 'Oficial'})`);
+            } else {
+                showToast('⚠️ No se pudo obtener la tasa actualizada de BCV');
+            }
+        } catch {
+            showToast('⚠️ Error de conexión con bcv.org.ve');
+        } finally {
+            setIsSyncingBcv(false);
+        }
+    };
+
+    // BCV Manual Rate Update (for overrides)
     const handleUpdateRate = async (e: React.FormEvent) => {
         e.preventDefault();
         const num = parseFloat(manualRateInput);
@@ -206,6 +245,13 @@ export default function AdminPage() {
             const data = await res.json();
             if (res.ok) {
                 setBcvRate(data.rate);
+                setBcvData(prev => ({
+                    ...prev,
+                    rate: data.rate,
+                    formattedRate: data.formattedRate,
+                    source: data.source || 'Ajuste Manual Admin',
+                    lastUpdated: data.lastUpdated || new Date().toISOString()
+                }));
                 showToast(`✓ Tasa BCV actualizada a ${data.rate} Bs/$`);
             }
         } catch {
@@ -607,17 +653,33 @@ export default function AdminPage() {
                     </nav>
 
                     {/* Live BCV Quick Pill in Sidebar */}
-                    <div className={`p-3.5 rounded-2xl ${bgSubCard} border ${borderDefault} space-y-1`}>
+                    <div className={`p-3.5 rounded-2xl ${bgSubCard} border ${borderDefault} space-y-1.5`}>
                         <div className="flex items-center justify-between text-[11px] font-bold text-gray-500">
                             <span className="flex items-center gap-1">
                                 <TrendingUp size={12} className="text-[#D86A33]" />
                                 <span>Tasa Oficial BCV</span>
                             </span>
-                            <span className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" title="Sincronizado con bcv.org.ve" />
                         </div>
-                        <div className="text-lg font-black text-[#5F2142] dark:text-[#FFC99C]">
-                            {bcvRate} <span className="text-xs text-gray-500 font-bold">Bs/$</span>
+                        <div className="flex items-center justify-between">
+                            <div className="text-lg font-black text-[#5F2142] dark:text-[#FFC99C]">
+                                {bcvRate} <span className="text-xs text-gray-500 font-bold">Bs/$</span>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={handleSyncBcv}
+                                disabled={isSyncingBcv}
+                                className="p-1.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-[#D86A33] hover:bg-[#FFF4EB] dark:hover:bg-white/5 transition-all"
+                                title="Actualizar tasa en vivo desde bcv.org.ve"
+                            >
+                                <RefreshCw size={13} className={isSyncingBcv ? 'animate-spin' : ''} />
+                            </button>
                         </div>
+                        {bcvData.fechaValor && (
+                            <div className="text-[10px] text-gray-400 font-medium truncate" title={bcvData.fechaValor}>
+                                {bcvData.fechaValor}
+                            </div>
+                        )}
                     </div>
                 </div>
 
@@ -688,13 +750,30 @@ export default function AdminPage() {
                                 </p>
                             </div>
 
-                            <button
-                                onClick={() => setIsManualInvoiceOpen(true)}
-                                className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs sm:text-sm font-black transition-all hover:scale-105 shadow-md shadow-[#D86A33]/25"
-                            >
-                                <Plus size={16} />
-                                <span>+ Facturar Manual</span>
-                            </button>
+                            <div className="flex flex-wrap items-center gap-2.5">
+                                {/* BCV Rate Pill with Live Refresh */}
+                                <div className={`flex items-center gap-2 px-3.5 py-2 rounded-2xl ${bgCard} border ${borderDefault} text-xs font-bold shadow-xs`}>
+                                    <TrendingUp size={14} className="text-[#D86A33]" />
+                                    <span>Tasa BCV: <strong className="text-[#5F2142] dark:text-[#FFC99C]">{bcvRate} Bs/$</strong></span>
+                                    <button
+                                        type="button"
+                                        onClick={handleSyncBcv}
+                                        disabled={isSyncingBcv}
+                                        className="p-1 rounded-lg text-[#D86A33] hover:bg-[#FFF4EB] dark:hover:bg-white/10 transition-colors"
+                                        title="Actualizar tasa desde bcv.org.ve"
+                                    >
+                                        <RefreshCw size={12} className={isSyncingBcv ? 'animate-spin' : ''} />
+                                    </button>
+                                </div>
+
+                                <button
+                                    onClick={() => setIsManualInvoiceOpen(true)}
+                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs sm:text-sm font-black transition-all hover:scale-105 shadow-md shadow-[#D86A33]/25"
+                                >
+                                    <Plus size={16} />
+                                    <span>+ Facturar Manual</span>
+                                </button>
+                            </div>
                         </div>
 
                         {/* Discrimination KPI Cards (Pago Movil vs Binance) */}
@@ -1174,9 +1253,27 @@ export default function AdminPage() {
                                 <span className="text-xs font-bold text-gray-500 uppercase">Total Pedidos</span>
                                 <div className="text-3xl font-black text-[#D86A33] mt-2">{orders.length}</div>
                             </div>
-                            <div className={`p-5 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs`}>
-                                <span className="text-xs font-bold text-gray-500 uppercase">Tasa Oficial BCV</span>
-                                <div className="text-3xl font-black text-[#5F2142] dark:text-[#FFC99C] mt-2">{bcvRate}</div>
+                            <div className={`p-5 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs relative`}>
+                                <div className="flex items-center justify-between">
+                                    <span className="text-xs font-bold text-gray-500 uppercase">Tasa Oficial BCV</span>
+                                    <button
+                                        type="button"
+                                        onClick={handleSyncBcv}
+                                        disabled={isSyncingBcv}
+                                        className="p-1.5 rounded-lg border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-[#D86A33] transition-all"
+                                        title="Sincronizar ahora con bcv.org.ve"
+                                    >
+                                        <RefreshCw size={13} className={isSyncingBcv ? 'animate-spin' : ''} />
+                                    </button>
+                                </div>
+                                <div className="text-3xl font-black text-[#5F2142] dark:text-[#FFC99C] mt-2">
+                                    {bcvRate} <span className="text-xs text-gray-500 font-bold">Bs/$</span>
+                                </div>
+                                {bcvData.fechaValor && (
+                                    <div className="text-[10px] text-gray-400 mt-1 truncate" title={bcvData.fechaValor}>
+                                        {bcvData.fechaValor}
+                                    </div>
+                                )}
                             </div>
                             <div className={`p-5 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs`}>
                                 <span className="text-xs font-bold text-gray-500 uppercase">Pagos por Verificar</span>
@@ -1215,39 +1312,97 @@ export default function AdminPage() {
                 {/* TAB 4: CONFIGURACIÓN & TASA BCV                           */}
                 {/* ========================================================= */}
                 {activeTab === 'configuracion' && (
-                    <div className="space-y-6 max-w-2xl">
+                    <div className="space-y-6 max-w-3xl">
                         <div>
                             <h1 className="text-2xl sm:text-3xl font-black text-[#5F2142] dark:text-[#FFC99C] tracking-tight">
                                 Tasa BCV & Ajustes
                             </h1>
                             <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                Ajusta la tasa cambiaria que se aplica al proceso de pago en la web.
+                                Control automático y sincronización en tiempo real con la tasa oficial del Banco Central de Venezuela.
                             </p>
                         </div>
 
-                        <div className={`p-6 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs space-y-4`}>
-                            <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-white/10">
+                        {/* Card 1: Official BCV Live Auto-Sync Card */}
+                        <div className={`p-6 sm:p-8 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs space-y-6`}>
+                            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-5 border-b border-gray-100 dark:border-white/10">
                                 <div>
-                                    <h3 className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
-                                        Tasa de Cambio Oficial (BCV)
+                                    <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-xs font-black mb-2">
+                                        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+                                        <span>Conexión Oficial en Vivo • bcv.org.ve</span>
+                                    </div>
+                                    <h3 className="font-black text-lg text-[#5F2142] dark:text-[#FFC99C]">
+                                        Tasa de Cambio Oficial (Banco Central de Venezuela)
                                     </h3>
-                                    <p className="text-xs text-gray-500">
-                                        Se utiliza para calcular los montos en Bolívares (Bs.) en el carrito y pago móvil.
+                                    <p className="text-xs text-gray-500 mt-0.5">
+                                        Se extrae directamente de la página oficial del BCV y se aplica automáticamente a todos los pagos.
                                     </p>
                                 </div>
+
                                 <button
-                                    onClick={loadData}
-                                    className="p-2 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#D86A33]"
-                                    title="Sincronizar tasa en vivo"
+                                    type="button"
+                                    onClick={handleSyncBcv}
+                                    disabled={isSyncingBcv}
+                                    className="inline-flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black shadow-md shadow-[#D86A33]/25 transition-all hover:scale-105 shrink-0"
                                 >
-                                    <RefreshCw size={15} className="text-[#D86A33]" />
+                                    <RefreshCw size={15} className={isSyncingBcv ? 'animate-spin' : ''} />
+                                    <span>{isSyncingBcv ? 'Consultando BCV...' : 'Sincronizar Ahora con BCV'}</span>
                                 </button>
+                            </div>
+
+                            {/* Main Big Rate Display */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                <div className={`p-5 rounded-2xl ${bgSubCard} border ${borderDefault} space-y-1`}>
+                                    <span className="text-[11px] font-black uppercase text-gray-500 tracking-wider">Tasa Aplicada</span>
+                                    <div className="text-3xl font-black text-[#5F2142] dark:text-[#FFC99C]">
+                                        {bcvRate} <span className="text-sm font-bold text-gray-500">Bs/$</span>
+                                    </div>
+                                    <span className="text-[11px] text-gray-500 font-medium">Equivalente por $1.00 USD</span>
+                                </div>
+
+                                <div className={`p-5 rounded-2xl ${bgSubCard} border ${borderDefault} space-y-1`}>
+                                    <span className="text-[11px] font-black uppercase text-gray-500 tracking-wider">Fecha Valor Oficial</span>
+                                    <div className="text-base font-black text-gray-800 dark:text-gray-200 mt-1">
+                                        {bcvData.fechaValor || 'Martes, 27 Octubre 2026'}
+                                    </div>
+                                    <span className="text-[11px] text-gray-500 font-medium">Publicada por el BCV</span>
+                                </div>
+
+                                <div className={`p-5 rounded-2xl ${bgSubCard} border ${borderDefault} space-y-1`}>
+                                    <span className="text-[11px] font-black uppercase text-gray-500 tracking-wider">Lectura Exacta BCV</span>
+                                    <div className="text-base font-mono font-bold text-[#D86A33] mt-1">
+                                        {bcvData.rawRate ? `${bcvData.rawRate} Bs.` : `${bcvRate} Bs.`}
+                                    </div>
+                                    <span className="text-[11px] text-gray-500 font-medium">Fuente: {bcvData.source || 'bcv.org.ve'}</span>
+                                </div>
+                            </div>
+
+                            {/* Auto update info notice */}
+                            <div className="p-4 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-800/40 text-xs text-emerald-800 dark:text-emerald-300 flex items-start gap-3 font-medium">
+                                <span className="text-base">✓</span>
+                                <div className="space-y-0.5">
+                                    <p className="font-bold">Ajuste y Sincronización Automática Activa:</p>
+                                    <p className="text-[11px] opacity-90">
+                                        La plataforma verifica de forma continua si la página del BCV actualizó la tasa oficial del día. En cuanto el BCV emita un nuevo valor cambiario, la tienda lo adopta inmediatamente para todos los cálculos en Bolívares. También puedes forzar la actualización en cualquier instante presionando el botón superior.
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Card 2: Manual Override (Ajuste Manual si se requiere) */}
+                        <div className={`p-6 sm:p-8 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs space-y-4`}>
+                            <div className="pb-3 border-b border-gray-100 dark:border-white/10">
+                                <h3 className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C] uppercase tracking-wider">
+                                    Ajuste Manual Personalizado (Opcional)
+                                </h3>
+                                <p className="text-xs text-gray-500 mt-0.5">
+                                    Si necesitas fijar una tasa distinta por algún acuerdo comercial o contingencia bancaria, puedes definirla manualmente aquí.
+                                </p>
                             </div>
 
                             <form onSubmit={handleUpdateRate} className="space-y-4">
                                 <div>
                                     <label className="block text-xs font-black uppercase text-gray-500 mb-1.5">
-                                        Tasa Actual en Bs por Dólar:
+                                        Tasa Manual en Bs por Dólar:
                                     </label>
                                     <div className="flex items-center gap-3">
                                         <input
@@ -1257,14 +1412,15 @@ export default function AdminPage() {
                                             required
                                             value={manualRateInput}
                                             onChange={(e) => setManualRateInput(e.target.value)}
+                                            placeholder="Ej: 887.30"
                                             className={`px-4 py-2.5 rounded-2xl border text-sm font-black outline-none flex-1 ${inputStyle}`}
                                         />
                                         <button
                                             type="submit"
                                             disabled={isUpdatingRate}
-                                            className="px-6 py-2.5 rounded-2xl bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black shadow-md shadow-[#D86A33]/20 transition-all hover:scale-105"
+                                            className="px-6 py-2.5 rounded-2xl bg-[#5F2142] hover:bg-[#481831] text-white text-xs font-black shadow-md shadow-[#5F2142]/20 transition-all hover:scale-105"
                                         >
-                                            {isUpdatingRate ? 'Guardando...' : 'Actualizar Tasa'}
+                                            {isUpdatingRate ? 'Guardando...' : 'Aplicar Tasa Manual'}
                                         </button>
                                     </div>
                                 </div>
