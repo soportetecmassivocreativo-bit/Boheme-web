@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { updateOrderStatus, deleteOrder } from '@/lib/db';
+import { updateOrder, deleteOrder } from '@/lib/db';
 import { getAdminSession } from '@/lib/auth';
 
 interface RouteProps {
@@ -17,9 +17,8 @@ export async function PUT(request: Request, { params }: RouteProps) {
 
         const { id } = await params;
         const body = await request.json();
-        const { estado_pago, notas_admin } = body;
 
-        const updated = await updateOrderStatus(id, estado_pago, notas_admin);
+        const updated = await updateOrder(id, body);
         if (!updated) {
             return NextResponse.json({ error: 'Factura/pedido no encontrado.' }, { status: 404 });
         }
@@ -27,7 +26,7 @@ export async function PUT(request: Request, { params }: RouteProps) {
         return NextResponse.json({ success: true, order: updated });
     } catch (error: any) {
         return NextResponse.json(
-            { error: 'Error al actualizar estatus de pago: ' + error.message },
+            { error: 'Error al actualizar estatus o datos de la factura: ' + error.message },
             { status: 500 }
         );
     }

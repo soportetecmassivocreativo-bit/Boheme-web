@@ -50,6 +50,15 @@ export default function CheckoutModal() {
     const [bcvFechaValor, setBcvFechaValor] = useState<string>('');
     const [isRefreshingBcv, setIsRefreshingBcv] = useState(false);
 
+    // Dynamic Site & Payment Settings
+    const [siteSettings, setSiteSettings] = useState({
+        pagoMovil: PAYMENT_INFO.pagoMovil,
+        binance: PAYMENT_INFO.binance,
+        tienda: {
+            telefonoWhatsapp: WHATSAPP_NUMBER
+        }
+    });
+
     // Copy feedback state
     const [copiedField, setCopiedField] = useState<string | null>(null);
 
@@ -95,9 +104,20 @@ export default function CheckoutModal() {
         }
     };
 
-    // Fetch official BCV rate on mount
+    // Fetch official BCV rate and dynamic settings on mount
     useEffect(() => {
         fetchBcvRate(false);
+        fetch('/api/settings')
+            .then(res => res.json())
+            .then(data => {
+                if (data && data.settings) {
+                    setSiteSettings(prev => ({
+                        ...prev,
+                        ...data.settings
+                    }));
+                }
+            })
+            .catch(() => {});
     }, []);
 
     if (!isCheckoutOpen) return null;
@@ -304,7 +324,8 @@ export default function CheckoutModal() {
 
         // 3. Open WhatsApp with formatted text
         const encodedMessage = encodeURIComponent(msg);
-        window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodedMessage}`, '_blank');
+        const targetWhatsapp = siteSettings.tienda.telefonoWhatsapp || WHATSAPP_NUMBER;
+        window.open(`https://wa.me/${targetWhatsapp}?text=${encodedMessage}`, '_blank');
 
         // 4. Show success screen and clear cart
         setIsSubmitting(false);
@@ -779,20 +800,22 @@ export default function CheckoutModal() {
                                         <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 text-xs">
                                             <div>
                                                 <span className="text-gray-400 font-medium block text-[10px] uppercase">Banco</span>
-                                                <span className="font-bold text-gray-900">{PAYMENT_INFO.pagoMovil.banco}</span>
+                                                <span className="font-bold text-gray-900">{siteSettings.pagoMovil.banco}</span>
                                             </div>
-                                            <span className="px-2 py-0.5 rounded bg-gray-200 text-gray-700 text-[10px] font-bold">0102</span>
+                                            <span className="px-2 py-0.5 rounded bg-gray-200 text-gray-700 text-[10px] font-bold">
+                                                {siteSettings.pagoMovil.titular || 'BOHEME'}
+                                            </span>
                                         </div>
 
                                         {/* Teléfono with Copy */}
                                         <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 text-xs">
                                             <div>
                                                 <span className="text-gray-400 font-medium block text-[10px] uppercase">Teléfono</span>
-                                                <span className="font-black text-[#5F2142] text-sm">{PAYMENT_INFO.pagoMovil.telefono}</span>
+                                                <span className="font-black text-[#5F2142] text-sm">{siteSettings.pagoMovil.telefono}</span>
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={() => handleCopy(PAYMENT_INFO.pagoMovil.telefonoRaw, 'pm_tel')}
+                                                onClick={() => handleCopy(siteSettings.pagoMovil.telefonoRaw || siteSettings.pagoMovil.telefono.replace(/\D/g, ''), 'pm_tel')}
                                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                                                     copiedField === 'pm_tel'
                                                         ? 'bg-green-600 text-white shadow-xs'
@@ -807,12 +830,12 @@ export default function CheckoutModal() {
                                         {/* Cédula with Copy */}
                                         <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 text-xs">
                                             <div>
-                                                <span className="text-gray-400 font-medium block text-[10px] uppercase">Cédula de Identidad</span>
-                                                <span className="font-black text-[#5F2142] text-sm">{PAYMENT_INFO.pagoMovil.cedula}</span>
+                                                <span className="text-gray-400 font-medium block text-[10px] uppercase">Cédula de Identidad / RIF</span>
+                                                <span className="font-black text-[#5F2142] text-sm">{siteSettings.pagoMovil.cedula}</span>
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={() => handleCopy(PAYMENT_INFO.pagoMovil.cedulaRaw, 'pm_ci')}
+                                                onClick={() => handleCopy(siteSettings.pagoMovil.cedulaRaw || siteSettings.pagoMovil.cedula.replace(/\D/g, ''), 'pm_ci')}
                                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
                                                     copiedField === 'pm_ci'
                                                         ? 'bg-green-600 text-white shadow-xs'
@@ -852,11 +875,11 @@ export default function CheckoutModal() {
                                         <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 text-xs">
                                             <div>
                                                 <span className="text-gray-400 font-medium block text-[10px] uppercase">Correo / Pay ID</span>
-                                                <span className="font-black text-[#5F2142] text-sm break-all">{PAYMENT_INFO.binance.email}</span>
+                                                <span className="font-black text-[#5F2142] text-sm break-all">{siteSettings.binance.email}</span>
                                             </div>
                                             <button
                                                 type="button"
-                                                onClick={() => handleCopy(PAYMENT_INFO.binance.email, 'bin_email')}
+                                                onClick={() => handleCopy(siteSettings.binance.email, 'bin_email')}
                                                 className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ml-2 ${
                                                     copiedField === 'bin_email'
                                                         ? 'bg-green-600 text-white shadow-xs'
@@ -972,7 +995,7 @@ export default function CheckoutModal() {
                                     Volver a la Tienda
                                 </button>
                                 <a
-                                    href={`https://wa.me/${WHATSAPP_NUMBER}`}
+                                    href={`https://wa.me/${siteSettings.tienda.telefonoWhatsapp || WHATSAPP_NUMBER}`}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="w-full sm:w-auto px-6 py-3 rounded-full border-2 border-[#D86A33] text-[#D86A33] hover:bg-[#D86A33] hover:text-white text-xs sm:text-sm font-black transition-all inline-flex items-center justify-center gap-1.5"

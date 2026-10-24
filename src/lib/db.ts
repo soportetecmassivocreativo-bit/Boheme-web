@@ -837,6 +837,7 @@ export async function createProduct(productData: Omit<Product, 'id'> & { id?: st
 
     // Always keep local in-memory catalog updated
     MOCK_PRODUCTS.unshift(newProduct);
+    saveProductsToDisk();
     return newProduct;
 }
 
@@ -862,6 +863,7 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
             ...MOCK_PRODUCTS[existingIndex],
             ...updates
         };
+        saveProductsToDisk();
         return MOCK_PRODUCTS[existingIndex];
     }
 
@@ -885,7 +887,9 @@ export async function deleteProduct(id: string): Promise<boolean> {
 
     const initialLength = MOCK_PRODUCTS.length;
     MOCK_PRODUCTS = MOCK_PRODUCTS.filter(p => p.id !== id);
-    return MOCK_PRODUCTS.length < initialLength;
+    const didDelete = MOCK_PRODUCTS.length < initialLength;
+    if (didDelete) saveProductsToDisk();
+    return didDelete;
 }
 
 // ==========================================
@@ -929,8 +933,8 @@ export interface Order {
     monto_usd: number;
     tasa_bcv: number;
     monto_bs: number;
-    // Verification Status
-    estado_pago: 'pendiente' | 'verificado' | 'rechazado';
+    // Verification Status: por verificar, verificada, rechazada
+    estado_pago: 'por_verificar' | 'verificada' | 'rechazada' | 'pendiente' | 'verificado' | 'rechazado';
     notas_admin?: string;
     // Items
     items: OrderItem[];
@@ -1020,41 +1024,127 @@ let ORDERS: Order[] = [
     }
 ];
 
+// Server-side safe persistent file storage
+const ORDERS_FILE = '.orders_store.json';
+const PRODUCTS_FILE = '.products_store.json';
+
+function getFsModule() {
+    if (typeof window === 'undefined') {
+        try {
+            return eval('require')('fs');
+        } catch {
+            return null;
+        }
+    }
+    return null;
+}
+
+function loadOrdersFromDisk() {
+    const fs = getFsModule();
+    if (!fs) return;
+    try {
+        if (fs.existsSync(ORDERS_FILE)) {
+            const data = fs.readFileSync(ORDERS_FILE, 'utf-8');
+            const parsed = JSON.parse(data);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                ORDERS = parsed;
+                const maxNum = parsed.reduce((max: number, o: Order) => {
+                    const match = o.numero_factura?.match(/BHM-(\d+)/i);
+                    return match ? Math.max(max, parseInt(match[1], 10)) : max;
+                }, 1002);
+                INVOICE_COUNTER = Math.max(INVOICE_COUNTER, maxNum);
+            }
+        }
+    } catch {}
+}
+
+function saveOrdersToDisk() {
+    const fs = getFsModule();
+    if (!fs) return;
+    try {
+        fs.writeFileSync(ORDERS_FILE, JSON.stringify(ORDERS, null, 2), 'utf-8');
+    } catch {}
+}
+
+function loadProductsFromDisk() {
+    const fs = getFsModule();
+    if (!fs) return;
+    try {
+        if (fs.existsSync(PRODUCTS_FILE)) {
+            const data = fs.readFileSync(PRODUCTS_FILE, 'utf-8');
+            const parsed = JSON.parse(data);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+                MOCK_PRODUCTS = parsed;
+            }
+        }
+    } catch {}
+}
+
+function saveProductsToDisk() {
+    const fs = getFsModule();
+    if (!fs) return;
+    try {
+        fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(MOCK_PRODUCTS, null, 2), 'utf-8');
+    } catch {}
+}
+
+// Initial server-side load
+loadOrdersFromDisk();
+loadProductsFromDisk();
+
 export async function fetchOrders(): Promise<Order[]> {
+    loadOrdersFromDisk();
     return [...ORDERS];
 }
 
 export async function createOrder(orderData: Omit<Order, 'id' | 'numero_factura' | 'created_at'> & { id?: string; numero_factura?: string; created_at?: string }): Promise<Order> {
+    loadOrdersFromDisk();
     INVOICE_COUNTER += 1;
     const newOrder: Order = {
         ...orderData,
         id: orderData.id || `ord-${Date.now()}`,
         numero_factura: orderData.numero_factura || `BHM-${INVOICE_COUNTER}`,
         created_at: orderData.created_at || new Date().toISOString(),
-        estado_pago: orderData.estado_pago || 'pendiente'
+        estado_pago: orderData.estado_pago || 'por_verificar'
     };
 
     ORDERS.unshift(newOrder);
+    saveOrdersToDisk();
     return newOrder;
 }
 
-export async function updateOrderStatus(id: string, estado_pago: 'pendiente' | 'verificado' | 'rechazado', notas_admin?: string): Promise<Order | null> {
+export async function updateOrder(id: string, updates: Partial<Order>): Promise<Order | null> {
+    loadOrdersFromDisk();
     const orderIndex = ORDERS.findIndex(o => o.id === id);
     if (orderIndex === -1) return null;
 
     ORDERS[orderIndex] = {
         ...ORDERS[orderIndex],
-        estado_pago,
-        notas_admin: notas_admin !== undefined ? notas_admin : ORDERS[orderIndex].notas_admin
+        ...updates
     };
 
+    saveOrdersToDisk();
     return ORDERS[orderIndex];
 }
 
+export async function updateOrderStatus(
+    id: string, 
+    estado_pago: 'por_verificar' | 'verificada' | 'rechazada' | 'pendiente' | 'verificado' | 'rechazado', 
+    notas_admin?: string
+): Promise<Order | null> {
+    return updateOrder(id, {
+        estado_pago,
+        ...(notas_admin !== undefined ? { notas_admin } : {})
+    });
+}
+
 export async function deleteOrder(id: string): Promise<boolean> {
+    loadOrdersFromDisk();
     const initialLen = ORDERS.length;
     ORDERS = ORDERS.filter(o => o.id !== id);
-    return ORDERS.length < initialLen;
+    const didDelete = ORDERS.length < initialLen;
+    if (didDelete) saveOrdersToDisk();
+    return didDelete;
 }
 
 
