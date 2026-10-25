@@ -56,11 +56,14 @@ import {
     BarChart3,
     Download,
     Hash,
-    FileSpreadsheet
+    FileSpreadsheet,
+    EyeOff,
+    Shield,
+    Key
 } from 'lucide-react';
 import { Product, CATEGORIES, Order, OrderItem } from '@/lib/db';
 import { parseImages } from '@/lib/utils';
-import { SiteSettings, ExtraPaymentAccount, ExtraPaymentType } from '@/lib/settings';
+import { SiteSettings, ExtraPaymentAccount, ExtraPaymentType, AdminUser, AdminUserRole } from '@/lib/settings';
 import {
     generateInvoicePdf,
     generateBillingReportPdf,
@@ -223,7 +226,31 @@ export default function AdminPage() {
     });
 
     // Configuration Area Sub-Tabs
-    const [configSubTab, setConfigSubTab] = useState<'pagos' | 'correlativo_pdf' | 'facturas' | 'productos' | 'bcv' | 'tienda'>('pagos');
+    const [configSubTab, setConfigSubTab] = useState<'pagos' | 'correlativo_pdf' | 'usuarios' | 'facturas' | 'productos' | 'bcv' | 'tienda'>('pagos');
+
+    // Current Logged-In User Session & User Management Modal State
+    const [currentUser, setCurrentUser] = useState<{
+        id: string;
+        email: string;
+        name: string;
+        userRole?: string;
+    }>({
+        id: 'user-admin-principal',
+        email: 'admin@boheme.com',
+        name: 'Administrador Principal BOHEME',
+        userRole: 'super_admin'
+    });
+    const [isUserModalOpen, setIsUserModalOpen] = useState(false);
+    const [editingUserId, setEditingUserId] = useState<string | null>(null);
+    const [userFormNombre, setUserFormNombre] = useState('');
+    const [userFormEmail, setUserFormEmail] = useState('');
+    const [userFormPassword, setUserFormPassword] = useState('');
+    const [userFormRol, setUserFormRol] = useState<AdminUserRole>('admin');
+    const [userFormCargo, setUserFormCargo] = useState('');
+    const [userFormTelefono, setUserFormTelefono] = useState('');
+    const [userFormActivo, setUserFormActivo] = useState(true);
+    const [showUserPasswords, setShowUserPasswords] = useState<Record<string, boolean>>({});
+    const [deleteUserConfirm, setDeleteUserConfirm] = useState<AdminUser | null>(null);
 
     // Reports Module Sub-Tabs & Filters
     const [reportType, setReportType] = useState<'facturado' | 'taller' | 'stock'>('facturado');
@@ -305,6 +332,19 @@ export default function AdminPage() {
             direccionFisica: 'Municipio Miranda (Coro) y Municipio Colina (La Vela), Estado Falcón, Venezuela',
             monedaPrincipal: 'USD'
         },
+        usuarios: [
+            {
+                id: 'user-admin-principal',
+                nombre: 'Administrador Principal BOHEME',
+                email: 'admin@boheme.com',
+                password: 'boheme2026',
+                rol: 'super_admin',
+                cargo: 'Gerencia & Administración General',
+                telefono: '0412-1409976',
+                activo: true,
+                createdAt: '2026-01-01T00:00:00.000Z'
+            }
+        ],
         lastUpdated: new Date().toISOString()
     });
     const [isSavingSettings, setIsSavingSettings] = useState(false);
@@ -377,11 +417,25 @@ export default function AdminPage() {
             setLoadingOrders(false);
         }
 
-        // Load Settings (Cuentas de pago y tienda)
+        // Load Settings (Cuentas de pago, usuarios y tienda)
         try {
             const resS = await fetch('/api/settings');
             const dataS = await resS.json();
             if (dataS && dataS.settings) setSettings(dataS.settings);
+        } catch {}
+
+        // Load Active Admin Session User
+        try {
+            const resMe = await fetch('/api/admin/me');
+            const dataMe = await resMe.json();
+            if (dataMe && dataMe.user) {
+                setCurrentUser({
+                    id: dataMe.user.id || 'user-admin-principal',
+                    email: dataMe.user.email || 'admin@boheme.com',
+                    name: dataMe.user.name || 'Administrador Principal BOHEME',
+                    userRole: dataMe.user.userRole || 'super_admin'
+                });
+            }
         } catch {}
     };
 
@@ -943,6 +997,172 @@ export default function AdminPage() {
         };
         setSettings(updatedSettings);
         await handleSaveSettings(undefined, updatedSettings);
+    };
+
+    // ==========================================
+    // USER MANAGEMENT ACTIONS (Crear, Modificar y Eliminar incluso el usuario en uso)
+    // ==========================================
+    const isCurrentActiveUser = (u: AdminUser) =>
+        u.id === currentUser.id || u.email.trim().toLowerCase() === currentUser.email.trim().toLowerCase();
+
+    const getRoleBadgeInfo = (rol: AdminUserRole) => {
+        switch (rol) {
+            case 'super_admin':
+                return { label: 'Super Administrador', color: 'bg-[#5F2142] text-[#FFC99C]' };
+            case 'admin':
+                return { label: 'Administrador', color: 'bg-[#D86A33]/15 text-[#D86A33]' };
+            case 'facturacion':
+                return { label: 'Facturación & Cobranza', color: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300' };
+            case 'taller':
+                return { label: 'Taller & Producción', color: 'bg-blue-100 text-blue-800 dark:bg-blue-950/60 dark:text-blue-300' };
+            default:
+                return { label: 'Administrador', color: 'bg-gray-100 text-gray-800' };
+        }
+    };
+
+    const openCreateUserModal = () => {
+        setEditingUserId(null);
+        setUserFormNombre('');
+        setUserFormEmail('');
+        setUserFormPassword('');
+        setUserFormRol('admin');
+        setUserFormCargo('');
+        setUserFormTelefono('');
+        setUserFormActivo(true);
+        setIsUserModalOpen(true);
+    };
+
+    const openEditUserModal = (user: AdminUser) => {
+        setEditingUserId(user.id);
+        setUserFormNombre(user.nombre);
+        setUserFormEmail(user.email);
+        setUserFormPassword(user.password);
+        setUserFormRol(user.rol || 'admin');
+        setUserFormCargo(user.cargo || '');
+        setUserFormTelefono(user.telefono || '');
+        setUserFormActivo(user.activo !== false);
+        setIsUserModalOpen(true);
+    };
+
+    const handleSaveUser = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const cleanEmail = userFormEmail.trim().toLowerCase();
+        const cleanNombre = userFormNombre.trim();
+        const cleanPassword = userFormPassword.trim();
+
+        if (!cleanNombre || !cleanEmail || !cleanPassword) {
+            alert('Por favor completa el nombre, correo electrónico y contraseña del usuario.');
+            return;
+        }
+
+        const currentUsers = settings.usuarios || [];
+        const duplicateEmail = currentUsers.find(
+            u => u.email.trim().toLowerCase() === cleanEmail && u.id !== editingUserId
+        );
+        if (duplicateEmail) {
+            alert(`Ya existe un usuario registrado con el correo "${cleanEmail}".`);
+            return;
+        }
+
+        let nextUsers: AdminUser[];
+        if (editingUserId) {
+            nextUsers = currentUsers.map(u =>
+                u.id === editingUserId
+                    ? {
+                        ...u,
+                        nombre: cleanNombre,
+                        email: cleanEmail,
+                        password: cleanPassword,
+                        rol: userFormRol,
+                        cargo: userFormCargo.trim() || undefined,
+                        telefono: userFormTelefono.trim() || undefined,
+                        activo: userFormActivo
+                    }
+                    : u
+            );
+        } else {
+            const newUser: AdminUser = {
+                id: `user-${Date.now()}`,
+                nombre: cleanNombre,
+                email: cleanEmail,
+                password: cleanPassword,
+                rol: userFormRol,
+                cargo: userFormCargo.trim() || undefined,
+                telefono: userFormTelefono.trim() || undefined,
+                activo: userFormActivo,
+                createdAt: new Date().toISOString()
+            };
+            nextUsers = [...currentUsers, newUser];
+        }
+
+        const updatedSettings: SiteSettings = {
+            ...settings,
+            usuarios: nextUsers
+        };
+        setSettings(updatedSettings);
+        setIsUserModalOpen(false);
+        await handleSaveSettings(undefined, updatedSettings);
+
+        // If the edited user is the currently logged-in user, sync local currentUser state immediately
+        if (editingUserId) {
+            const editedObj = nextUsers.find(u => u.id === editingUserId);
+            if (editedObj && (editingUserId === currentUser.id || editedObj.email === currentUser.email.toLowerCase())) {
+                setCurrentUser({
+                    id: editedObj.id,
+                    email: editedObj.email,
+                    name: editedObj.nombre,
+                    userRole: editedObj.rol
+                });
+                showToast(`✓ Tu usuario activo (${editedObj.email}) ha sido actualizado`);
+            } else {
+                showToast('✓ Usuario actualizado correctamente');
+            }
+        } else {
+            showToast(`✓ Nuevo usuario "${cleanNombre}" creado con éxito`);
+        }
+    };
+
+    const handleToggleUserActive = async (user: AdminUser) => {
+        const currentUsers = settings.usuarios || [];
+        if (user.activo && currentUsers.filter(u => u.activo !== false).length <= 1) {
+            alert('Debe quedar al menos 1 usuario activo en el sistema para poder ingresar al panel.');
+            return;
+        }
+        const nextUsers = currentUsers.map(u =>
+            u.id === user.id ? { ...u, activo: !u.activo } : u
+        );
+        const updatedSettings: SiteSettings = {
+            ...settings,
+            usuarios: nextUsers
+        };
+        setSettings(updatedSettings);
+        await handleSaveSettings(undefined, updatedSettings);
+    };
+
+    const handleConfirmDeleteUser = async (user: AdminUser) => {
+        const currentUsers = settings.usuarios || [];
+        if (currentUsers.length <= 1) {
+            alert('⚠️ No puedes eliminar el único usuario del sistema. Crea primero otro usuario antes de eliminar el actual para no perder el acceso al panel.');
+            setDeleteUserConfirm(null);
+            return;
+        }
+
+        const deletingCurrentActive = isCurrentActiveUser(user);
+        const nextUsers = currentUsers.filter(u => u.id !== user.id);
+        const updatedSettings: SiteSettings = {
+            ...settings,
+            usuarios: nextUsers
+        };
+        setSettings(updatedSettings);
+        setDeleteUserConfirm(null);
+        await handleSaveSettings(undefined, updatedSettings);
+
+        if (deletingCurrentActive) {
+            showToast('✓ Usuario en uso eliminado. Cerrando sesión...');
+            await handleLogout();
+        } else {
+            showToast(`✓ Usuario "${user.nombre}" eliminado del sistema`);
+        }
     };
 
     const handleCreateManualInvoice = async (e: React.FormEvent) => {
@@ -4044,6 +4264,7 @@ export default function AdminPage() {
                         <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-gray-100 dark:border-white/10">
                             {[
                                 { key: 'pagos', label: 'Cuentas Bancarias y de Pago', icon: CreditCard, badge: 2 + (settings.cuentasAdicionales?.length || 0) },
+                                { key: 'usuarios', label: 'Usuarios & Accesos', icon: User, badge: (settings.usuarios || []).length },
                                 { key: 'correlativo_pdf', label: 'Correlativo & PDFs (Facturas/Reportes)', icon: Printer },
                                 { key: 'facturas', label: 'Gestión de Facturas', icon: FileText, badge: pendingOrdersCount },
                                 { key: 'productos', label: 'Catálogo de Productos', icon: Package, badge: products.length },
@@ -4845,6 +5066,219 @@ export default function AdminPage() {
                                 </div>
                             </form>
                         )}
+
+                        {/* ========================================================= */}
+                        {/* SUB-TAB: GESTIÓN DE USUARIOS Y ACCESOS (Incluye En Uso)   */}
+                        {/* ========================================================= */}
+                        {configSubTab === 'usuarios' && (() => {
+                            const usersList = settings.usuarios || [];
+                            const activeUserRecord = usersList.find(u => isCurrentActiveUser(u)) || usersList[0];
+
+                            return (
+                                <div className="space-y-6">
+                                    {/* Highlight Card: Usuario en Uso Actualmente + Crear Nuevo Usuario */}
+                                    <div className={`p-6 sm:p-7 rounded-3xl ${bgCard} border-2 border-[#D86A33]/40 shadow-xs space-y-4`}>
+                                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                                            <div className="flex items-start sm:items-center gap-3.5">
+                                                <div className="w-12 h-12 rounded-2xl bg-[#5F2142] text-[#FFC99C] flex items-center justify-center font-black text-lg shrink-0 shadow-sm">
+                                                    <User size={22} />
+                                                </div>
+                                                <div>
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 dark:bg-emerald-950/70 dark:text-emerald-300 text-[10px] font-black uppercase tracking-wider">
+                                                            🟢 Usuario en Uso Actualmente
+                                                        </span>
+                                                        {activeUserRecord && (
+                                                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${getRoleBadgeInfo(activeUserRecord.rol).color}`}>
+                                                                {getRoleBadgeInfo(activeUserRecord.rol).label}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <h3 className="font-black text-base sm:text-lg text-[#5F2142] dark:text-[#FFC99C] mt-1">
+                                                        {activeUserRecord?.nombre || currentUser.name}
+                                                    </h3>
+                                                    <p className="text-xs text-gray-500 font-medium">
+                                                        Correo de acceso: <strong className="text-gray-800 dark:text-gray-200 font-mono">{activeUserRecord?.email || currentUser.email}</strong>
+                                                        {activeUserRecord?.cargo ? ` • ${activeUserRecord.cargo}` : ''}
+                                                    </p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                {activeUserRecord && (
+                                                    <>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openEditUserModal(activeUserRecord)}
+                                                            className="inline-flex items-center gap-1.5 px-4 py-2.5 rounded-full bg-[#5F2142] hover:bg-[#43142e] text-white text-xs font-black shadow-xs transition-all"
+                                                        >
+                                                            <Edit2 size={13} />
+                                                            <span>Modificar Usuario en Uso</span>
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => setDeleteUserConfirm(activeUserRecord)}
+                                                            className="inline-flex items-center gap-1.5 px-3.5 py-2.5 rounded-full border border-red-200 dark:border-red-900/50 text-red-600 hover:bg-red-50 dark:hover:bg-red-950/30 text-xs font-black transition-all"
+                                                            title="Eliminar el usuario actualmente en uso"
+                                                        >
+                                                            <Trash2 size={13} />
+                                                            <span>Eliminar Usuario Actual</span>
+                                                        </button>
+                                                    </>
+                                                )}
+
+                                                <button
+                                                    type="button"
+                                                    onClick={openCreateUserModal}
+                                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black shadow-md shadow-[#D86A33]/25 transition-all hover:scale-105"
+                                                >
+                                                    <Plus size={15} />
+                                                    <span>+ Crear Nuevo Usuario</span>
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Users Directory Table */}
+                                    <div className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden`}>
+                                        <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
+                                            <div>
+                                                <h3 className="font-black text-base text-[#5F2142] dark:text-[#FFC99C] flex items-center gap-2">
+                                                    <Shield size={17} className="text-[#D86A33]" />
+                                                    <span>Usuarios Registrados con Acceso al Panel ({usersList.length})</span>
+                                                </h3>
+                                                <p className="text-xs text-gray-500">
+                                                    Crea, modifica credenciales (correo, clave, nombre, rol) o elimina cualquier usuario, incluido el que tienes en uso actualmente.
+                                                </p>
+                                            </div>
+
+                                            <button
+                                                type="button"
+                                                onClick={openCreateUserModal}
+                                                className="px-4 py-2 rounded-full bg-[#D86A33]/15 hover:bg-[#D86A33] text-[#D86A33] hover:text-white text-xs font-black transition-all inline-flex items-center gap-1.5"
+                                            >
+                                                <Plus size={14} />
+                                                <span>Agregar Usuario</span>
+                                            </button>
+                                        </div>
+
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left border-collapse text-xs">
+                                                <thead>
+                                                    <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/60 dark:bg-white/5">
+                                                        <th className="py-3.5 px-5">Usuario / Cargo</th>
+                                                        <th className="py-3.5 px-5">Correo de Acceso</th>
+                                                        <th className="py-3.5 px-5">Contraseña</th>
+                                                        <th className="py-3.5 px-5">Rol / Permiso</th>
+                                                        <th className="py-3.5 px-5 text-center">Estado</th>
+                                                        <th className="py-3.5 px-5 text-right">Acciones</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                                    {usersList.map(u => {
+                                                        const isCurrent = isCurrentActiveUser(u);
+                                                        const roleInfo = getRoleBadgeInfo(u.rol);
+                                                        const showPass = Boolean(showUserPasswords[u.id]);
+
+                                                        return (
+                                                            <tr
+                                                                key={u.id}
+                                                                className={`transition-colors ${
+                                                                    isCurrent
+                                                                        ? 'bg-[#FFF4EB]/60 dark:bg-[#D86A33]/10 hover:bg-[#FFF4EB]'
+                                                                        : 'hover:bg-gray-50/50 dark:hover:bg-white/5'
+                                                                }`}
+                                                            >
+                                                                <td className="py-4 px-5">
+                                                                    <div className="flex flex-wrap items-center gap-2">
+                                                                        <span className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
+                                                                            {u.nombre}
+                                                                        </span>
+                                                                        {isCurrent && (
+                                                                            <span className="px-2 py-0.5 rounded-full bg-emerald-600 text-white text-[9px] font-black uppercase tracking-wider">
+                                                                                En uso actual
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+                                                                    <div className="text-[11px] text-gray-500 mt-0.5">
+                                                                        {u.cargo || 'Administración'}
+                                                                        {u.telefono ? ` • Tel: ${u.telefono}` : ''}
+                                                                    </div>
+                                                                </td>
+
+                                                                <td className="py-4 px-5 font-mono font-bold text-gray-800 dark:text-gray-200">
+                                                                    {u.email}
+                                                                </td>
+
+                                                                <td className="py-4 px-5">
+                                                                    <div className="inline-flex items-center gap-1.5 bg-gray-100 dark:bg-white/10 px-2.5 py-1 rounded-xl">
+                                                                        <Key size={12} className="text-[#D86A33]" />
+                                                                        <span className="font-mono font-bold text-gray-800 dark:text-gray-200">
+                                                                            {showPass ? u.password : '••••••••'}
+                                                                        </span>
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setShowUserPasswords(prev => ({ ...prev, [u.id]: !prev[u.id] }))}
+                                                                            className="text-gray-400 hover:text-[#5F2142] dark:hover:text-white ml-1"
+                                                                            title={showPass ? 'Ocultar contraseña' : 'Mostrar contraseña'}
+                                                                        >
+                                                                            {showPass ? <EyeOff size={13} /> : <Eye size={13} />}
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+
+                                                                <td className="py-4 px-5">
+                                                                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-black ${roleInfo.color}`}>
+                                                                        {roleInfo.label}
+                                                                    </span>
+                                                                </td>
+
+                                                                <td className="py-4 px-5 text-center">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handleToggleUserActive(u)}
+                                                                        className={`px-3 py-1 rounded-full text-[10px] font-black transition-all ${
+                                                                            u.activo !== false
+                                                                                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950/60 dark:text-emerald-300'
+                                                                                : 'bg-gray-200 text-gray-600 dark:bg-white/10 dark:text-gray-400'
+                                                                        }`}
+                                                                    >
+                                                                        {u.activo !== false ? '✓ Activo' : 'Inactivo'}
+                                                                    </button>
+                                                                </td>
+
+                                                                <td className="py-4 px-5 text-right whitespace-nowrap">
+                                                                    <div className="inline-flex items-center gap-1.5">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => openEditUserModal(u)}
+                                                                            className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#5F2142] text-[#5F2142] dark:text-[#FFC99C] font-black text-[11px] inline-flex items-center gap-1 bg-white dark:bg-neutral-800 transition-all"
+                                                                        >
+                                                                            <Edit2 size={12} />
+                                                                            <span>Modificar</span>
+                                                                        </button>
+
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setDeleteUserConfirm(u)}
+                                                                            className="px-3 py-1.5 rounded-xl border border-red-200 dark:border-red-900/40 hover:bg-red-600 hover:text-white text-red-600 font-black text-[11px] inline-flex items-center gap-1 transition-all"
+                                                                        >
+                                                                            <Trash2 size={12} />
+                                                                            <span>Eliminar</span>
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            );
+                        })()}
 
                         {/* ========================================================= */}
                         {/* SUB-TAB 2: GESTIÓN DE FACTURAS (Modificar sin código)     */}
@@ -6756,6 +7190,197 @@ export default function AdminPage() {
                                 </button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: CREAR O MODIFICAR USUARIO DEL SISTEMA */}
+            {isUserModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                    <div className={`rounded-3xl max-w-lg w-full p-6 sm:p-8 ${bgCard} border ${borderDefault} shadow-2xl space-y-4 my-6 max-h-[92vh] flex flex-col overflow-hidden text-xs`}>
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-white/10 shrink-0">
+                            <div>
+                                <h3 className="text-lg font-black text-[#5F2142] dark:text-[#FFC99C]">
+                                    {editingUserId ? 'Modificar Usuario del Sistema' : '+ Crear Nuevo Usuario'}
+                                </h3>
+                                <p className="text-[11px] text-gray-500 font-medium">
+                                    {editingUserId && (editingUserId === currentUser.id || userFormEmail.trim().toLowerCase() === currentUser.email.toLowerCase())
+                                        ? 'Estás modificando las credenciales del usuario que tienes en uso actualmente.'
+                                        : 'Configura las credenciales de acceso y rol dentro del panel administrativo.'}
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsUserModalOpen(false)}
+                                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveUser} className="flex-1 overflow-y-auto py-2 pr-1 space-y-3.5">
+                            <div>
+                                <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                    Nombre Completo del Usuario *
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={userFormNombre}
+                                    onChange={(e) => setUserFormNombre(e.target.value)}
+                                    placeholder="Ej: Dra. María Gómez / Administración BOHEME"
+                                    className={`w-full px-3.5 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Correo de Acceso (Login) *
+                                    </label>
+                                    <input
+                                        type="email"
+                                        required
+                                        value={userFormEmail}
+                                        onChange={(e) => setUserFormEmail(e.target.value)}
+                                        placeholder="usuario@boheme.com"
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border font-mono font-bold ${inputStyle}`}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Contraseña de Acceso *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={userFormPassword}
+                                        onChange={(e) => setUserFormPassword(e.target.value)}
+                                        placeholder="Ingresa la contraseña..."
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border font-mono font-bold ${inputStyle}`}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Rol / Nivel de Acceso *
+                                    </label>
+                                    <select
+                                        value={userFormRol}
+                                        onChange={(e) => setUserFormRol(e.target.value as AdminUserRole)}
+                                        className={`w-full px-3 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                    >
+                                        <option value="super_admin">Super Administrador (Control Total)</option>
+                                        <option value="admin">Administrador General</option>
+                                        <option value="facturacion">Facturación y Cobranza</option>
+                                        <option value="taller">Taller y Producción</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Cargo / Departamento
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={userFormCargo}
+                                        onChange={(e) => setUserFormCargo(e.target.value)}
+                                        placeholder="Ej: Gerencia / Jefe de Taller"
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border font-medium ${inputStyle}`}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Teléfono de Contacto (Opcional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={userFormTelefono}
+                                        onChange={(e) => setUserFormTelefono(e.target.value)}
+                                        placeholder="0412-0000000"
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                    />
+                                </div>
+
+                                <div className="pt-4">
+                                    <label className={`flex items-center gap-2.5 p-3 rounded-2xl border cursor-pointer font-bold ${bgSubCard} ${borderDefault}`}>
+                                        <input
+                                            type="checkbox"
+                                            checked={userFormActivo}
+                                            onChange={(e) => setUserFormActivo(e.target.checked)}
+                                            className="w-4 h-4 rounded text-[#D86A33] focus:ring-[#D86A33]"
+                                        />
+                                        <span>Usuario Activo (Permitir inicio de sesión)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div className="pt-3 border-t border-gray-100 dark:border-white/10 flex items-center justify-end gap-3 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsUserModalOpen(false)}
+                                    className="px-4 py-2 rounded-full border border-gray-300 dark:border-white/10 font-bold"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSavingSettings}
+                                    className="px-6 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white font-black shadow-md shadow-[#D86A33]/25"
+                                >
+                                    {isSavingSettings ? 'Guardando...' : editingUserId ? 'Guardar Cambios de Usuario' : 'Crear Usuario'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: CONFIRMACIÓN PARA ELIMINAR USUARIO */}
+            {deleteUserConfirm && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4">
+                    <div className={`rounded-3xl max-w-sm w-full p-6 text-center ${bgCard} border ${borderDefault} shadow-2xl`}>
+                        <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto mb-3">
+                            <Trash2 size={22} />
+                        </div>
+                        <h4 className="text-lg font-black text-gray-900 dark:text-white mb-1">
+                            ¿Eliminar usuario {deleteUserConfirm.nombre}?
+                        </h4>
+                        <p className="text-xs text-gray-500 mb-2">
+                            Correo: <strong className="font-mono text-gray-800 dark:text-gray-200">{deleteUserConfirm.email}</strong>
+                        </p>
+                        {isCurrentActiveUser(deleteUserConfirm) ? (
+                            <p className="text-[11px] text-amber-700 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/50 p-2.5 rounded-xl font-bold mb-5">
+                                ⚠️ Este es el usuario que tienes en uso actualmente. Si lo eliminas (habiendo otro usuario creado), tu sesión actual se cerrará.
+                            </p>
+                        ) : (
+                            <p className="text-xs text-gray-500 mb-5">
+                                Esta acción revocará su acceso al panel administrativo de forma inmediata.
+                            </p>
+                        )}
+                        <div className="flex items-center justify-center gap-3">
+                            <button
+                                type="button"
+                                onClick={() => setDeleteUserConfirm(null)}
+                                className="px-5 py-2.5 rounded-full border border-gray-300 dark:border-white/10 text-xs font-bold"
+                            >
+                                Cancelar
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => handleConfirmDeleteUser(deleteUserConfirm)}
+                                disabled={isSavingSettings}
+                                className="px-6 py-2.5 rounded-full bg-red-600 hover:bg-red-700 text-white text-xs font-black shadow-md shadow-red-600/20"
+                            >
+                                {isSavingSettings ? 'Eliminando...' : 'Sí, eliminar usuario'}
+                            </button>
+                        </div>
                     </div>
                 </div>
             )}

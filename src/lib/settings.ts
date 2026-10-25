@@ -73,6 +73,20 @@ export interface StoreGeneralSettings {
     monedaPrincipal: string; // 'USD'
 }
 
+export type AdminUserRole = 'super_admin' | 'admin' | 'taller' | 'facturacion';
+
+export interface AdminUser {
+    id: string;
+    nombre: string;
+    email: string;
+    password: string;
+    rol: AdminUserRole;
+    cargo?: string;
+    telefono?: string;
+    activo: boolean;
+    createdAt: string;
+}
+
 export interface SiteSettings {
     pagoMovil: PagoMovilAccount;
     binance: BinanceAccount;
@@ -80,6 +94,7 @@ export interface SiteSettings {
     correlativo: InvoiceCorrelativeSettings;
     pdfConfig: PdfTemplateSettings;
     tienda: StoreGeneralSettings;
+    usuarios: AdminUser[];
     lastUpdated: string;
 }
 
@@ -135,6 +150,19 @@ export const DEFAULT_SETTINGS: SiteSettings = {
         direccionFisica: 'Municipio Miranda (Coro) y Municipio Colina (La Vela), Estado Falcón, Venezuela',
         monedaPrincipal: 'USD'
     },
+    usuarios: [
+        {
+            id: 'user-admin-principal',
+            nombre: 'Administrador Principal BOHEME',
+            email: process.env.ADMIN_EMAIL || 'admin@boheme.com',
+            password: process.env.ADMIN_PASSWORD || 'boheme2026',
+            rol: 'super_admin',
+            cargo: 'Gerencia & Administración General',
+            telefono: '0412-1409976',
+            activo: true,
+            createdAt: '2026-01-01T00:00:00.000Z'
+        }
+    ],
     lastUpdated: new Date().toISOString()
 };
 
@@ -155,7 +183,10 @@ function loadSettingsFromDisk(): SiteSettings {
                     cuentasAdicionales: Array.isArray(parsed.cuentasAdicionales) ? parsed.cuentasAdicionales : DEFAULT_SETTINGS.cuentasAdicionales,
                     correlativo: { ...DEFAULT_SETTINGS.correlativo, ...(parsed.correlativo || {}) },
                     pdfConfig: { ...DEFAULT_SETTINGS.pdfConfig, ...(parsed.pdfConfig || {}) },
-                    tienda: { ...DEFAULT_SETTINGS.tienda, ...(parsed.tienda || {}) }
+                    tienda: { ...DEFAULT_SETTINGS.tienda, ...(parsed.tienda || {}) },
+                    usuarios: Array.isArray(parsed.usuarios) && parsed.usuarios.length > 0
+                        ? parsed.usuarios
+                        : DEFAULT_SETTINGS.usuarios
                 };
             }
         }
@@ -242,6 +273,9 @@ export async function updateSiteSettings(updates: Partial<SiteSettings>): Promis
         tienda: updates.tienda 
             ? { ...memorySettings.tienda, ...updates.tienda } 
             : memorySettings.tienda,
+        usuarios: Array.isArray(updates.usuarios)
+            ? updates.usuarios
+            : memorySettings.usuarios,
         lastUpdated: new Date().toISOString()
     };
 

@@ -12,8 +12,10 @@ export const DEFAULT_ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'admin@boheme.com'
 export const DEFAULT_ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'boheme2026';
 
 export interface AdminSession {
+    id?: string;
     email: string;
     role: 'admin';
+    userRole?: string;
     name: string;
 }
 
@@ -35,8 +37,10 @@ export async function verifyAdminToken(token: string): Promise<AdminSession | nu
     try {
         const { payload } = await jwtVerify(token, JWT_SECRET);
         return {
+            id: payload.id ? String(payload.id) : 'user-admin-principal',
             email: String(payload.email || DEFAULT_ADMIN_EMAIL),
             role: 'admin',
+            userRole: payload.userRole ? String(payload.userRole) : 'super_admin',
             name: String(payload.name || 'Administrador BOHEME')
         };
     } catch {

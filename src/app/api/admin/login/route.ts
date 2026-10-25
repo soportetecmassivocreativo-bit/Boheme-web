@@ -5,6 +5,7 @@ import {
     DEFAULT_ADMIN_EMAIL, 
     DEFAULT_ADMIN_PASSWORD 
 } from '@/lib/auth';
+import { getSiteSettingsSync } from '@/lib/settings';
 
 export async function POST(request: Request) {
     try {
@@ -12,19 +13,45 @@ export async function POST(request: Request) {
         const { email, password } = body;
 
         const cleanEmail = (email || '').trim().toLowerCase();
-        const expectedEmail = DEFAULT_ADMIN_EMAIL.trim().toLowerCase();
+        const settings = getSiteSettingsSync();
+        const usersList = Array.isArray(settings.usuarios) && settings.usuarios.length > 0
+            ? settings.usuarios
+            : [
+                {
+                    id: 'user-admin-principal',
+                    nombre: 'Administrador Principal BOHEME',
+                    email: DEFAULT_ADMIN_EMAIL,
+                    password: DEFAULT_ADMIN_PASSWORD,
+                    rol: 'super_admin' as const,
+                    activo: true,
+                    createdAt: '2026-01-01T00:00:00.000Z'
+                }
+            ];
 
-        if (cleanEmail !== expectedEmail || password !== DEFAULT_ADMIN_PASSWORD) {
+        const matchedUser = usersList.find(
+            u => u.email.trim().toLowerCase() === cleanEmail && u.password === password
+        );
+
+        if (!matchedUser) {
             return NextResponse.json(
                 { error: 'Credenciales inválidas. Verifica tu correo y contraseña.' },
                 { status: 401 }
             );
         }
 
+        if (matchedUser.activo === false) {
+            return NextResponse.json(
+                { error: 'Esta cuenta de usuario se encuentra desactivada. Contacta al administrador.' },
+                { status: 403 }
+            );
+        }
+
         const session = {
-            email: cleanEmail,
+            id: matchedUser.id,
+            email: matchedUser.email.trim().toLowerCase(),
             role: 'admin' as const,
-            name: 'Administrador BOHEME'
+            userRole: matchedUser.rol,
+            name: matchedUser.nombre
         };
 
         const token = await createAdminToken(session);
