@@ -113,6 +113,8 @@ export default function AdminPage() {
     const [activeSection, setActiveSection] = useState<string>('gorros');
     const [activeSubcategory, setActiveSubcategory] = useState<number | 'all'>('all');
     const [productSearch, setProductSearch] = useState('');
+    const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<Record<string | number, boolean>>({});
+    const [minimizedProductIds, setMinimizedProductIds] = useState<Record<string, boolean>>({});
 
     // Orders / Invoices State (Módulo Facturado)
     const [orders, setOrders] = useState<Order[]>([]);
@@ -660,6 +662,58 @@ export default function AdminPage() {
             }
         } catch {
             alert('Error de conexión al actualizar categoría');
+        }
+    };
+
+    const toggleCategoryCollapsed = (catKey: string | number) => {
+        setCollapsedCategoryIds(prev => ({
+            ...prev,
+            [catKey]: !prev[catKey]
+        }));
+    };
+
+    const toggleProductMinimized = (productId: string) => {
+        setMinimizedProductIds(prev => ({
+            ...prev,
+            [productId]: !prev[productId]
+        }));
+    };
+
+    const minimizeAllProducts = (list: Product[]) => {
+        const next: Record<string, boolean> = { ...minimizedProductIds };
+        list.forEach(p => { next[p.id] = true; });
+        setMinimizedProductIds(next);
+    };
+
+    const maximizeAllProducts = () => {
+        setMinimizedProductIds({});
+        setCollapsedCategoryIds({});
+    };
+
+    const collapseAllCategories = (subcats: { id: number }[]) => {
+        const next: Record<string | number, boolean> = {};
+        subcats.forEach(s => { next[s.id] = true; });
+        next['unassigned'] = true;
+        setCollapsedCategoryIds(next);
+    };
+
+    const expandAllCategories = () => {
+        setCollapsedCategoryIds({});
+    };
+
+    const selectOnlyProductToMaximize = (targetProductId: string, list: Product[]) => {
+        if (!targetProductId) return;
+        const target = list.find(p => p.id === targetProductId);
+        const nextMin: Record<string, boolean> = {};
+        list.forEach(p => {
+            nextMin[p.id] = p.id !== targetProductId;
+        });
+        setMinimizedProductIds(nextMin);
+        if (target && target.subcategoria_id !== undefined) {
+            setCollapsedCategoryIds(prev => ({
+                ...prev,
+                [target.subcategoria_id!]: false
+            }));
         }
     };
 
@@ -2814,24 +2868,96 @@ export default function AdminPage() {
                                 </div>
                             )}
 
-                            {/* Search in active section */}
-                            <div className={`p-4 rounded-2xl ${bgCard} border ${borderDefault} shadow-xs flex items-center gap-3`}>
-                                <Search size={17} className="text-gray-400" />
-                                <input
-                                    type="text"
-                                    placeholder={`Buscar producto en ${currentCatInfo?.title}${selectedSubcatObj ? ` › ${selectedSubcatObj.name}` : ''}...`}
-                                    value={productSearch}
-                                    onChange={(e) => setProductSearch(e.target.value)}
-                                    className={`w-full outline-none text-xs sm:text-sm font-medium ${isDark ? 'bg-transparent text-white' : 'bg-transparent text-gray-900'}`}
-                                />
-                                {activeSubcategory !== 'all' && (
-                                    <button
-                                        type="button"
-                                        onClick={() => setActiveSubcategory('all')}
-                                        className="px-3 py-1 rounded-xl bg-gray-100 dark:bg-white/10 text-xs font-bold text-gray-600 dark:text-gray-300 shrink-0 hover:bg-gray-200"
-                                    >
-                                        Ver todas las categorías
-                                    </button>
+                            {/* Search & Minimize / Maximize Control Bar */}
+                            <div className={`p-4 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs space-y-3`}>
+                                <div className="flex items-center gap-3">
+                                    <Search size={17} className="text-gray-400 shrink-0" />
+                                    <input
+                                        type="text"
+                                        placeholder={`Buscar producto en ${currentCatInfo?.title}${selectedSubcatObj ? ` › ${selectedSubcatObj.name}` : ''}...`}
+                                        value={productSearch}
+                                        onChange={(e) => setProductSearch(e.target.value)}
+                                        className={`w-full outline-none text-xs sm:text-sm font-medium ${isDark ? 'bg-transparent text-white' : 'bg-transparent text-gray-900'}`}
+                                    />
+                                    {activeSubcategory !== 'all' && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveSubcategory('all')}
+                                            className="px-3 py-1 rounded-xl bg-gray-100 dark:bg-white/10 text-xs font-bold text-gray-600 dark:text-gray-300 shrink-0 hover:bg-gray-200"
+                                        >
+                                            Ver todas las categorías
+                                        </button>
+                                    )}
+                                </div>
+
+                                {/* Minimize / Maximize Products & Categories Toolbar */}
+                                {sectionProducts.length > 0 && (
+                                    <div className="pt-3 border-t border-gray-100 dark:border-white/10 flex flex-col lg:flex-row lg:items-center justify-between gap-2.5 text-xs">
+                                        <div className="flex items-center gap-2 flex-1 max-w-md">
+                                            <Eye size={14} className="text-[#D86A33] shrink-0" />
+                                            <select
+                                                defaultValue=""
+                                                onChange={(e) => {
+                                                    if (e.target.value) {
+                                                        selectOnlyProductToMaximize(e.target.value, sectionProducts);
+                                                    }
+                                                }}
+                                                className={`w-full px-3 py-1.5 rounded-xl border text-xs font-bold outline-none cursor-pointer ${inputStyle}`}
+                                            >
+                                                <option value="">Seleccionar producto para visualizar (minimiza el resto)...</option>
+                                                {sectionProducts.map(p => {
+                                                    const scName = subcats.find(s => s.id === Number(p.subcategoria_id))?.name || 'General';
+                                                    return (
+                                                        <option key={p.id} value={p.id}>
+                                                            {p.name} ({scName}) — ${p.price.toFixed(2)}
+                                                        </option>
+                                                    );
+                                                })}
+                                            </select>
+                                        </div>
+
+                                        <div className="flex flex-wrap items-center gap-1.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => minimizeAllProducts(sectionProducts)}
+                                                className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#5F2142] text-gray-700 dark:text-gray-200 font-bold text-[11px] inline-flex items-center gap-1 bg-gray-50 dark:bg-white/5 transition-all"
+                                                title="Minimizar las filas de todos los productos"
+                                            >
+                                                <ChevronUp size={13} />
+                                                <span>Minimizar Productos ▲</span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={maximizeAllProducts}
+                                                className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-[#5F2142] dark:text-[#FFC99C] font-black text-[11px] inline-flex items-center gap-1 bg-gray-50 dark:bg-white/5 transition-all"
+                                                title="Maximizar todos los productos y categorías"
+                                            >
+                                                <ChevronDown size={13} />
+                                                <span>Maximizar Productos ▼</span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={() => collapseAllCategories(subcats)}
+                                                className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#5F2142] text-gray-600 dark:text-gray-300 font-bold text-[11px] inline-flex items-center gap-1 bg-white dark:bg-neutral-800 transition-all"
+                                                title="Contraer todos los bloques de categoría"
+                                            >
+                                                <ChevronUp size={13} />
+                                                <span>Minimizar Categorías</span>
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                onClick={expandAllCategories}
+                                                className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-gray-600 dark:text-gray-300 font-bold text-[11px] inline-flex items-center gap-1 bg-white dark:bg-neutral-800 transition-all"
+                                                title="Expandir todos los bloques de categoría"
+                                            >
+                                                <ChevronDown size={13} />
+                                                <span>Maximizar Categorías</span>
+                                            </button>
+                                        </div>
+                                    </div>
                                 )}
                             </div>
 
@@ -2851,143 +2977,254 @@ export default function AdminPage() {
                                 </div>
                             ) : (
                                 <div className="space-y-6">
-                                    {subcatGroups.map(({ sub, items }) => (
-                                        <div key={sub.id} className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden`}>
-                                            {/* Category Group Header */}
-                                            <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/3 flex flex-wrap items-center justify-between gap-3">
-                                                <div className="flex flex-wrap items-center gap-2">
-                                                    <span className="px-3 py-1 rounded-full bg-[#5F2142] text-[#FFC99C] text-[11px] font-black uppercase tracking-wider">
-                                                        {currentCatInfo?.title}
-                                                    </span>
-                                                    <span className="text-[#D86A33] font-black">›</span>
-                                                    <h3 className="font-black text-sm sm:text-base text-[#5F2142] dark:text-[#FFC99C]">
-                                                        Categoría: <span className="text-[#D86A33]">{sub.name}</span>
-                                                    </h3>
-                                                    <span className="px-2.5 py-0.5 rounded-full bg-[#D86A33]/10 text-[#D86A33] text-xs font-black">
-                                                        {items.length} {items.length === 1 ? 'producto creado' : 'productos creados'}
-                                                    </span>
+                                    {subcatGroups.map(({ sub, items }) => {
+                                        const isCatCollapsed = Boolean(collapsedCategoryIds[sub.id]);
+                                        return (
+                                            <div key={sub.id} className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden transition-all`}>
+                                                {/* Category Group Header */}
+                                                <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/3 flex flex-wrap items-center justify-between gap-3">
+                                                    <div
+                                                        onClick={() => toggleCategoryCollapsed(sub.id)}
+                                                        className="flex flex-wrap items-center gap-2 cursor-pointer select-none"
+                                                        title={isCatCollapsed ? 'Haz clic para maximizar esta categoría' : 'Haz clic para minimizar esta categoría'}
+                                                    >
+                                                        <span className="px-3 py-1 rounded-full bg-[#5F2142] text-[#FFC99C] text-[11px] font-black uppercase tracking-wider">
+                                                            {currentCatInfo?.title}
+                                                        </span>
+                                                        <span className="text-[#D86A33] font-black">›</span>
+                                                        <h3 className="font-black text-sm sm:text-base text-[#5F2142] dark:text-[#FFC99C]">
+                                                            Categoría: <span className="text-[#D86A33]">{sub.name}</span>
+                                                        </h3>
+                                                        <span className="px-2.5 py-0.5 rounded-full bg-[#D86A33]/10 text-[#D86A33] text-xs font-black">
+                                                            {items.length} {items.length === 1 ? 'producto creado' : 'productos creados'}
+                                                        </span>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-2">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => toggleCategoryCollapsed(sub.id)}
+                                                            className={`px-3 py-1.5 rounded-xl font-black text-[11px] inline-flex items-center gap-1 transition-all border ${
+                                                                isCatCollapsed
+                                                                    ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-2xs'
+                                                                    : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
+                                                            }`}
+                                                        >
+                                                            {isCatCollapsed ? (
+                                                                <>
+                                                                    <ChevronDown size={13} />
+                                                                    <span>Maximizar ▼</span>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <ChevronUp size={13} />
+                                                                    <span>Minimizar ▲</span>
+                                                                </>
+                                                            )}
+                                                        </button>
+
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => openCreateProductModal(sub.id)}
+                                                            className="px-3.5 py-1.5 rounded-xl bg-[#D86A33] hover:bg-[#c25925] text-white text-[11px] font-black inline-flex items-center gap-1 shadow-2xs transition-all"
+                                                        >
+                                                            <Plus size={13} />
+                                                            <span>Agregar en {sub.name}</span>
+                                                        </button>
+                                                    </div>
                                                 </div>
 
-                                                <button
-                                                    type="button"
-                                                    onClick={() => openCreateProductModal(sub.id)}
-                                                    className="px-3.5 py-1.5 rounded-xl bg-[#D86A33] hover:bg-[#c25925] text-white text-[11px] font-black inline-flex items-center gap-1 shadow-2xs transition-all"
-                                                >
-                                                    <Plus size={13} />
-                                                    <span>Agregar en {sub.name}</span>
-                                                </button>
-                                            </div>
+                                                {!isCatCollapsed && (
+                                                    items.length === 0 ? (
+                                                        <div className="p-8 text-center text-xs text-gray-400">
+                                                            Aún no hay productos en la categoría <strong>{sub.name}</strong>.
+                                                        </div>
+                                                    ) : (
+                                                        <div className="overflow-x-auto divide-y divide-gray-100 dark:divide-white/10">
+                                                            <table className="w-full text-left border-collapse text-xs">
+                                                                <thead>
+                                                                    <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/40 dark:bg-white/2">
+                                                                        <th className="py-3 px-5">Producto Creado & Fotos</th>
+                                                                        <th className="py-3 px-5">Sección & Categoría Especificada</th>
+                                                                        <th className="py-3 px-5 text-center">Stock</th>
+                                                                        <th className="py-3 px-5">Precio ($ / Bs.)</th>
+                                                                        <th className="py-3 px-5 text-right">Acciones</th>
+                                                                    </tr>
+                                                                </thead>
+                                                                <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                                                    {items.map(p => {
+                                                                        const imgs = parseImages(p.image_url);
+                                                                        const firstImg = imgs[0] || '/cat_gorros.png';
+                                                                        const pSubcats = CATEGORIES[p.categoria_slug]?.subcategories || [];
+                                                                        const isProdMinimized = Boolean(minimizedProductIds[p.id]);
 
-                                            {items.length === 0 ? (
-                                                <div className="p-8 text-center text-xs text-gray-400">
-                                                    Aún no hay productos en la categoría <strong>{sub.name}</strong>.
-                                                </div>
-                                            ) : (
-                                                <div className="overflow-x-auto divide-y divide-gray-100 dark:divide-white/10">
-                                                    <table className="w-full text-left border-collapse text-xs">
-                                                        <thead>
-                                                            <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/40 dark:bg-white/2">
-                                                                <th className="py-3 px-5">Producto Creado & Fotos</th>
-                                                                <th className="py-3 px-5">Sección & Categoría Especificada</th>
-                                                                <th className="py-3 px-5 text-center">Stock</th>
-                                                                <th className="py-3 px-5">Precio ($ / Bs.)</th>
-                                                                <th className="py-3 px-5 text-right">Acciones</th>
-                                                            </tr>
-                                                        </thead>
-                                                        <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                                                            {items.map(p => {
-                                                                const imgs = parseImages(p.image_url);
-                                                                const firstImg = imgs[0] || '/cat_gorros.png';
-                                                                const pSubcats = CATEGORIES[p.categoria_slug]?.subcategories || [];
-                                                                return (
-                                                                    <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
-                                                                        <td className="py-3.5 px-5">
-                                                                            <div className="flex items-center gap-3">
-                                                                                <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-white/10 overflow-hidden shrink-0 relative flex items-center justify-center border border-gray-200 dark:border-white/10">
-                                                                                    <img src={firstImg} alt={p.name} className="w-full h-full object-cover" />
-                                                                                    {imgs.length > 1 && (
-                                                                                        <span className="absolute bottom-0 right-0 bg-[#5F2142] text-white text-[9px] font-black px-1 rounded-tl">
-                                                                                            +{imgs.length}
-                                                                                        </span>
-                                                                                    )}
-                                                                                </div>
-                                                                                <div>
-                                                                                    <div className="font-black text-gray-900 dark:text-white text-xs sm:text-sm">{p.name}</div>
-                                                                                    <div className="text-[11px] text-gray-500 line-clamp-1 max-w-md">{p.description}</div>
-                                                                                    <div className="flex items-center gap-1.5 mt-1">
-                                                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#5F2142]/10 text-[#5F2142] dark:bg-[#FFC99C]/10 dark:text-[#FFC99C]">
-                                                                                            {CATEGORIES[p.categoria_slug]?.title}
-                                                                                        </span>
+                                                                        if (isProdMinimized) {
+                                                                            return (
+                                                                                <tr
+                                                                                    key={p.id}
+                                                                                    className="bg-gray-50/40 dark:bg-white/2 hover:bg-gray-100/60 dark:hover:bg-white/5 transition-colors"
+                                                                                >
+                                                                                    <td className="py-2 px-5">
+                                                                                        <div
+                                                                                            onClick={() => toggleProductMinimized(p.id)}
+                                                                                            className="flex items-center gap-2.5 cursor-pointer"
+                                                                                        >
+                                                                                            <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/10 overflow-hidden shrink-0 border border-gray-200 dark:border-white/10">
+                                                                                                <img src={firstImg} alt={p.name} className="w-full h-full object-cover" />
+                                                                                            </div>
+                                                                                            <span className="font-black text-gray-900 dark:text-white text-xs">
+                                                                                                {p.name}
+                                                                                            </span>
+                                                                                        </div>
+                                                                                    </td>
+
+                                                                                    <td className="py-2 px-5 whitespace-nowrap">
                                                                                         <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#D86A33]/15 text-[#D86A33]">
                                                                                             ✦ {sub.name}
                                                                                         </span>
+                                                                                    </td>
+
+                                                                                    <td className="py-2 px-5 text-center whitespace-nowrap">
+                                                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                                                                            {p.stock !== undefined ? p.stock : 20} uds
+                                                                                        </span>
+                                                                                    </td>
+
+                                                                                    <td className="py-2 px-5 whitespace-nowrap font-black text-xs text-[#5F2142] dark:text-[#FFC99C]">
+                                                                                        ${p.price.toFixed(2)} USD
+                                                                                    </td>
+
+                                                                                    <td className="py-2 px-5 text-right whitespace-nowrap">
+                                                                                        <div className="inline-flex items-center gap-1.5">
+                                                                                            <button
+                                                                                                type="button"
+                                                                                                onClick={() => toggleProductMinimized(p.id)}
+                                                                                                className="px-2.5 py-1 rounded-xl bg-[#5F2142] text-white text-[10px] font-black inline-flex items-center gap-1 shadow-2xs hover:bg-[#481831] transition-all"
+                                                                                                title="Maximizar detalles de este producto"
+                                                                                            >
+                                                                                                <ChevronDown size={11} />
+                                                                                                <span>Maximizar ▼</span>
+                                                                                            </button>
+                                                                                            <button
+                                                                                                onClick={() => openEditProductModal(p)}
+                                                                                                className="w-7 h-7 rounded-full border border-gray-200 dark:border-white/10 hover:border-[#D86A33] hover:text-[#D86A33] flex items-center justify-center transition-all bg-white dark:bg-transparent"
+                                                                                                title="Editar producto"
+                                                                                            >
+                                                                                                <Edit2 size={12} />
+                                                                                            </button>
+                                                                                            <button
+                                                                                                onClick={() => setDeleteConfirmId(p.id)}
+                                                                                                className="w-7 h-7 rounded-full border border-red-200 dark:border-red-900/40 text-red-600 hover:bg-red-50 flex items-center justify-center transition-all bg-white dark:bg-transparent"
+                                                                                                title="Eliminar producto"
+                                                                                            >
+                                                                                                <Trash2 size={12} />
+                                                                                            </button>
+                                                                                        </div>
+                                                                                    </td>
+                                                                                </tr>
+                                                                            );
+                                                                        }
+
+                                                                        return (
+                                                                            <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
+                                                                                <td className="py-3.5 px-5">
+                                                                                    <div className="flex items-center gap-3">
+                                                                                        <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-white/10 overflow-hidden shrink-0 relative flex items-center justify-center border border-gray-200 dark:border-white/10">
+                                                                                            <img src={firstImg} alt={p.name} className="w-full h-full object-cover" />
+                                                                                            {imgs.length > 1 && (
+                                                                                                <span className="absolute bottom-0 right-0 bg-[#5F2142] text-white text-[9px] font-black px-1 rounded-tl">
+                                                                                                    +{imgs.length}
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        <div>
+                                                                                            <div className="font-black text-gray-900 dark:text-white text-xs sm:text-sm">{p.name}</div>
+                                                                                            <div className="text-[11px] text-gray-500 line-clamp-1 max-w-md">{p.description}</div>
+                                                                                            <div className="flex items-center gap-1.5 mt-1">
+                                                                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#5F2142]/10 text-[#5F2142] dark:bg-[#FFC99C]/10 dark:text-[#FFC99C]">
+                                                                                                    {CATEGORIES[p.categoria_slug]?.title}
+                                                                                                </span>
+                                                                                                <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#D86A33]/15 text-[#D86A33]">
+                                                                                                    ✦ {sub.name}
+                                                                                                </span>
+                                                                                            </div>
+                                                                                        </div>
                                                                                     </div>
-                                                                                </div>
-                                                                            </div>
-                                                                        </td>
+                                                                                </td>
 
-                                                                        <td className="py-3.5 px-5 whitespace-nowrap">
-                                                                            <div className="space-y-1">
-                                                                                <span className="block text-[10px] font-bold uppercase text-gray-400">
-                                                                                    {CATEGORIES[p.categoria_slug]?.title} › Categoría:
-                                                                                </span>
-                                                                                <select
-                                                                                    value={p.subcategoria_id || ''}
-                                                                                    onChange={(e) => handleChangeProductSubcategory(p, Number(e.target.value))}
-                                                                                    className={`px-3 py-1.5 rounded-xl border text-xs font-black outline-none cursor-pointer transition-all hover:border-[#D86A33] ${inputStyle}`}
-                                                                                    title="Cambiar categoría especificada de este producto"
-                                                                                >
-                                                                                    {pSubcats.map(sc => (
-                                                                                        <option key={sc.id} value={sc.id}>
-                                                                                            {sc.name}
-                                                                                        </option>
-                                                                                    ))}
-                                                                                </select>
-                                                                            </div>
-                                                                        </td>
+                                                                                <td className="py-3.5 px-5 whitespace-nowrap">
+                                                                                    <div className="space-y-1">
+                                                                                        <span className="block text-[10px] font-bold uppercase text-gray-400">
+                                                                                            {CATEGORIES[p.categoria_slug]?.title} › Categoría:
+                                                                                        </span>
+                                                                                        <select
+                                                                                            value={p.subcategoria_id || ''}
+                                                                                            onChange={(e) => handleChangeProductSubcategory(p, Number(e.target.value))}
+                                                                                            className={`px-3 py-1.5 rounded-xl border text-xs font-black outline-none cursor-pointer transition-all hover:border-[#D86A33] ${inputStyle}`}
+                                                                                            title="Cambiar categoría especificada de este producto"
+                                                                                        >
+                                                                                            {pSubcats.map(sc => (
+                                                                                                <option key={sc.id} value={sc.id}>
+                                                                                                    {sc.name}
+                                                                                                </option>
+                                                                                            ))}
+                                                                                        </select>
+                                                                                    </div>
+                                                                                </td>
 
-                                                                        <td className="py-3.5 px-5 text-center whitespace-nowrap">
-                                                                            <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                                                                                {p.stock !== undefined ? p.stock : 20} uds
-                                                                            </span>
-                                                                        </td>
+                                                                                <td className="py-3.5 px-5 text-center whitespace-nowrap">
+                                                                                    <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                                                                        {p.stock !== undefined ? p.stock : 20} uds
+                                                                                    </span>
+                                                                                </td>
 
-                                                                        <td className="py-3.5 px-5 whitespace-nowrap">
-                                                                            <div className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
-                                                                                ${p.price.toFixed(2)} USD
-                                                                            </div>
-                                                                            <div className="text-[10px] font-bold text-[#D86A33]">
-                                                                                {(p.price * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs.
-                                                                            </div>
-                                                                        </td>
+                                                                                <td className="py-3.5 px-5 whitespace-nowrap">
+                                                                                    <div className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
+                                                                                        ${p.price.toFixed(2)} USD
+                                                                                    </div>
+                                                                                    <div className="text-[10px] font-bold text-[#D86A33]">
+                                                                                        {(p.price * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs.
+                                                                                    </div>
+                                                                                </td>
 
-                                                                        <td className="py-3.5 px-5 text-right whitespace-nowrap">
-                                                                            <div className="inline-flex items-center gap-2">
-                                                                                <button
-                                                                                    onClick={() => openEditProductModal(p)}
-                                                                                    className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/10 hover:border-[#D86A33] hover:text-[#D86A33] flex items-center justify-center transition-all bg-white dark:bg-transparent"
-                                                                                    title="Editar producto y categoría"
-                                                                                >
-                                                                                    <Edit2 size={13} />
-                                                                                </button>
-                                                                                <button
-                                                                                    onClick={() => setDeleteConfirmId(p.id)}
-                                                                                    className="w-8 h-8 rounded-full border border-red-200 dark:border-red-900/40 text-red-600 hover:bg-red-50 flex items-center justify-center transition-all bg-white dark:bg-transparent"
-                                                                                    title="Eliminar producto"
-                                                                                >
-                                                                                    <Trash2 size={13} />
-                                                                                </button>
-                                                                            </div>
-                                                                        </td>
-                                                                    </tr>
-                                                                );
-                                                            })}
-                                                        </tbody>
-                                                    </table>
-                                                </div>
-                                            )}
-                                        </div>
-                                    ))}
+                                                                                <td className="py-3.5 px-5 text-right whitespace-nowrap">
+                                                                                    <div className="inline-flex items-center gap-2">
+                                                                                        <button
+                                                                                            type="button"
+                                                                                            onClick={() => toggleProductMinimized(p.id)}
+                                                                                            className="px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#5F2142] text-gray-600 dark:text-gray-300 text-[10px] font-black inline-flex items-center gap-1 bg-white dark:bg-neutral-800 transition-all"
+                                                                                            title="Minimizar este producto"
+                                                                                        >
+                                                                                            <ChevronUp size={12} />
+                                                                                            <span>Minimizar ▲</span>
+                                                                                        </button>
+                                                                                        <button
+                                                                                            onClick={() => openEditProductModal(p)}
+                                                                                            className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/10 hover:border-[#D86A33] hover:text-[#D86A33] flex items-center justify-center transition-all bg-white dark:bg-transparent"
+                                                                                            title="Editar producto y categoría"
+                                                                                        >
+                                                                                            <Edit2 size={13} />
+                                                                                        </button>
+                                                                                        <button
+                                                                                            onClick={() => setDeleteConfirmId(p.id)}
+                                                                                            className="w-8 h-8 rounded-full border border-red-200 dark:border-red-900/40 text-red-600 hover:bg-red-50 flex items-center justify-center transition-all bg-white dark:bg-transparent"
+                                                                                            title="Eliminar producto"
+                                                                                        >
+                                                                                            <Trash2 size={13} />
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </td>
+                                                                            </tr>
+                                                                        );
+                                                                    })}
+                                                                </tbody>
+                                                            </table>
+                                                        </div>
+                                                    )
+                                                )}
+                                            </div>
+                                        );
+                                    })}
 
                                     {/* Fallback block if any product in this section has no subcategory assigned */}
                                     {unassignedItems.length > 0 && (
@@ -4806,6 +5043,27 @@ export default function AdminPage() {
                                 )}
 
                                 <div className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden`}>
+                                    <div className="px-5 py-3 border-b border-gray-100 dark:border-white/10 flex flex-wrap items-center justify-between gap-2 bg-gray-50/40 dark:bg-white/2">
+                                        <span className="text-xs font-black text-[#5F2142] dark:text-[#FFC99C]">
+                                            {CATEGORIES[activeSection]?.title} ({sectionProducts.length} productos)
+                                        </span>
+                                        <div className="flex items-center gap-1.5">
+                                            <button
+                                                type="button"
+                                                onClick={() => minimizeAllProducts(sectionProducts)}
+                                                className="px-2.5 py-1 rounded-xl border border-gray-200 dark:border-white/10 text-[10px] font-black text-gray-600 dark:text-gray-300 inline-flex items-center gap-1 bg-white dark:bg-neutral-800 hover:border-[#5F2142]"
+                                            >
+                                                <ChevronUp size={11} /> Minimizar Todo ▲
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={maximizeAllProducts}
+                                                className="px-2.5 py-1 rounded-xl border border-gray-200 dark:border-white/10 text-[10px] font-black text-[#5F2142] dark:text-[#FFC99C] inline-flex items-center gap-1 bg-white dark:bg-neutral-800 hover:border-[#D86A33]"
+                                            >
+                                                <ChevronDown size={11} /> Maximizar Todo ▼
+                                            </button>
+                                        </div>
+                                    </div>
                                     <div className="overflow-x-auto divide-y divide-gray-100 dark:divide-white/10">
                                         <table className="w-full text-left border-collapse text-xs">
                                             <thead>
@@ -4822,6 +5080,62 @@ export default function AdminPage() {
                                                     const imgs = parseImages(p.image_url);
                                                     const pSubcats = CATEGORIES[p.categoria_slug]?.subcategories || [];
                                                     const currentSubName = pSubcats.find(s => s.id === Number(p.subcategoria_id))?.name || 'General';
+                                                    const isProdMin = Boolean(minimizedProductIds[p.id]);
+
+                                                    if (isProdMin) {
+                                                        return (
+                                                            <tr key={p.id} className="bg-gray-50/40 dark:bg-white/2 hover:bg-gray-100/50 dark:hover:bg-white/5">
+                                                                <td className="py-2 px-5 font-bold text-gray-900 dark:text-white">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => toggleProductMinimized(p.id)}
+                                                                        className="text-left hover:text-[#D86A33] font-black"
+                                                                    >
+                                                                        {p.name}
+                                                                    </button>
+                                                                </td>
+                                                                <td className="py-2 px-5">
+                                                                    <span className="text-[10px] font-black px-2 py-0.5 rounded bg-[#D86A33]/15 text-[#D86A33]">
+                                                                        ✦ {currentSubName}
+                                                                    </span>
+                                                                </td>
+                                                                <td className="py-2 px-5 text-center">
+                                                                    <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-300">
+                                                                        {p.stock !== undefined ? p.stock : 20} uds
+                                                                    </span>
+                                                                </td>
+                                                                <td className="py-2 px-5 font-black text-xs text-[#5F2142] dark:text-[#FFC99C]">
+                                                                    ${p.price.toFixed(2)} USD
+                                                                </td>
+                                                                <td className="py-2 px-5 text-right whitespace-nowrap">
+                                                                    <div className="inline-flex items-center gap-1.5">
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => toggleProductMinimized(p.id)}
+                                                                            className="px-2 py-1 rounded-lg bg-[#5F2142] text-white text-[10px] font-black inline-flex items-center gap-1"
+                                                                        >
+                                                                            <ChevronDown size={11} /> Maximizar ▼
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => openEditProductModal(p)}
+                                                                            className="p-1.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-[#D86A33]"
+                                                                            title="Editar producto"
+                                                                        >
+                                                                            <Edit2 size={12} />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setDeleteConfirmId(p.id)}
+                                                                            className="p-1.5 rounded-xl border border-red-200 dark:border-red-900/40 text-red-600 hover:bg-red-50"
+                                                                            title="Eliminar producto"
+                                                                        >
+                                                                            <Trash2 size={12} />
+                                                                        </button>
+                                                                    </div>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    }
+
                                                     return (
                                                         <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5">
                                                             <td className="py-3 px-5">
@@ -4866,6 +5180,14 @@ export default function AdminPage() {
                                                             </td>
                                                             <td className="py-3 px-5 text-right whitespace-nowrap">
                                                                 <div className="inline-flex items-center gap-1.5">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => toggleProductMinimized(p.id)}
+                                                                        className="px-2 py-1 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#5F2142] text-gray-600 dark:text-gray-300 text-[10px] font-black inline-flex items-center gap-1"
+                                                                        title="Minimizar este producto"
+                                                                    >
+                                                                        <ChevronUp size={11} /> Minimizar ▲
+                                                                    </button>
                                                                     <button
                                                                         onClick={() => openEditProductModal(p)}
                                                                         className="p-1.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-[#D86A33]"
