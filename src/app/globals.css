@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
     --brand-bg: #FFFFFF;
@@ -123,4 +124,106 @@ body {
 }
 ::-webkit-scrollbar-thumb:hover {
     background: #5F2142;
+}
+
+/* =========================================================
+   ADMIN DARK MODE: High-Contrast Pure White Text & Numbers
+   ========================================================= */
+.admin-dark-mode {
+    color: #FFFFFF !important;
+    color-scheme: dark;
+}
+
+.admin-dark-mode h1,
+.admin-dark-mode h2,
+.admin-dark-mode h3,
+.admin-dark-mode h4,
+.admin-dark-mode h5,
+.admin-dark-mode h6,
+.admin-dark-mode p,
+.admin-dark-mode span,
+.admin-dark-mode div,
+.admin-dark-mode label,
+.admin-dark-mode th,
+.admin-dark-mode td,
+.admin-dark-mode strong,
+.admin-dark-mode b,
+.admin-dark-mode i,
+.admin-dark-mode li,
+.admin-dark-mode a,
+.admin-dark-mode button {
+    color: #FFFFFF !important;
+}
+
+.admin-dark-mode input:not([type="color"]),
+.admin-dark-mode select,
+.admin-dark-mode textarea,
+.admin-dark-mode option {
+    background-color: #170e17 !important;
+    color: #FFFFFF !important;
+    border-color: rgba(255, 255, 255, 0.22) !important;
+}
+
+.admin-dark-mode input::placeholder,
+.admin-dark-mode textarea::placeholder {
+    color: rgba(255, 255, 255, 0.65) !important;
+}
+
+/* Ensure any light surfaces inside dark admin become dark so white text is always readable */
+.admin-dark-mode .bg-white,
+.admin-dark-mode .bg-\[\#FFF9F5\],
+.admin-dark-mode .bg-\[\#FFF4EB\],
+.admin-dark-mode .bg-\[\#FFF4EB\]\/60,
+.admin-dark-mode .bg-gray-50,
+.admin-dark-mode .bg-gray-50\/50,
+.admin-dark-mode .bg-gray-50\/60,
+.admin-dark-mode .bg-gray-100,
+.admin-dark-mode .bg-gray-200 {
+    background-color: #231623 !important;
+    color: #FFFFFF !important;
+}
+
+/* Pastel status badges in dark mode -> rich dark translucent surfaces with crisp white text */
+.admin-dark-mode .bg-emerald-50,
+.admin-dark-mode .bg-emerald-100 {
+    background-color: rgba(16, 185, 129, 0.25) !important;
+    border-color: rgba(16, 185, 129, 0.45) !important;
+    color: #FFFFFF !important;
+}
+
+.admin-dark-mode .bg-amber-50,
+.admin-dark-mode .bg-amber-100 {
+    background-color: rgba(245, 158, 11, 0.25) !important;
+    border-color: rgba(245, 158, 11, 0.45) !important;
+    color: #FFFFFF !important;
+}
+
+.admin-dark-mode .bg-red-50,
+.admin-dark-mode .bg-red-100 {
+    background-color: rgba(239, 68, 68, 0.25) !important;
+    border-color: rgba(239, 68, 68, 0.45) !important;
+    color: #FFFFFF !important;
+}
+
+.admin-dark-mode .bg-blue-50,
+.admin-dark-mode .bg-blue-100,
+.admin-dark-mode .bg-indigo-100 {
+    background-color: rgba(59, 130, 246, 0.25) !important;
+    border-color: rgba(59, 130, 246, 0.45) !important;
+    color: #FFFFFF !important;
+}
+
+.admin-dark-mode .bg-purple-50,
+.admin-dark-mode .bg-purple-100 {
+    background-color: rgba(168, 85, 247, 0.25) !important;
+    border-color: rgba(168, 85, 247, 0.45) !important;
+    color: #FFFFFF !important;
+}
+
+.admin-dark-mode .bg-cyan-50,
+.admin-dark-mode .bg-cyan-100,
+.admin-dark-mode .bg-orange-100 {
+    background-color: rgba(6, 182, 212, 0.25) !important;
+    border-color: rgba(6, 182, 212, 0.45) !important;
+    color: #FFFFFF !important;
 }

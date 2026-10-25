@@ -1561,13 +1561,13 @@ export default function AdminPage() {
     });
 
     // Theme Classes
-    const bgMain = isDark ? 'bg-[#130d13] text-[#f5edf4]' : 'bg-[#FFF9F5] text-gray-900';
-    const bgSidebar = isDark ? 'bg-[#1b121b] border-[#362132]' : 'bg-white border-gray-200';
-    const bgCard = isDark ? 'bg-[#201520] border-[#3e273b]' : 'bg-white border-gray-200';
-    const bgSubCard = isDark ? 'bg-[#170e17] border-[#382234]' : 'bg-[#FFF9F5] border-[#FFC99C]/50';
+    const bgMain = isDark ? 'dark admin-dark-mode bg-[#130d13] text-white' : 'bg-[#FFF9F5] text-gray-900';
+    const bgSidebar = isDark ? 'bg-[#1b121b] border-[#362132] text-white' : 'bg-white border-gray-200';
+    const bgCard = isDark ? 'bg-[#201520] border-[#3e273b] text-white' : 'bg-white border-gray-200';
+    const bgSubCard = isDark ? 'bg-[#170e17] border-[#382234] text-white' : 'bg-[#FFF9F5] border-[#FFC99C]/50';
     const borderDefault = isDark ? 'border-[#382234]' : 'border-gray-200';
     const inputStyle = isDark 
-        ? 'bg-[#170e17] border-[#382234] text-white focus:border-[#D86A33] placeholder-gray-500' 
+        ? 'bg-[#170e17] border-[#382234] text-white focus:border-[#D86A33] placeholder-white/60' 
         : 'bg-white border-gray-200 text-gray-900 focus:border-[#D86A33]';
 
     return (
@@ -1590,7 +1590,7 @@ export default function AdminPage() {
                     >
                         <Menu size={20} />
                     </button>
-                    <img src="/logo-wine.png" alt="BOHEME" className="h-8 w-auto object-contain" />
+                    <img src={isDark ? '/logo-white.png' : '/logo-wine.png'} alt="BOHEME" className="h-8 w-auto object-contain" />
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -1598,7 +1598,7 @@ export default function AdminPage() {
                         onClick={toggleDarkMode}
                         className="p-2 rounded-xl border border-gray-200 dark:border-white/10"
                     >
-                        {isDark ? <Sun size={17} className="text-[#FFC99C]" /> : <Moon size={17} className="text-[#5F2142]" />}
+                        {isDark ? <Sun size={17} className="text-white" /> : <Moon size={17} className="text-[#5F2142]" />}
                     </button>
                 </div>
             </div>
@@ -1613,7 +1613,7 @@ export default function AdminPage() {
                     {/* Brand Logo & Admin Badge */}
                     <div className="flex items-center justify-between pb-4 border-b border-gray-100 dark:border-white/10">
                         <Link href="/admin" className="flex items-center gap-2">
-                            <img src="/logo-wine.png" alt="BOHEME" className="h-9 w-auto object-contain" />
+                            <img src={isDark ? '/logo-white.png' : '/logo-wine.png'} alt="BOHEME" className="h-9 w-auto object-contain" />
                         </Link>
                         <button 
                             onClick={() => setSidebarOpen(false)}
