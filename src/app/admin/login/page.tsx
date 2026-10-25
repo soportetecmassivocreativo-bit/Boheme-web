@@ -7,8 +7,8 @@ import Link from 'next/link';
 
 export default function AdminLoginPage() {
     const router = useRouter();
-    const [email, setEmail] = useState('admin@boheme.com');
-    const [password, setPassword] = useState('boheme2026');
+    const [email, setEmail] = useState('');
+    const [password, setPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -93,10 +93,10 @@ export default function AdminLoginPage() {
                                 <input
                                     type="email"
                                     required
+                                    autoComplete="off"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    placeholder="admin@boheme.com"
-                                    className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm transition-all bg-[#FFF9F5]/40 text-[#5F2142] font-medium"
+                                    className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm transition-all bg-white text-[#5F2142] font-medium"
                                 />
                             </div>
                         </div>
@@ -113,10 +113,10 @@ export default function AdminLoginPage() {
                                 <input
                                     type={showPassword ? 'text' : 'password'}
                                     required
+                                    autoComplete="new-password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    placeholder="••••••••"
-                                    className="w-full pl-10 pr-11 py-3 rounded-2xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm transition-all bg-[#FFF9F5]/40 text-[#5F2142] font-medium"
+                                    className="w-full pl-10 pr-11 py-3 rounded-2xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm transition-all bg-white text-[#5F2142] font-medium"
                                 />
                                 <button
                                     type="button"
@@ -146,18 +146,6 @@ export default function AdminLoginPage() {
                             </button>
                         </div>
                     </form>
-
-                    {/* Quick Access Info for Local Dev */}
-                    <div className="mt-6 pt-5 border-t border-gray-100 bg-[#FFF9F5] -mx-4 -mb-4 sm:-mx-6 sm:-mb-6 p-4 rounded-b-3xl">
-                        <div className="flex items-center gap-1.5 text-[11px] font-black text-[#5F2142] mb-1">
-                            <Sparkles size={12} className="text-[#D86A33]" />
-                            <span>Credenciales de acceso inicial:</span>
-                        </div>
-                        <div className="text-[11px] text-gray-500 font-mono space-y-0.5">
-                            <div>Usuario: <strong className="text-[#5F2142]">admin@boheme.com</strong></div>
-                            <div>Clave: <strong className="text-[#D86A33]">boheme2026</strong></div>
-                        </div>
-                    </div>
                 </div>
 
                 {/* Back to Home Link */}
