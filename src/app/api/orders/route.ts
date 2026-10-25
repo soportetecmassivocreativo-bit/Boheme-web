@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { fetchOrders, createOrder } from '@/lib/db';
 import { getAdminSession } from '@/lib/auth';
+import { consumeNextInvoiceNumber } from '@/lib/settings';
 
 export async function GET() {
     try {
@@ -28,7 +29,11 @@ export async function POST(request: Request) {
             );
         }
 
-        const newOrder = await createOrder(body);
+        const invoiceNumber = body.numero_factura || consumeNextInvoiceNumber();
+        const newOrder = await createOrder({
+            ...body,
+            numero_factura: invoiceNumber
+        });
         return NextResponse.json({ success: true, order: newOrder }, { status: 201 });
     } catch (error: any) {
         return NextResponse.json(

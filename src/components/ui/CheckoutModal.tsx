@@ -51,9 +51,30 @@ export default function CheckoutModal() {
     const [isRefreshingBcv, setIsRefreshingBcv] = useState(false);
 
     // Dynamic Site & Payment Settings
-    const [siteSettings, setSiteSettings] = useState({
+    const [siteSettings, setSiteSettings] = useState<{
+        pagoMovil: typeof PAYMENT_INFO.pagoMovil & { activo?: boolean };
+        binance: typeof PAYMENT_INFO.binance & { payId?: string; titular?: string; activo?: boolean };
+        cuentasAdicionales?: Array<{
+            id: string;
+            tipo: string;
+            nombreMetodo: string;
+            bancoOPlataforma: string;
+            titular: string;
+            cedulaORif?: string;
+            telefono?: string;
+            numeroCuentaOCorreo: string;
+            tipoCuenta?: string;
+            moneda: 'BS' | 'USD';
+            instrucciones?: string;
+            activo: boolean;
+        }>;
+        tienda: {
+            telefonoWhatsapp: string;
+        };
+    }>({
         pagoMovil: PAYMENT_INFO.pagoMovil,
         binance: PAYMENT_INFO.binance,
+        cuentasAdicionales: [],
         tienda: {
             telefonoWhatsapp: WHATSAPP_NUMBER
         }
@@ -78,7 +99,7 @@ export default function CheckoutModal() {
     const [cedulaRetira, setCedulaRetira] = useState('');
 
     // Form: Payment Data
-    const [metodoPago, setMetodoPago] = useState<'pago_movil' | 'binance'>('pago_movil');
+    const [metodoPago, setMetodoPago] = useState<'pago_movil' | 'binance' | string>('pago_movil');
     const [bancoEmisor, setBancoEmisor] = useState('');
     const [telefonoOEmailEmisor, setTelefonoOEmailEmisor] = useState('');
     const [referenciaPago, setReferenciaPago] = useState('');
@@ -264,18 +285,26 @@ export default function CheckoutModal() {
         }
         msg += `\n`;
 
+        const activeExtraAccount = (siteSettings.cuentasAdicionales || []).find(c => c.id === metodoPago);
+
         msg += `💳 *DATOS DEL PAGO REALIZADO:*\n`;
         if (metodoPago === 'pago_movil') {
-            msg += `• *Método:* Pago Móvil (Banco de Venezuela)\n`;
+            msg += `• *Método:* Pago Móvil (${siteSettings.pagoMovil.banco})\n`;
             if (bancoEmisor.trim()) msg += `• *Banco Emisor:* ${bancoEmisor.trim()}\n`;
             msg += `• *Teléfono Emisor:* ${telefonoOEmailEmisor.trim()}\n`;
             msg += `• *Nro. de Referencia:* ${referenciaPago.trim()}\n`;
             msg += `• *Monto Transferido:* ${montoPagado.trim()}\n`;
-        } else {
+        } else if (metodoPago === 'binance') {
             msg += `• *Método:* Binance Pay (USDT)\n`;
             msg += `• *Usuario / Correo Binance:* ${telefonoOEmailEmisor.trim()}\n`;
             msg += `• *ID / TxID de Transacción:* ${referenciaPago.trim()}\n`;
-            msg += `• *Monto Transferido:* ${montoPagado.trim()} USDT\n`;
+            msg += `• *Monto Transferido:* ${montoPagado.trim()}\n`;
+        } else if (activeExtraAccount) {
+            msg += `• *Método:* ${activeExtraAccount.nombreMetodo} (${activeExtraAccount.bancoOPlataforma})\n`;
+            if (bancoEmisor.trim()) msg += `• *Banco / Plataforma Emisor:* ${bancoEmisor.trim()}\n`;
+            msg += `• *Emisor (Teléfono / Correo / Titular):* ${telefonoOEmailEmisor.trim()}\n`;
+            msg += `• *Nro. de Referencia / Comprobante:* ${referenciaPago.trim()}\n`;
+            msg += `• *Monto Transferido:* ${montoPagado.trim()}\n`;
         }
         msg += `\n━━━━━━━━━━━━━━━━━━━━━━\n`;
         msg += `📎 *Adjunto a continuación la captura del comprobante de pago.* ¡Quedo atento a la confirmación!`;
@@ -297,7 +326,8 @@ export default function CheckoutModal() {
                     ciudad: tipoEntrega === 'nacional' ? ciudad.trim() : undefined,
                     persona_retira: personaRetira.trim() || undefined,
                     cedula_retira: cedulaRetira.trim() || undefined,
-                    metodo_pago: metodoPago,
+                    metodo_pago: activeExtraAccount ? activeExtraAccount.tipo : metodoPago,
+                    nombre_metodo_pago: activeExtraAccount ? `${activeExtraAccount.nombreMetodo} (${activeExtraAccount.bancoOPlataforma})` : (metodoPago === 'pago_movil' ? `Pago Móvil (${siteSettings.pagoMovil.banco})` : 'Binance Pay (USDT)'),
                     banco_emisor: bancoEmisor.trim() || undefined,
                     telefono_o_email_emisor: telefonoOEmailEmisor.trim(),
                     referencia_pago: referenciaPago.trim(),
@@ -753,54 +783,91 @@ export default function CheckoutModal() {
                                     <span>Selecciona tu Método de Pago</span>
                                 </label>
 
-                                <div className="grid grid-cols-2 gap-3.5">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                                     {/* Pago Movil Option */}
-                                    <button
-                                        type="button"
-                                        onClick={() => { 
-                                            setMetodoPago('pago_movil'); 
-                                            setMontoPagado(`Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`); 
-                                        }}
-                                        className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                                            metodoPago === 'pago_movil'
-                                                ? 'bg-[#FFF9F5] border-[#D86A33] shadow-md shadow-[#D86A33]/15'
-                                                : 'bg-white border-gray-200 hover:border-gray-300'
-                                        }`}
-                                    >
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="font-black text-sm text-[#5F2142]">Pago Móvil</span>
-                                            {metodoPago === 'pago_movil' && (
-                                                <span className="w-5 h-5 rounded-full bg-[#D86A33] text-white flex items-center justify-center text-[10px] font-bold">
-                                                    ✓
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="text-xs text-gray-500 font-medium">Banco de Venezuela (0102)</div>
-                                    </button>
+                                    {siteSettings.pagoMovil.activo !== false && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { 
+                                                setMetodoPago('pago_movil'); 
+                                                setMontoPagado(`Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`); 
+                                            }}
+                                            className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                                                metodoPago === 'pago_movil'
+                                                    ? 'bg-[#FFF9F5] border-[#D86A33] shadow-md shadow-[#D86A33]/15'
+                                                    : 'bg-white border-gray-200 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="font-black text-sm text-[#5F2142]">Pago Móvil</span>
+                                                {metodoPago === 'pago_movil' && (
+                                                    <span className="w-5 h-5 rounded-full bg-[#D86A33] text-white flex items-center justify-center text-[10px] font-bold">
+                                                        ✓
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="text-xs text-gray-500 font-medium">{siteSettings.pagoMovil.banco}</div>
+                                        </button>
+                                    )}
 
                                     {/* Binance Option */}
-                                    <button
-                                        type="button"
-                                        onClick={() => { 
-                                            setMetodoPago('binance'); 
-                                            setMontoPagado(`$${totalUSD.toFixed(2)} USDT`); 
-                                        }}
-                                        className={`p-4 rounded-2xl border-2 text-left transition-all ${
-                                            metodoPago === 'binance'
-                                                ? 'bg-[#FFF9F5] border-[#D86A33] shadow-md shadow-[#D86A33]/15'
-                                                : 'bg-white border-gray-200 hover:border-gray-300'
-                                        }`}
-                                    >
-                                        <div className="flex items-center justify-between mb-1">
-                                            <span className="font-black text-sm text-[#5F2142]">Binance Pay</span>
-                                            {metodoPago === 'binance' && (
-                                                <span className="w-5 h-5 rounded-full bg-[#D86A33] text-white flex items-center justify-center text-[10px] font-bold">
-                                                    ✓
-                                                </span>
-                                            )}
-                                        </div>
-                                        <div className="text-xs text-gray-500 font-medium">USDT / Correo Binance</div>
-                                    </button>
+                                    {siteSettings.binance.activo !== false && (
+                                        <button
+                                            type="button"
+                                            onClick={() => { 
+                                                setMetodoPago('binance'); 
+                                                setMontoPagado(`$${totalUSD.toFixed(2)} USDT`); 
+                                            }}
+                                            className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                                                metodoPago === 'binance'
+                                                    ? 'bg-[#FFF9F5] border-[#D86A33] shadow-md shadow-[#D86A33]/15'
+                                                    : 'bg-white border-gray-200 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="font-black text-sm text-[#5F2142]">Binance Pay</span>
+                                                {metodoPago === 'binance' && (
+                                                    <span className="w-5 h-5 rounded-full bg-[#D86A33] text-white flex items-center justify-center text-[10px] font-bold">
+                                                        ✓
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="text-xs text-gray-500 font-medium">USDT / Correo Binance</div>
+                                        </button>
+                                    )}
+
+                                    {/* Additional Payment Accounts configured by Admin */}
+                                    {(siteSettings.cuentasAdicionales || []).filter(c => c.activo).map((cuenta) => (
+                                        <button
+                                            key={cuenta.id}
+                                            type="button"
+                                            onClick={() => {
+                                                setMetodoPago(cuenta.id);
+                                                if (cuenta.moneda === 'BS') {
+                                                    setMontoPagado(`Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+                                                } else {
+                                                    setMontoPagado(`$${totalUSD.toFixed(2)} USD`);
+                                                }
+                                            }}
+                                            className={`p-4 rounded-2xl border-2 text-left transition-all ${
+                                                metodoPago === cuenta.id
+                                                    ? 'bg-[#FFF9F5] border-[#D86A33] shadow-md shadow-[#D86A33]/15'
+                                                    : 'bg-white border-gray-200 hover:border-gray-300'
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="font-black text-sm text-[#5F2142]">{cuenta.nombreMetodo}</span>
+                                                {metodoPago === cuenta.id && (
+                                                    <span className="w-5 h-5 rounded-full bg-[#D86A33] text-white flex items-center justify-center text-[10px] font-bold">
+                                                        ✓
+                                                    </span>
+                                                )}
+                                            </div>
+                                            <div className="text-xs text-gray-500 font-medium">
+                                                {cuenta.bancoOPlataforma} • {cuenta.moneda === 'BS' ? 'Bolívares (Bs.)' : 'Dólares ($)'}
+                                            </div>
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
 
@@ -886,7 +953,7 @@ export default function CheckoutModal() {
                                             </button>
                                         </div>
                                     </div>
-                                ) : (
+                                ) : metodoPago === 'binance' ? (
                                     <div className="space-y-2.5">
                                         {/* Monto exacto USDT */}
                                         <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FFF4EB] border border-[#D86A33]/30 text-xs">
@@ -930,7 +997,115 @@ export default function CheckoutModal() {
                                             </button>
                                         </div>
                                     </div>
-                                )}
+                                ) : (() => {
+                                    const extra = (siteSettings.cuentasAdicionales || []).find(c => c.id === metodoPago);
+                                    if (!extra) return null;
+                                    return (
+                                        <div className="space-y-2.5">
+                                            <div className="flex items-center justify-between p-2.5 rounded-xl bg-[#FFF4EB] border border-[#D86A33]/30 text-xs">
+                                                <div>
+                                                    <span className="text-[#D86A33] font-black block text-[10px] uppercase">Monto a Transferir ({extra.moneda})</span>
+                                                    <span className="font-black text-[#5F2142] text-sm sm:text-base">
+                                                        {extra.moneda === 'BS'
+                                                            ? `Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+                                                            : `$${totalUSD.toFixed(2)} USD`}
+                                                    </span>
+                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => handleCopy(extra.moneda === 'BS' ? totalBs.toFixed(2) : totalUSD.toFixed(2), 'extra_monto')}
+                                                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                                        copiedField === 'extra_monto'
+                                                            ? 'bg-green-600 text-white shadow-xs'
+                                                            : 'bg-white text-[#5F2142] border border-gray-300 hover:border-[#D86A33]'
+                                                    }`}
+                                                >
+                                                    {copiedField === 'extra_monto' ? <Check size={13} /> : <Copy size={13} />}
+                                                    <span>{copiedField === 'extra_monto' ? '¡Copiado!' : 'Copiar Monto'}</span>
+                                                </button>
+                                            </div>
+
+                                            <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 text-xs">
+                                                <div>
+                                                    <span className="text-gray-400 font-medium block text-[10px] uppercase">Banco / Plataforma</span>
+                                                    <span className="font-bold text-gray-900">{extra.bancoOPlataforma} {extra.tipoCuenta ? `(${extra.tipoCuenta})` : ''}</span>
+                                                </div>
+                                                <span className="px-2 py-0.5 rounded bg-gray-200 text-gray-700 text-[10px] font-bold">
+                                                    {extra.titular}
+                                                </span>
+                                            </div>
+
+                                            {extra.numeroCuentaOCorreo && (
+                                                <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 text-xs">
+                                                    <div>
+                                                        <span className="text-gray-400 font-medium block text-[10px] uppercase">Nro. de Cuenta / Correo / Usuario</span>
+                                                        <span className="font-black text-[#5F2142] text-sm break-all">{extra.numeroCuentaOCorreo}</span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleCopy(extra.numeroCuentaOCorreo, 'extra_acc')}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ml-2 ${
+                                                            copiedField === 'extra_acc'
+                                                                ? 'bg-green-600 text-white shadow-xs'
+                                                                : 'bg-white text-[#5F2142] border border-gray-300 hover:border-[#D86A33]'
+                                                        }`}
+                                                    >
+                                                        {copiedField === 'extra_acc' ? <Check size={13} /> : <Copy size={13} />}
+                                                        <span>{copiedField === 'extra_acc' ? '¡Copiado!' : 'Copiar'}</span>
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {extra.telefono && (
+                                                <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 text-xs">
+                                                    <div>
+                                                        <span className="text-gray-400 font-medium block text-[10px] uppercase">Teléfono Afiliado</span>
+                                                        <span className="font-black text-[#5F2142] text-sm">{extra.telefono}</span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleCopy(extra.telefono!.replace(/\D/g, ''), 'extra_tel')}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ml-2 ${
+                                                            copiedField === 'extra_tel'
+                                                                ? 'bg-green-600 text-white shadow-xs'
+                                                                : 'bg-white text-[#5F2142] border border-gray-300 hover:border-[#D86A33]'
+                                                        }`}
+                                                    >
+                                                        {copiedField === 'extra_tel' ? <Check size={13} /> : <Copy size={13} />}
+                                                        <span>{copiedField === 'extra_tel' ? '¡Copiado!' : 'Copiar'}</span>
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {extra.cedulaORif && (
+                                                <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 text-xs">
+                                                    <div>
+                                                        <span className="text-gray-400 font-medium block text-[10px] uppercase">Cédula / RIF</span>
+                                                        <span className="font-black text-[#5F2142] text-sm">{extra.cedulaORif}</span>
+                                                    </div>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleCopy(extra.cedulaORif!.replace(/\D/g, ''), 'extra_ci')}
+                                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 shrink-0 ml-2 ${
+                                                            copiedField === 'extra_ci'
+                                                                ? 'bg-green-600 text-white shadow-xs'
+                                                                : 'bg-white text-[#5F2142] border border-gray-300 hover:border-[#D86A33]'
+                                                        }`}
+                                                    >
+                                                        {copiedField === 'extra_ci' ? <Check size={13} /> : <Copy size={13} />}
+                                                        <span>{copiedField === 'extra_ci' ? '¡Copiado!' : 'Copiar'}</span>
+                                                    </button>
+                                                </div>
+                                            )}
+
+                                            {extra.instrucciones && (
+                                                <div className="p-2.5 rounded-xl bg-amber-50 border border-amber-200 text-[11px] text-amber-900 font-medium">
+                                                    <strong>Nota:</strong> {extra.instrucciones}
+                                                </div>
+                                            )}
+                                        </div>
+                                    );
+                                })()}
                             </div>
 
                             {/* Form to Register the Payment */}

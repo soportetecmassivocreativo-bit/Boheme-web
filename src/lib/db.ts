@@ -24,6 +24,8 @@ export interface Product {
     genero?: string;
     modelo?: string;
     cinta?: string;
+    stock?: number;
+    disponible?: boolean;
 }
 
 // Category Configuration mapped exactly to production slug URLs
@@ -816,7 +818,9 @@ export async function createProduct(productData: Omit<Product, 'id'> & { id?: st
         type_color: productData.type_color,
         genero: productData.genero,
         modelo: productData.modelo,
-        cinta: productData.cinta
+        cinta: productData.cinta,
+        stock: productData.stock !== undefined ? Number(productData.stock) : 20,
+        disponible: productData.disponible !== undefined ? Boolean(productData.disponible) : true
     };
 
     if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
@@ -929,7 +933,8 @@ export interface Order {
     persona_retira?: string;
     cedula_retira?: string;
     // Payment details
-    metodo_pago: 'pago_movil' | 'binance';
+    metodo_pago: 'pago_movil' | 'binance' | string;
+    nombre_metodo_pago?: string;
     banco_emisor?: string;
     telefono_o_email_emisor: string;
     referencia_pago: string;

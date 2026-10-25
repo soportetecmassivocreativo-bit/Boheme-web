@@ -52,11 +52,22 @@ import {
     PackageCheck,
     CheckCheck,
     RotateCcw,
-    ArrowRight
+    ArrowRight,
+    BarChart3,
+    Download,
+    Hash,
+    FileSpreadsheet
 } from 'lucide-react';
 import { Product, CATEGORIES, Order, OrderItem } from '@/lib/db';
 import { parseImages } from '@/lib/utils';
-import { SiteSettings } from '@/lib/settings';
+import { SiteSettings, ExtraPaymentAccount, ExtraPaymentType } from '@/lib/settings';
+import {
+    generateInvoicePdf,
+    generateBillingReportPdf,
+    generateWorkshopReportPdf,
+    generateStockReportPdf,
+    exportToCsv
+} from '@/lib/pdfGenerator';
 import {
     WORKSHOP_STAGES,
     WorkshopProductType,
@@ -84,7 +95,7 @@ const PRESET_IMAGES = [
     { label: 'Banner Lifestyle', url: '/hero_bg.png' }
 ];
 
-type AdminTab = 'dashboard' | 'facturado' | 'taller' | 'productos' | 'configuracion';
+type AdminTab = 'dashboard' | 'facturado' | 'taller' | 'productos' | 'reportes' | 'configuracion';
 
 export default function AdminPage() {
     const router = useRouter();
@@ -141,6 +152,7 @@ export default function AdminPage() {
     const [formName, setFormName] = useState('');
     const [formDescription, setFormDescription] = useState('');
     const [formPrice, setFormPrice] = useState<number | string>(8);
+    const [formStock, setFormStock] = useState<number | string>(20);
     const [formCategory, setFormCategory] = useState('gorros');
     const [formSubcategory, setFormSubcategory] = useState<number | undefined>(70);
     const [formImages, setFormImages] = useState<string[]>([]);
@@ -181,7 +193,7 @@ export default function AdminPage() {
         tipo_entrega: 'local' | 'nacional';
         empresa_envio: string;
         direccion_entrega: string;
-        metodo_pago: 'pago_movil' | 'binance';
+        metodo_pago: 'pago_movil' | 'binance' | string;
         banco_emisor: string;
         telefono_o_email_emisor: string;
         referencia_pago: string;
@@ -208,9 +220,35 @@ export default function AdminPage() {
     });
 
     // Configuration Area Sub-Tabs
-    const [configSubTab, setConfigSubTab] = useState<'pagos' | 'facturas' | 'productos' | 'bcv' | 'tienda'>('pagos');
+    const [configSubTab, setConfigSubTab] = useState<'pagos' | 'correlativo_pdf' | 'facturas' | 'productos' | 'bcv' | 'tienda'>('pagos');
 
-    // Site & Payment Settings (Manipulación de Cuentas y Tienda sin código)
+    // Reports Module Sub-Tabs & Filters
+    const [reportType, setReportType] = useState<'facturado' | 'taller' | 'stock'>('facturado');
+    const [reportDateFrom, setReportDateFrom] = useState<string>('');
+    const [reportDateTo, setReportDateTo] = useState<string>('');
+    const [reportPayStatus, setReportPayStatus] = useState<'all' | 'verificada' | 'por_verificar' | 'rechazada'>('all');
+    const [reportPayMethod, setReportPayMethod] = useState<string>('all');
+    const [reportWorkshopStatus, setReportWorkshopStatus] = useState<'todos' | 'activos' | 'cerrados'>('todos');
+    const [reportWorkshopStage, setReportWorkshopStage] = useState<string>('all');
+    const [reportWorkshopDelivery, setReportWorkshopDelivery] = useState<'all' | 'local' | 'nacional'>('all');
+    const [reportStockSection, setReportStockSection] = useState<string>('all');
+    const [reportStockFilter, setReportStockFilter] = useState<'all' | 'in_stock' | 'low_stock'>('all');
+
+    // Modal / Form to Add or Edit Extra Bank / Payment Account
+    const [isExtraAccountModalOpen, setIsExtraAccountModalOpen] = useState(false);
+    const [editingExtraAccountId, setEditingExtraAccountId] = useState<string | null>(null);
+    const [extraAccTipo, setExtraAccTipo] = useState<ExtraPaymentType>('transferencia');
+    const [extraAccNombreMetodo, setExtraAccNombreMetodo] = useState('');
+    const [extraAccBanco, setExtraAccBanco] = useState('');
+    const [extraAccTitular, setExtraAccTitular] = useState('BOHEME');
+    const [extraAccCedula, setExtraAccCedula] = useState('V-24.354.847');
+    const [extraAccTelefono, setExtraAccTelefono] = useState('');
+    const [extraAccCuentaOCorreo, setExtraAccCuentaOCorreo] = useState('');
+    const [extraAccTipoCuenta, setExtraAccTipoCuenta] = useState('Corriente');
+    const [extraAccMoneda, setExtraAccMoneda] = useState<'BS' | 'USD'>('BS');
+    const [extraAccInstrucciones, setExtraAccInstrucciones] = useState('');
+
+    // Site & Payment Settings (Manipulación de Cuentas, Correlativo, PDFs y Tienda sin código)
     const [settings, setSettings] = useState<SiteSettings>({
         pagoMovil: {
             id: 'pm-principal',
@@ -229,12 +267,38 @@ export default function AdminPage() {
             titular: 'BOHEME',
             activo: true
         },
+        cuentasAdicionales: [],
+        correlativo: {
+            prefijo: 'BHM-',
+            proximoNumero: 1003,
+            digitosMinimos: 4,
+            sufijo: ''
+        },
+        pdfConfig: {
+            nombreEmpresa: 'BOHEME • Indumentaria & Equipos Médicos',
+            rifEmpresa: 'V-24.354.847',
+            direccionFiscal: 'Municipio Miranda (Coro) y Municipio Colina (La Vela), Estado Falcón, Venezuela',
+            telefonoContacto: '0412-1409976',
+            emailContacto: 'worldglobalweb724@gmail.com',
+            colorPrimario: '#5F2142',
+            colorAcento: '#D86A33',
+            mostrarLogo: true,
+            mostrarTasaBcv: true,
+            mostrarFirmas: true,
+            mostrarSelloAgua: true,
+            encabezadoFactura: 'FACTURA / COMPROBANTE DE COMPRA',
+            piePaginaFactura: 'Gracias por tu compra en BOHEME. Entregas locales en Municipio Miranda y Municipio Colina, y envíos nacionales garantizados.',
+            encabezadoReporte: 'REPORTE OFICIAL DE GESTIÓN ADMINISTRATIVA',
+            piePaginaReporte: 'Documento generado por el Panel Administrativo de BOHEME • Uso Interno y Contable.',
+            tamanoPapel: 'letter',
+            orientacionReporte: 'portrait'
+        },
         tienda: {
             nombreTienda: 'BOHEME',
             telefonoWhatsapp: '584121409976',
             mensajeWhatsappIntro: '¡Hola! He formalizado mi pedido en la web de BOHEME.',
             instagram: '@boheme_ve',
-            direccionFisica: 'Valencia, Estado Carabobo, Venezuela',
+            direccionFisica: 'Municipio Miranda (Coro) y Municipio Colina (La Vela), Estado Falcón, Venezuela',
             monedaPrincipal: 'USD'
         },
         lastUpdated: new Date().toISOString()
@@ -391,6 +455,7 @@ export default function AdminPage() {
         setFormName('');
         setFormDescription('');
         setFormPrice(8);
+        setFormStock(20);
         setFormCategory(activeSection);
         const catInfo = CATEGORIES[activeSection];
         setFormSubcategory(catInfo?.subcategories[0]?.id);
@@ -407,6 +472,7 @@ export default function AdminPage() {
         setFormName(product.name);
         setFormDescription(product.description || '');
         setFormPrice(product.price);
+        setFormStock(product.stock !== undefined ? product.stock : 20);
         setFormCategory(product.categoria_slug);
         setFormSubcategory(product.subcategoria_id);
         const imgs = parseImages(product.image_url);
@@ -515,6 +581,7 @@ export default function AdminPage() {
             name: formName.trim(),
             description: formDescription.trim(),
             price: Number(formPrice),
+            stock: Number(formStock) >= 0 ? Number(formStock) : 20,
             categoria_slug: formCategory,
             subcategoria_id: formSubcategory ? Number(formSubcategory) : undefined,
             // Store as array or JSON string if multiple
@@ -672,21 +739,22 @@ export default function AdminPage() {
     };
 
     // ==========================================
-    // SETTINGS ACTIONS (Cuentas de pago y tienda)
+    // SETTINGS ACTIONS (Cuentas de pago, correlativo, PDFs y tienda)
     // ==========================================
-    const handleSaveSettings = async (e?: React.FormEvent) => {
+    const handleSaveSettings = async (e?: React.FormEvent, customSettings?: SiteSettings) => {
         if (e) e.preventDefault();
         setIsSavingSettings(true);
+        const payload = customSettings || settings;
         try {
             const res = await fetch('/api/settings', {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(settings)
+                body: JSON.stringify(payload)
             });
             if (res.ok) {
                 const data = await res.json();
                 if (data.settings) setSettings(data.settings);
-                showToast('✓ Cuentas de pago y configuraciones guardadas con éxito');
+                showToast('✓ Configuraciones del sistema guardadas con éxito');
             } else {
                 alert('Error al guardar configuraciones');
             }
@@ -695,6 +763,108 @@ export default function AdminPage() {
         } finally {
             setIsSavingSettings(false);
         }
+    };
+
+    const openAddExtraAccountModal = () => {
+        setEditingExtraAccountId(null);
+        setExtraAccTipo('transferencia');
+        setExtraAccNombreMetodo('');
+        setExtraAccBanco('');
+        setExtraAccTitular('BOHEME');
+        setExtraAccCedula('V-24.354.847');
+        setExtraAccTelefono('');
+        setExtraAccCuentaOCorreo('');
+        setExtraAccTipoCuenta('Corriente');
+        setExtraAccMoneda('BS');
+        setExtraAccInstrucciones('');
+        setIsExtraAccountModalOpen(true);
+    };
+
+    const openEditExtraAccountModal = (acc: ExtraPaymentAccount) => {
+        setEditingExtraAccountId(acc.id);
+        setExtraAccTipo(acc.tipo);
+        setExtraAccNombreMetodo(acc.nombreMetodo);
+        setExtraAccBanco(acc.bancoOPlataforma);
+        setExtraAccTitular(acc.titular);
+        setExtraAccCedula(acc.cedulaORif || '');
+        setExtraAccTelefono(acc.telefono || '');
+        setExtraAccCuentaOCorreo(acc.numeroCuentaOCorreo);
+        setExtraAccTipoCuenta(acc.tipoCuenta || '');
+        setExtraAccMoneda(acc.moneda);
+        setExtraAccInstrucciones(acc.instrucciones || '');
+        setIsExtraAccountModalOpen(true);
+    };
+
+    const handleSaveExtraAccount = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!extraAccNombreMetodo.trim() || !extraAccBanco.trim()) {
+            alert('Por favor ingresa el nombre del método y el banco o plataforma.');
+            return;
+        }
+        const currentList = settings.cuentasAdicionales || [];
+        let nextList: ExtraPaymentAccount[];
+
+        if (editingExtraAccountId) {
+            nextList = currentList.map(c => c.id === editingExtraAccountId ? {
+                ...c,
+                tipo: extraAccTipo,
+                nombreMetodo: extraAccNombreMetodo.trim(),
+                bancoOPlataforma: extraAccBanco.trim(),
+                titular: extraAccTitular.trim() || 'BOHEME',
+                cedulaORif: extraAccCedula.trim() || undefined,
+                telefono: extraAccTelefono.trim() || undefined,
+                numeroCuentaOCorreo: extraAccCuentaOCorreo.trim(),
+                tipoCuenta: extraAccTipoCuenta.trim() || undefined,
+                moneda: extraAccMoneda,
+                instrucciones: extraAccInstrucciones.trim() || undefined
+            } : c);
+        } else {
+            const newAcc: ExtraPaymentAccount = {
+                id: `acc-${Date.now()}`,
+                tipo: extraAccTipo,
+                nombreMetodo: extraAccNombreMetodo.trim(),
+                bancoOPlataforma: extraAccBanco.trim(),
+                titular: extraAccTitular.trim() || 'BOHEME',
+                cedulaORif: extraAccCedula.trim() || undefined,
+                telefono: extraAccTelefono.trim() || undefined,
+                numeroCuentaOCorreo: extraAccCuentaOCorreo.trim(),
+                tipoCuenta: extraAccTipoCuenta.trim() || undefined,
+                moneda: extraAccMoneda,
+                instrucciones: extraAccInstrucciones.trim() || undefined,
+                activo: true
+            };
+            nextList = [...currentList, newAcc];
+        }
+
+        const updatedSettings: SiteSettings = {
+            ...settings,
+            cuentasAdicionales: nextList
+        };
+        setSettings(updatedSettings);
+        setIsExtraAccountModalOpen(false);
+        await handleSaveSettings(undefined, updatedSettings);
+    };
+
+    const handleDeleteExtraAccount = async (id: string) => {
+        const nextList = (settings.cuentasAdicionales || []).filter(c => c.id !== id);
+        const updatedSettings: SiteSettings = {
+            ...settings,
+            cuentasAdicionales: nextList
+        };
+        setSettings(updatedSettings);
+        await handleSaveSettings(undefined, updatedSettings);
+    };
+
+    const handleToggleExtraAccountActive = async (id: string) => {
+        const nextList = (settings.cuentasAdicionales || []).map(c =>
+            c.id === id ? { ...c, activo: !c.activo } : c
+        );
+        const updatedSettings: SiteSettings = {
+            ...settings,
+            cuentasAdicionales: nextList
+        };
+        setSettings(updatedSettings);
+        await handleSaveSettings(undefined, updatedSettings);
     };
 
     const handleCreateManualInvoice = async (e: React.FormEvent) => {
@@ -1223,6 +1393,18 @@ export default function AdminPage() {
                         </button>
 
                         <button
+                            onClick={() => { setActiveTab('reportes'); setSidebarOpen(false); }}
+                            className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all ${
+                                activeTab === 'reportes'
+                                    ? 'bg-[#5F2142] text-white shadow-md'
+                                    : 'text-gray-600 dark:text-gray-300 hover:bg-[#FFF4EB] dark:hover:bg-white/5'
+                            }`}
+                        >
+                            <BarChart3 size={16} />
+                            <span>Módulo de Reportes</span>
+                        </button>
+
+                        <button
                             onClick={() => { setActiveTab('configuracion'); setSidebarOpen(false); }}
                             className={`w-full flex items-center gap-3 px-3.5 py-3 rounded-2xl text-xs font-black uppercase tracking-wider transition-all ${
                                 activeTab === 'configuracion'
@@ -1231,7 +1413,7 @@ export default function AdminPage() {
                             }`}
                         >
                             <Settings size={16} />
-                            <span>Tasa BCV & Ajustes</span>
+                            <span>Configuraciones</span>
                         </button>
                     </nav>
 
@@ -1678,9 +1860,17 @@ export default function AdminPage() {
                                                             })()}
                                                         </td>
 
-                                                        {/* Acciones: Ver, Editar, Eliminar */}
+                                                        {/* Acciones: PDF, Ver, Editar, Eliminar */}
                                                         <td className="py-3.5 px-5 text-right whitespace-nowrap">
                                                             <div className="inline-flex items-center gap-1.5">
+                                                                <button
+                                                                    onClick={() => generateInvoicePdf(order, settings.pdfConfig, bcvRate)}
+                                                                    className="px-2.5 py-1.5 rounded-xl bg-[#FFF4EB] dark:bg-white/10 border border-[#D86A33]/40 text-[#D86A33] hover:bg-[#D86A33] hover:text-white font-black transition-all text-xs inline-flex items-center gap-1"
+                                                                    title="Generar / Descargar PDF de esta factura"
+                                                                >
+                                                                    <Printer size={12} />
+                                                                    <span>PDF</span>
+                                                                </button>
                                                                 <button
                                                                     onClick={() => setViewingOrder(order)}
                                                                     className="px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-gray-700 dark:text-gray-300 font-bold transition-all text-xs inline-flex items-center gap-1"
@@ -2664,14 +2854,25 @@ export default function AdminPage() {
                         </div>
 
                         {/* Quick switch to other modules */}
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                             <button
                                 onClick={() => setActiveTab('facturado')}
                                 className={`p-6 rounded-3xl ${bgCard} border ${borderDefault} text-left hover:scale-[1.01] transition-all flex items-center justify-between`}
                             >
                                 <div>
                                     <h4 className="font-black text-lg text-[#5F2142] dark:text-[#FFC99C]">Ir a Facturado</h4>
-                                    <p className="text-xs text-gray-500 mt-1">Verifica pagos recibidos y consulta reportes detallados.</p>
+                                    <p className="text-xs text-gray-500 mt-1">Verifica pagos recibidos y emite facturas en PDF.</p>
+                                </div>
+                                <ChevronRight size={20} className="text-[#D86A33]" />
+                            </button>
+
+                            <button
+                                onClick={() => setActiveTab('reportes')}
+                                className={`p-6 rounded-3xl ${bgCard} border ${borderDefault} text-left hover:scale-[1.01] transition-all flex items-center justify-between`}
+                            >
+                                <div>
+                                    <h4 className="font-black text-lg text-[#5F2142] dark:text-[#FFC99C]">Módulo de Reportes</h4>
+                                    <p className="text-xs text-gray-500 mt-1">Genera reportes PDF y Excel de Facturado, Taller y Stock.</p>
                                 </div>
                                 <ChevronRight size={20} className="text-[#D86A33]" />
                             </button>
@@ -2691,6 +2892,591 @@ export default function AdminPage() {
                 )}
 
                 {/* ========================================================= */}
+                {/* TAB: MÓDULO DE REPORTES (Facturado, Taller, Stock)        */}
+                {/* ========================================================= */}
+                {activeTab === 'reportes' && (() => {
+                    // 1. Filtered Orders for Reporte de Facturado
+                    const repFacturadoOrders = orders.filter(o => {
+                        const d = new Date(o.created_at);
+                        if (reportDateFrom) {
+                            const from = new Date(reportDateFrom + 'T00:00:00');
+                            if (d < from) return false;
+                        }
+                        if (reportDateTo) {
+                            const to = new Date(reportDateTo + 'T23:59:59');
+                            if (d > to) return false;
+                        }
+                        if (reportPayStatus !== 'all') {
+                            if (normalizeStatus(o.estado_pago) !== reportPayStatus) return false;
+                        }
+                        if (reportPayMethod !== 'all') {
+                            if (o.metodo_pago !== reportPayMethod) return false;
+                        }
+                        return true;
+                    });
+
+                    // 2. Filtered Orders for Reporte de Taller
+                    const repTallerOrders = orders.filter(o => {
+                        if (reportWorkshopStatus === 'activos' && o.pedido_cerrado) return false;
+                        if (reportWorkshopStatus === 'cerrados' && !o.pedido_cerrado) return false;
+                        if (reportWorkshopStage !== 'all') {
+                            const st = o.estado_taller || getDefaultWorkshopStatus(o.items, o.tipo_entrega);
+                            if (st !== reportWorkshopStage) return false;
+                        }
+                        if (reportWorkshopDelivery !== 'all') {
+                            if (o.tipo_entrega !== reportWorkshopDelivery) return false;
+                        }
+                        return true;
+                    });
+
+                    // 3. Filtered Products for Reporte de Productos en Stock
+                    const repStockProducts = products.filter(p => {
+                        if (reportStockSection !== 'all' && p.categoria_slug !== reportStockSection) return false;
+                        const qty = p.stock !== undefined ? Number(p.stock) : 20;
+                        if (reportStockFilter === 'in_stock' && qty <= 0) return false;
+                        if (reportStockFilter === 'low_stock' && qty > 5) return false;
+                        return true;
+                    });
+
+                    return (
+                        <div className="space-y-6">
+                            {/* Header */}
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-11 h-11 rounded-2xl bg-[#5F2142] text-white flex items-center justify-center shadow-md shadow-[#5F2142]/20">
+                                        <BarChart3 size={22} />
+                                    </div>
+                                    <div>
+                                        <h1 className="text-2xl sm:text-3xl font-black text-[#5F2142] dark:text-[#FFC99C] tracking-tight">
+                                            Centro de Reportes Oficiales
+                                        </h1>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                            Genera y descarga reportes en PDF y Excel/CSV de Facturado, Taller y Productos en Stock.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setActiveTab('configuracion');
+                                        setConfigSubTab('correlativo_pdf');
+                                    }}
+                                    className={`inline-flex items-center gap-2 px-4 py-2.5 rounded-2xl border ${borderDefault} ${bgCard} text-xs font-black text-[#5F2142] dark:text-[#FFC99C] hover:border-[#D86A33] transition-all`}
+                                >
+                                    <Settings size={14} className="text-[#D86A33]" />
+                                    <span>Personalizar Diseño de PDFs y Correlativo</span>
+                                </button>
+                            </div>
+
+                            {/* Selector of the 3 Report Types */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                {[
+                                    {
+                                        id: 'facturado',
+                                        title: '1. Reporte de Facturado',
+                                        subtitle: 'Ventas, ingresos en $ y Bs., métodos de pago y estatus',
+                                        count: `${repFacturadoOrders.length} facturas`,
+                                        icon: FileText
+                                    },
+                                    {
+                                        id: 'taller',
+                                        title: '2. Reporte de Taller y Pedidos',
+                                        subtitle: 'Producción, etapas de confección, entregas y cierres',
+                                        count: `${repTallerOrders.length} pedidos`,
+                                        icon: Scissors
+                                    },
+                                    {
+                                        id: 'stock',
+                                        title: '3. Reporte de Productos en Stock',
+                                        subtitle: 'Inventario por sección, cantidades y valoración USD/Bs',
+                                        count: `${repStockProducts.length} productos`,
+                                        icon: Package
+                                    }
+                                ].map(card => {
+                                    const Icon = card.icon;
+                                    const active = reportType === card.id;
+                                    return (
+                                        <button
+                                            key={card.id}
+                                            type="button"
+                                            onClick={() => setReportType(card.id as any)}
+                                            className={`p-5 rounded-3xl border-2 text-left transition-all flex flex-col justify-between ${
+                                                active
+                                                    ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-xl shadow-[#5F2142]/20 scale-[1.01]'
+                                                    : `${bgCard} ${borderDefault} hover:border-[#D86A33]`
+                                            }`}
+                                        >
+                                            <div className="flex items-center justify-between mb-3">
+                                                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center ${
+                                                    active ? 'bg-white/15 text-[#FFC99C]' : 'bg-[#FFF4EB] dark:bg-white/10 text-[#D86A33]'
+                                                }`}>
+                                                    <Icon size={20} />
+                                                </div>
+                                                <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase ${
+                                                    active ? 'bg-[#D86A33] text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-600 dark:text-gray-300'
+                                                }`}>
+                                                    {card.count}
+                                                </span>
+                                            </div>
+                                            <div>
+                                                <div className="font-black text-base">{card.title}</div>
+                                                <div className={`text-xs mt-1 ${active ? 'text-white/80' : 'text-gray-500'}`}>
+                                                    {card.subtitle}
+                                                </div>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+
+                            {/* ========================================== */}
+                            {/* REPORT 1: REPORTE DE FACTURADO             */}
+                            {/* ========================================== */}
+                            {reportType === 'facturado' && (
+                                <div className="space-y-5">
+                                    {/* Filters & Export Bar */}
+                                    <div className={`p-5 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs space-y-4`}>
+                                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-gray-100 dark:border-white/10">
+                                            <div>
+                                                <h3 className="font-black text-base text-[#5F2142] dark:text-[#FFC99C]">
+                                                    Parámetros del Reporte de Facturado
+                                                </h3>
+                                                <p className="text-xs text-gray-500">Filtra las facturas por rango de fecha, estatus o método de pago antes de exportar.</p>
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-2.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const filterDesc = `Estatus: ${reportPayStatus.toUpperCase()} | Método: ${reportPayMethod.toUpperCase()} ${reportDateFrom ? `| Desde: ${reportDateFrom}` : ''} ${reportDateTo ? `| Hasta: ${reportDateTo}` : ''}`;
+                                                        generateBillingReportPdf(repFacturadoOrders, filterDesc, settings.pdfConfig, bcvRate);
+                                                    }}
+                                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black shadow-md shadow-[#D86A33]/25 transition-all hover:scale-105"
+                                                >
+                                                    <Printer size={15} />
+                                                    <span>Generar PDF de Facturado</span>
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        exportToCsv(
+                                                            'Reporte_Facturado_BOHEME',
+                                                            ['Factura', 'Fecha', 'Cliente', 'Cedula', 'Telefono', 'Metodo Pago', 'Referencia', 'Estatus', 'Monto USD', 'Tasa BCV', 'Monto Bs'],
+                                                            repFacturadoOrders.map(o => [
+                                                                o.numero_factura,
+                                                                new Date(o.created_at).toLocaleDateString('es-VE'),
+                                                                `${o.cliente_nombre} ${o.cliente_apellido}`,
+                                                                o.cliente_cedula,
+                                                                o.cliente_telefono,
+                                                                o.nombre_metodo_pago || o.metodo_pago,
+                                                                o.referencia_pago,
+                                                                normalizeStatus(o.estado_pago),
+                                                                o.monto_usd.toFixed(2),
+                                                                o.tasa_bcv,
+                                                                o.monto_bs.toFixed(2)
+                                                            ])
+                                                        );
+                                                    }}
+                                                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition-all"
+                                                >
+                                                    <FileSpreadsheet size={15} />
+                                                    <span>Exportar Excel / CSV</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                                            <div>
+                                                <label className="block font-black text-gray-500 uppercase text-[10px] mb-1">Fecha Desde</label>
+                                                <input
+                                                    type="date"
+                                                    value={reportDateFrom}
+                                                    onChange={(e) => setReportDateFrom(e.target.value)}
+                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block font-black text-gray-500 uppercase text-[10px] mb-1">Fecha Hasta</label>
+                                                <input
+                                                    type="date"
+                                                    value={reportDateTo}
+                                                    onChange={(e) => setReportDateTo(e.target.value)}
+                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block font-black text-gray-500 uppercase text-[10px] mb-1">Estatus de Factura</label>
+                                                <select
+                                                    value={reportPayStatus}
+                                                    onChange={(e) => setReportPayStatus(e.target.value as any)}
+                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                >
+                                                    <option value="all">Todos los Estatus</option>
+                                                    <option value="verificada">Solo Verificadas ✓</option>
+                                                    <option value="por_verificar">Solo Por Verificar ⏳</option>
+                                                    <option value="rechazada">Solo Rechazadas ✕</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block font-black text-gray-500 uppercase text-[10px] mb-1">Método de Pago</label>
+                                                <select
+                                                    value={reportPayMethod}
+                                                    onChange={(e) => setReportPayMethod(e.target.value)}
+                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                >
+                                                    <option value="all">Todos los Métodos</option>
+                                                    <option value="pago_movil">Pago Móvil</option>
+                                                    <option value="binance">Binance Pay</option>
+                                                    <option value="transferencia">Transferencia Bancaria</option>
+                                                    <option value="zelle">Zelle / Divisas</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Preview Table */}
+                                    <div className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden`}>
+                                        <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex flex-wrap items-center justify-between gap-2">
+                                            <span className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
+                                                Vista Previa del Reporte ({repFacturadoOrders.length} facturas)
+                                            </span>
+                                            <span className="font-black text-sm text-[#D86A33]">
+                                                Total: ${repFacturadoOrders.reduce((a, b) => a + b.monto_usd, 0).toFixed(2)} USD ≈ Bs. {repFacturadoOrders.reduce((a, b) => a + b.monto_bs, 0).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </span>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left border-collapse text-xs">
+                                                <thead>
+                                                    <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/50 dark:bg-white/5">
+                                                        <th className="py-3 px-4">N° Factura</th>
+                                                        <th className="py-3 px-4">Fecha</th>
+                                                        <th className="py-3 px-4">Cliente</th>
+                                                        <th className="py-3 px-4">Método / Ref</th>
+                                                        <th className="py-3 px-4">Estatus</th>
+                                                        <th className="py-3 px-4 text-right">Monto ($ USD)</th>
+                                                        <th className="py-3 px-4 text-right">PDF Individual</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                                    {repFacturadoOrders.map(o => (
+                                                        <tr key={o.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5">
+                                                            <td className="py-3 px-4 font-mono font-black text-[#5F2142] dark:text-[#FFC99C]">{o.numero_factura}</td>
+                                                            <td className="py-3 px-4">{new Date(o.created_at).toLocaleDateString('es-VE')}</td>
+                                                            <td className="py-3 px-4 font-bold">{o.cliente_nombre} {o.cliente_apellido}</td>
+                                                            <td className="py-3 px-4">{o.nombre_metodo_pago || (o.metodo_pago === 'pago_movil' ? 'Pago Móvil' : 'Binance')} ({o.referencia_pago})</td>
+                                                            <td className="py-3 px-4 uppercase font-bold text-[10px]">{normalizeStatus(o.estado_pago)}</td>
+                                                            <td className="py-3 px-4 text-right font-black">${o.monto_usd.toFixed(2)}</td>
+                                                            <td className="py-3 px-4 text-right">
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => generateInvoicePdf(o, settings.pdfConfig, bcvRate)}
+                                                                    className="px-2.5 py-1 rounded-lg bg-[#FFF4EB] dark:bg-white/10 text-[#D86A33] font-black text-[10px] hover:bg-[#D86A33] hover:text-white transition-all"
+                                                                >
+                                                                    🖨️ Factura PDF
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ========================================== */}
+                            {/* REPORT 2: REPORTE DE TALLER Y PEDIDOS      */}
+                            {/* ========================================== */}
+                            {reportType === 'taller' && (
+                                <div className="space-y-5">
+                                    <div className={`p-5 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs space-y-4`}>
+                                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-gray-100 dark:border-white/10">
+                                            <div>
+                                                <h3 className="font-black text-base text-[#5F2142] dark:text-[#FFC99C]">
+                                                    Parámetros del Reporte de Taller y Producción
+                                                </h3>
+                                                <p className="text-xs text-gray-500">Filtra por estado de cierre, etapa de confección o modalidad de entrega.</p>
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-2.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const filterDesc = `Estado: ${reportWorkshopStatus.toUpperCase()} | Etapa: ${reportWorkshopStage.toUpperCase()} | Entrega: ${reportWorkshopDelivery.toUpperCase()}`;
+                                                        generateWorkshopReportPdf(repTallerOrders, filterDesc, settings.pdfConfig);
+                                                    }}
+                                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black shadow-md shadow-[#D86A33]/25 transition-all hover:scale-105"
+                                                >
+                                                    <Printer size={15} />
+                                                    <span>Generar PDF de Taller</span>
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        exportToCsv(
+                                                            'Reporte_Taller_BOHEME',
+                                                            ['Factura', 'Fecha', 'Cliente', 'Telefono', 'Modalidad Entrega', 'Destino', 'Etapa Taller', 'Estado Cierre', 'Prendas y Personalizacion'],
+                                                            repTallerOrders.map(o => [
+                                                                o.numero_factura,
+                                                                new Date(o.created_at).toLocaleDateString('es-VE'),
+                                                                `${o.cliente_nombre} ${o.cliente_apellido}`,
+                                                                o.cliente_telefono,
+                                                                o.tipo_entrega === 'local' ? 'Local (Miranda/Colina)' : `Nacional (${o.empresa_envio || 'MRW'})`,
+                                                                o.direccion_entrega,
+                                                                getStageInfo(o.estado_taller || getDefaultWorkshopStatus(o.items, o.tipo_entrega)).label,
+                                                                o.pedido_cerrado ? 'CERRADO' : 'ACTIVO',
+                                                                o.items.map(i => `${i.quantity}x ${i.name}${i.nombre_personalizado ? ` [Bordado: ${i.nombre_personalizado}]` : ''}`).join(' | ')
+                                                            ])
+                                                        );
+                                                    }}
+                                                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition-all"
+                                                >
+                                                    <FileSpreadsheet size={15} />
+                                                    <span>Exportar Excel / CSV</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                            <div>
+                                                <label className="block font-black text-gray-500 uppercase text-[10px] mb-1">Estado del Pedido</label>
+                                                <select
+                                                    value={reportWorkshopStatus}
+                                                    onChange={(e) => setReportWorkshopStatus(e.target.value as any)}
+                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                >
+                                                    <option value="todos">Todos los Pedidos ({orders.length})</option>
+                                                    <option value="activos">Solo Activos en Taller ({totalTallerActivos})</option>
+                                                    <option value="cerrados">Solo Pedidos Cerrados ({totalTallerCerrados})</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block font-black text-gray-500 uppercase text-[10px] mb-1">Etapa de Producción</label>
+                                                <select
+                                                    value={reportWorkshopStage}
+                                                    onChange={(e) => setReportWorkshopStage(e.target.value)}
+                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                >
+                                                    <option value="all">Todas las Etapas</option>
+                                                    {Object.values(WORKSHOP_STAGES).map(st => (
+                                                        <option key={st.key} value={st.key}>{st.icon} {st.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block font-black text-gray-500 uppercase text-[10px] mb-1">Modalidad de Entrega</label>
+                                                <select
+                                                    value={reportWorkshopDelivery}
+                                                    onChange={(e) => setReportWorkshopDelivery(e.target.value as any)}
+                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                >
+                                                    <option value="all">Todas las Entregas</option>
+                                                    <option value="local">🏠 Entrega Local (Mcpio. Miranda / Colina)</option>
+                                                    <option value="nacional">📦 Envío Nacional (MRW / Zoom / Tealca)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Preview Table */}
+                                    <div className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden`}>
+                                        <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex items-center justify-between">
+                                            <span className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
+                                                Vista Previa de Taller ({repTallerOrders.length} pedidos)
+                                            </span>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left border-collapse text-xs">
+                                                <thead>
+                                                    <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/50 dark:bg-white/5">
+                                                        <th className="py-3 px-4">Factura</th>
+                                                        <th className="py-3 px-4">Cliente</th>
+                                                        <th className="py-3 px-4">Prendas & Personalización</th>
+                                                        <th className="py-3 px-4">Entrega</th>
+                                                        <th className="py-3 px-4">Etapa Actual</th>
+                                                        <th className="py-3 px-4">Cierre</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                                    {repTallerOrders.map(o => {
+                                                        const stInfo = getStageInfo(o.estado_taller || getDefaultWorkshopStatus(o.items, o.tipo_entrega));
+                                                        return (
+                                                            <tr key={o.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5">
+                                                                <td className="py-3 px-4 font-mono font-black text-[#5F2142] dark:text-[#FFC99C]">{o.numero_factura}</td>
+                                                                <td className="py-3 px-4 font-bold">{o.cliente_nombre} {o.cliente_apellido}</td>
+                                                                <td className="py-3 px-4">
+                                                                    {o.items.map((it, i) => (
+                                                                        <div key={i}>
+                                                                            • {it.quantity}x {it.name}
+                                                                            {it.nombre_personalizado && <span className="text-[#D86A33] font-bold"> ({it.nombre_personalizado})</span>}
+                                                                        </div>
+                                                                    ))}
+                                                                </td>
+                                                                <td className="py-3 px-4">{o.tipo_entrega === 'local' ? '🏠 Local (Miranda/Colina)' : `📦 ${o.empresa_envio || 'Nacional'}`}</td>
+                                                                <td className="py-3 px-4 font-bold">{stInfo.icon} {stInfo.label}</td>
+                                                                <td className="py-3 px-4">
+                                                                    <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${o.pedido_cerrado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
+                                                                        {o.pedido_cerrado ? '✓ Cerrado' : 'Activo'}
+                                                                    </span>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ========================================== */}
+                            {/* REPORT 3: REPORTE DE PRODUCTOS EN STOCK    */}
+                            {/* ========================================== */}
+                            {reportType === 'stock' && (
+                                <div className="space-y-5">
+                                    <div className={`p-5 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs space-y-4`}>
+                                        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 pb-4 border-b border-gray-100 dark:border-white/10">
+                                            <div>
+                                                <h3 className="font-black text-base text-[#5F2142] dark:text-[#FFC99C]">
+                                                    Parámetros del Reporte de Productos en Stock
+                                                </h3>
+                                                <p className="text-xs text-gray-500">Genera el inventario detallado por sección con valoración en Dólares ($) y Bolívares (BCV).</p>
+                                            </div>
+
+                                            <div className="flex flex-wrap items-center gap-2.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const secTitle = reportStockSection === 'all' ? 'Todas las Secciones' : (CATEGORIES[reportStockSection]?.title || reportStockSection);
+                                                        generateStockReportPdf(repStockProducts, secTitle, settings.pdfConfig, bcvRate);
+                                                    }}
+                                                    className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black shadow-md shadow-[#D86A33]/25 transition-all hover:scale-105"
+                                                >
+                                                    <Printer size={15} />
+                                                    <span>Generar PDF de Productos en Stock</span>
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        exportToCsv(
+                                                            'Reporte_Stock_Productos_BOHEME',
+                                                            ['ID', 'Producto', 'Seccion', 'Stock Disponible', 'Precio Unit USD', 'Precio Unit Bs BCV', 'Valor Total Stock USD'],
+                                                            repStockProducts.map(p => {
+                                                                const qty = p.stock !== undefined ? Number(p.stock) : 20;
+                                                                return [
+                                                                    p.id,
+                                                                    p.name,
+                                                                    CATEGORIES[p.categoria_slug]?.title || p.categoria_slug,
+                                                                    qty,
+                                                                    p.price.toFixed(2),
+                                                                    (p.price * bcvRate).toFixed(2),
+                                                                    (p.price * qty).toFixed(2)
+                                                                ];
+                                                            })
+                                                        );
+                                                    }}
+                                                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-black shadow-xs transition-all"
+                                                >
+                                                    <FileSpreadsheet size={15} />
+                                                    <span>Exportar Excel / CSV</span>
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                            <div>
+                                                <label className="block font-black text-gray-500 uppercase text-[10px] mb-1">Filtrar por Sección</label>
+                                                <select
+                                                    value={reportStockSection}
+                                                    onChange={(e) => setReportStockSection(e.target.value)}
+                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                >
+                                                    <option value="all">Todas las Secciones ({products.length} productos)</option>
+                                                    {SECTIONS.map(s => (
+                                                        <option key={s.slug} value={s.slug}>{s.icon} {s.label}</option>
+                                                    ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block font-black text-gray-500 uppercase text-[10px] mb-1">Disponibilidad de Stock</label>
+                                                <select
+                                                    value={reportStockFilter}
+                                                    onChange={(e) => setReportStockFilter(e.target.value as any)}
+                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                >
+                                                    <option value="all">Todos los Productos</option>
+                                                    <option value="in_stock">Con Stock Disponible (&gt; 0)</option>
+                                                    <option value="low_stock">Stock Bajo / Por Agotarse (≤ 5 uds)</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Preview Table */}
+                                    <div className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden`}>
+                                        <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex flex-wrap items-center justify-between gap-2">
+                                            <span className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
+                                                Vista Previa de Inventario ({repStockProducts.length} productos)
+                                            </span>
+                                            <span className="font-black text-sm text-[#D86A33]">
+                                                Valor Total Stock: ${repStockProducts.reduce((acc, p) => acc + (p.price * (p.stock !== undefined ? Number(p.stock) : 20)), 0).toFixed(2)} USD
+                                            </span>
+                                        </div>
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left border-collapse text-xs">
+                                                <thead>
+                                                    <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/50 dark:bg-white/5">
+                                                        <th className="py-3 px-4">Producto</th>
+                                                        <th className="py-3 px-4">Sección</th>
+                                                        <th className="py-3 px-4 text-center">Stock</th>
+                                                        <th className="py-3 px-4 text-right">Precio ($ USD)</th>
+                                                        <th className="py-3 px-4 text-right">Equivalente (Bs.)</th>
+                                                        <th className="py-3 px-4 text-right">Editar Stock</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                                    {repStockProducts.map(p => {
+                                                        const qty = p.stock !== undefined ? Number(p.stock) : 20;
+                                                        return (
+                                                            <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5">
+                                                                <td className="py-3 px-4 font-bold">{p.name}</td>
+                                                                <td className="py-3 px-4">{CATEGORIES[p.categoria_slug]?.title || p.categoria_slug}</td>
+                                                                <td className="py-3 px-4 text-center">
+                                                                    <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
+                                                                        qty > 5 ? 'bg-emerald-100 text-emerald-800' : qty > 0 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
+                                                                    }`}>
+                                                                        {qty} uds
+                                                                    </span>
+                                                                </td>
+                                                                <td className="py-3 px-4 text-right font-black text-[#5F2142] dark:text-[#FFC99C]">${p.price.toFixed(2)}</td>
+                                                                <td className="py-3 px-4 text-right">Bs. {(p.price * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</td>
+                                                                <td className="py-3 px-4 text-right">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => openEditProductModal(p)}
+                                                                        className="px-2.5 py-1 rounded-lg border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-xs font-bold"
+                                                                    >
+                                                                        Ajustar
+                                                                    </button>
+                                                                </td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    );
+                })()}
+
+                {/* ========================================================= */}
                 {/* TAB 4: ÁREA DE CONFIGURACIONES DEL SISTEMA (SIN CÓDIGO)   */}
                 {/* ========================================================= */}
                 {activeTab === 'configuracion' && (
@@ -2702,7 +3488,7 @@ export default function AdminPage() {
                                     Área de Configuraciones del Sistema
                                 </h1>
                                 <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                    Control total sin código: Cuentas de pago, facturas, estatus, productos, tasa cambiaria y tienda.
+                                    Control total sin código: Cuentas bancarias y de pago, correlativo de factura, diseño de PDFs, estatus y tienda.
                                 </p>
                             </div>
 
@@ -2720,7 +3506,8 @@ export default function AdminPage() {
                         {/* Navigation Sub-Tabs */}
                         <div className="flex flex-wrap items-center gap-2 pb-2 border-b border-gray-100 dark:border-white/10">
                             {[
-                                { key: 'pagos', label: 'Cuentas de Pago', icon: CreditCard },
+                                { key: 'pagos', label: 'Cuentas Bancarias y de Pago', icon: CreditCard, badge: 2 + (settings.cuentasAdicionales?.length || 0) },
+                                { key: 'correlativo_pdf', label: 'Correlativo & PDFs (Facturas/Reportes)', icon: Printer },
                                 { key: 'facturas', label: 'Gestión de Facturas', icon: FileText, badge: pendingOrdersCount },
                                 { key: 'productos', label: 'Catálogo de Productos', icon: Package, badge: products.length },
                                 { key: 'bcv', label: 'Tasa BCV Oficial', icon: TrendingUp },
@@ -2953,33 +3740,573 @@ export default function AdminPage() {
                                             disabled={isSavingSettings}
                                             className="px-6 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black shadow-md shadow-[#D86A33]/20 transition-all hover:scale-105"
                                         >
-                                            {isSavingSettings ? 'Guardando...' : 'Guardar Cuentas de Pago'}
+                                            {isSavingSettings ? 'Guardando...' : 'Guardar Cuentas Principales'}
                                         </button>
                                     </div>
                                 </form>
 
+                                {/* Additional Bank & Payment Accounts Section */}
+                                <div className={`p-6 sm:p-7 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs space-y-5`}>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100 dark:border-white/10">
+                                        <div>
+                                            <h3 className="font-black text-base text-[#5F2142] dark:text-[#FFC99C] flex items-center gap-2">
+                                                <CreditCard size={18} className="text-[#D86A33]" />
+                                                <span>Cuentas Bancarias o de Pago Adicionales ({settings.cuentasAdicionales?.length || 0})</span>
+                                            </h3>
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                Agrega otras cuentas de Transferencia Bancaria, Pago Móvil secundario, Zelle, Zinli, PayPal o Efectivo para que aparezcan en el Checkout.
+                                            </p>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            onClick={openAddExtraAccountModal}
+                                            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#5F2142] hover:bg-[#43142e] text-white text-xs font-black shadow-md shadow-[#5F2142]/20 transition-all hover:scale-105 shrink-0"
+                                        >
+                                            <Plus size={15} />
+                                            <span>+ Agregar Otra Cuenta Bancaria o de Pago</span>
+                                        </button>
+                                    </div>
+
+                                    {(!settings.cuentasAdicionales || settings.cuentasAdicionales.length === 0) ? (
+                                        <div className={`p-8 rounded-2xl ${bgSubCard} border border-dashed ${borderDefault} text-center space-y-2`}>
+                                            <p className="text-xs font-bold text-gray-600 dark:text-gray-300">
+                                                No has agregado cuentas bancarias o métodos de pago adicionales todavía.
+                                            </p>
+                                            <p className="text-[11px] text-gray-400">
+                                                Haz clic en &quot;+ Agregar Otra Cuenta Bancaria o de Pago&quot; para añadir Transferencias Nacionales, otro Pago Móvil, Zelle, Zinli, etc.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {settings.cuentasAdicionales.map(acc => (
+                                                <div
+                                                    key={acc.id}
+                                                    className={`p-5 rounded-2xl border transition-all space-y-3 text-xs ${
+                                                        acc.activo
+                                                            ? `${bgSubCard} border-[#D86A33]/40`
+                                                            : 'bg-gray-100/60 dark:bg-white/5 border-gray-200 dark:border-white/10 opacity-70'
+                                                    }`}
+                                                >
+                                                    <div className="flex items-start justify-between gap-2 pb-2 border-b border-gray-200/60 dark:border-white/10">
+                                                        <div>
+                                                            <div className="flex items-center gap-2">
+                                                                <span className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
+                                                                    {acc.nombreMetodo}
+                                                                </span>
+                                                                <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase ${
+                                                                    acc.moneda === 'BS' ? 'bg-blue-100 text-blue-800' : 'bg-emerald-100 text-emerald-800'
+                                                                }`}>
+                                                                    {acc.moneda}
+                                                                </span>
+                                                            </div>
+                                                            <div className="text-[11px] text-gray-500 font-bold">
+                                                                {acc.bancoOPlataforma} {acc.tipoCuenta ? `• ${acc.tipoCuenta}` : ''}
+                                                            </div>
+                                                        </div>
+
+                                                        <div className="flex items-center gap-1.5">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleToggleExtraAccountActive(acc.id)}
+                                                                className={`px-2.5 py-1 rounded-lg text-[10px] font-black transition-all ${
+                                                                    acc.activo
+                                                                        ? 'bg-emerald-600 text-white'
+                                                                        : 'bg-gray-300 dark:bg-white/10 text-gray-700 dark:text-gray-300'
+                                                                }`}
+                                                            >
+                                                                {acc.activo ? 'Activa ✓' : 'Inactiva'}
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => openEditExtraAccountModal(acc)}
+                                                                className="p-1.5 rounded-lg border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-[#D86A33]"
+                                                                title="Editar cuenta"
+                                                            >
+                                                                <Edit2 size={13} />
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => handleDeleteExtraAccount(acc.id)}
+                                                                className="p-1.5 rounded-lg border border-red-200 dark:border-red-900/40 text-red-600 hover:bg-red-50"
+                                                                title="Eliminar cuenta"
+                                                            >
+                                                                <Trash2 size={13} />
+                                                            </button>
+                                                        </div>
+                                                    </div>
+
+                                                    <div className="space-y-1 text-[11px]">
+                                                        <div><strong>Titular:</strong> {acc.titular}</div>
+                                                        {acc.numeroCuentaOCorreo && <div><strong>Cuenta / Correo / ID:</strong> <span className="font-mono font-bold">{acc.numeroCuentaOCorreo}</span></div>}
+                                                        {acc.telefono && <div><strong>Teléfono:</strong> {acc.telefono}</div>}
+                                                        {acc.cedulaORif && <div><strong>Cédula / RIF:</strong> {acc.cedulaORif}</div>}
+                                                        {acc.instrucciones && <div className="text-gray-500 italic">Nota: {acc.instrucciones}</div>}
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+
                                 {/* Live Customer Preview Card */}
                                 <div className={`p-6 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs space-y-3`}>
                                     <h4 className="text-xs font-black text-[#5F2142] dark:text-[#FFC99C] uppercase tracking-wider">
-                                        Vista Previa en Vivo (Lo que ve el cliente en Checkout)
+                                        Vista Previa en Vivo (Todas las Cuentas Activas en Checkout)
                                     </h4>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                                        <div className={`p-4 rounded-2xl ${bgSubCard} border ${borderDefault} space-y-1.5`}>
-                                            <div className="font-bold text-blue-700 dark:text-blue-300">Pago Móvil Activo:</div>
-                                            <div><strong>Banco:</strong> {settings.pagoMovil.banco}</div>
-                                            <div><strong>Teléfono:</strong> {settings.pagoMovil.telefono}</div>
-                                            <div><strong>Cédula:</strong> {settings.pagoMovil.cedula}</div>
-                                            <div><strong>Titular:</strong> {settings.pagoMovil.titular}</div>
-                                        </div>
-                                        <div className={`p-4 rounded-2xl ${bgSubCard} border ${borderDefault} space-y-1.5`}>
-                                            <div className="font-bold text-amber-700 dark:text-amber-300">Binance Pay Activo:</div>
-                                            <div><strong>Correo:</strong> {settings.binance.email}</div>
-                                            {settings.binance.payId && <div><strong>Pay ID:</strong> {settings.binance.payId}</div>}
-                                            <div><strong>Titular:</strong> {settings.binance.titular || 'BOHEME'}</div>
-                                        </div>
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
+                                        {settings.pagoMovil.activo && (
+                                            <div className={`p-4 rounded-2xl ${bgSubCard} border ${borderDefault} space-y-1.5`}>
+                                                <div className="font-bold text-blue-700 dark:text-blue-300">Pago Móvil Principal:</div>
+                                                <div><strong>Banco:</strong> {settings.pagoMovil.banco}</div>
+                                                <div><strong>Teléfono:</strong> {settings.pagoMovil.telefono}</div>
+                                                <div><strong>Cédula:</strong> {settings.pagoMovil.cedula}</div>
+                                                <div><strong>Titular:</strong> {settings.pagoMovil.titular}</div>
+                                            </div>
+                                        )}
+                                        {settings.binance.activo && (
+                                            <div className={`p-4 rounded-2xl ${bgSubCard} border ${borderDefault} space-y-1.5`}>
+                                                <div className="font-bold text-amber-700 dark:text-amber-300">Binance Pay Principal:</div>
+                                                <div><strong>Correo:</strong> {settings.binance.email}</div>
+                                                {settings.binance.payId && <div><strong>Pay ID:</strong> {settings.binance.payId}</div>}
+                                                <div><strong>Titular:</strong> {settings.binance.titular || 'BOHEME'}</div>
+                                            </div>
+                                        )}
+                                        {(settings.cuentasAdicionales || []).filter(c => c.activo).map(c => (
+                                            <div key={c.id} className={`p-4 rounded-2xl ${bgSubCard} border ${borderDefault} space-y-1.5`}>
+                                                <div className="font-bold text-[#D86A33]">{c.nombreMetodo} ({c.moneda}):</div>
+                                                <div><strong>Banco/Red:</strong> {c.bancoOPlataforma}</div>
+                                                {c.numeroCuentaOCorreo && <div><strong>Cuenta/Correo:</strong> {c.numeroCuentaOCorreo}</div>}
+                                                {c.telefono && <div><strong>Teléfono:</strong> {c.telefono}</div>}
+                                                {c.cedulaORif && <div><strong>C.I./RIF:</strong> {c.cedulaORif}</div>}
+                                                <div><strong>Titular:</strong> {c.titular}</div>
+                                            </div>
+                                        ))}
                                     </div>
                                 </div>
                             </div>
+                        )}
+
+                        {/* ========================================================= */}
+                        {/* SUB-TAB NUEVO: CORRELATIVO DE FACTURA & DISEÑO DE PDFs    */}
+                        {/* ========================================================= */}
+                        {configSubTab === 'correlativo_pdf' && (
+                            <form onSubmit={handleSaveSettings} className="space-y-6">
+                                {/* 1. Configuración del Número Correlativo de Factura */}
+                                <div className={`p-6 sm:p-8 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs space-y-5`}>
+                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b border-gray-100 dark:border-white/10">
+                                        <div>
+                                            <h3 className="font-black text-base text-[#5F2142] dark:text-[#FFC99C] flex items-center gap-2">
+                                                <Hash size={18} className="text-[#D86A33]" />
+                                                <span>Configuración del Número Correlativo de Factura</span>
+                                            </h3>
+                                            <p className="text-xs text-gray-500 mt-0.5">
+                                                Define el prefijo, la cantidad de dígitos y el próximo número correlativo que se asignará automáticamente a cada nueva factura.
+                                            </p>
+                                        </div>
+
+                                        {/* Live Correlative Preview Badge */}
+                                        <div className="px-4 py-2.5 rounded-2xl bg-[#FFF4EB] dark:bg-white/10 border-2 border-[#D86A33] text-right shrink-0">
+                                            <span className="text-[10px] font-black uppercase text-gray-500 block">Próxima Factura a Emitir:</span>
+                                            <span className="font-mono font-black text-lg text-[#5F2142] dark:text-[#FFC99C]">
+                                                {(settings.correlativo?.prefijo ?? 'BHM-')}
+                                                {String(settings.correlativo?.proximoNumero ?? 1003).padStart(Math.max(1, Number(settings.correlativo?.digitosMinimos) || 4), '0')}
+                                                {(settings.correlativo?.sufijo ?? '')}
+                                            </span>
+                                        </div>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs">
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Prefijo de Factura
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={settings.correlativo?.prefijo ?? 'BHM-'}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    correlativo: { ...(prev.correlativo || { prefijo: 'BHM-', proximoNumero: 1003, digitosMinimos: 4 }), prefijo: e.target.value }
+                                                }))}
+                                                placeholder="Ej: BHM- o FAC-"
+                                                className={`w-full px-3.5 py-2.5 rounded-xl border font-mono font-bold ${inputStyle}`}
+                                            />
+                                            <span className="text-[10px] text-gray-400 mt-1 block">Ej: BHM-, FAC-, ORD-</span>
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Próximo Número Correlativo *
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                required
+                                                value={settings.correlativo?.proximoNumero ?? 1003}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    correlativo: { ...(prev.correlativo || { prefijo: 'BHM-', proximoNumero: 1003, digitosMinimos: 4 }), proximoNumero: Number(e.target.value) }
+                                                }))}
+                                                className={`w-full px-3.5 py-2.5 rounded-xl border font-mono font-black text-[#D86A33] ${inputStyle}`}
+                                            />
+                                            <span className="text-[10px] text-gray-400 mt-1 block">Se incrementa +1 en cada compra</span>
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Dígitos Mínimos (Ceros)
+                                            </label>
+                                            <input
+                                                type="number"
+                                                min="1"
+                                                max="10"
+                                                value={settings.correlativo?.digitosMinimos ?? 4}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    correlativo: { ...(prev.correlativo || { prefijo: 'BHM-', proximoNumero: 1003, digitosMinimos: 4 }), digitosMinimos: Number(e.target.value) }
+                                                }))}
+                                                className={`w-full px-3.5 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                            />
+                                            <span className="text-[10px] text-gray-400 mt-1 block">Ej: 4 dígitos = 0001 / 1003</span>
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Sufijo Opcional
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={settings.correlativo?.sufijo ?? ''}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    correlativo: { ...(prev.correlativo || { prefijo: 'BHM-', proximoNumero: 1003, digitosMinimos: 4 }), sufijo: e.target.value }
+                                                }))}
+                                                placeholder="Opcional (Ej: -2026)"
+                                                className={`w-full px-3.5 py-2.5 rounded-xl border font-mono font-bold ${inputStyle}`}
+                                            />
+                                            <span className="text-[10px] text-gray-400 mt-1 block">Déjalo vacío si no usas sufijo</span>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* 2. Configuración Global de PDFs (Facturas, Reportes de Facturado, Taller y Stock) */}
+                                <div className={`p-6 sm:p-8 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs space-y-5`}>
+                                    <div className="pb-4 border-b border-gray-100 dark:border-white/10">
+                                        <h3 className="font-black text-base text-[#5F2142] dark:text-[#FFC99C] flex items-center gap-2">
+                                            <Printer size={18} className="text-[#D86A33]" />
+                                            <span>Configuración de Plantillas PDF (Facturas y Todos los Reportes)</span>
+                                        </h3>
+                                        <p className="text-xs text-gray-500 mt-0.5">
+                                            Personaliza el membrete fiscal, colores, firmas, sellos y pies de página de las Facturas PDF y de los Reportes de Facturado, Taller y Stock.
+                                        </p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Nombre o Razón Social en el Membrete PDF *
+                                            </label>
+                                            <input
+                                                type="text"
+                                                required
+                                                value={settings.pdfConfig?.nombreEmpresa ?? 'BOHEME • Indumentaria & Equipos Médicos'}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    pdfConfig: { ...prev.pdfConfig, nombreEmpresa: e.target.value }
+                                                }))}
+                                                className={`w-full px-3.5 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                RIF / Documento Fiscal en PDF *
+                                            </label>
+                                            <input
+                                                type="text"
+                                                required
+                                                value={settings.pdfConfig?.rifEmpresa ?? 'V-24.354.847'}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    pdfConfig: { ...prev.pdfConfig, rifEmpresa: e.target.value }
+                                                }))}
+                                                className={`w-full px-3.5 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Teléfono de Contacto en PDF
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={settings.pdfConfig?.telefonoContacto ?? '0412-1409976'}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    pdfConfig: { ...prev.pdfConfig, telefonoContacto: e.target.value }
+                                                }))}
+                                                className={`w-full px-3.5 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Correo Electrónico en PDF
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={settings.pdfConfig?.emailContacto ?? 'worldglobalweb724@gmail.com'}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    pdfConfig: { ...prev.pdfConfig, emailContacto: e.target.value }
+                                                }))}
+                                                className={`w-full px-3.5 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                            />
+                                        </div>
+
+                                        <div className="sm:col-span-2">
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Dirección Fiscal / Ubicación en Membrete PDF
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={settings.pdfConfig?.direccionFiscal ?? ''}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    pdfConfig: { ...prev.pdfConfig, direccionFiscal: e.target.value }
+                                                }))}
+                                                className={`w-full px-3.5 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Titles & Footers for Invoices vs Reports */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs pt-2 border-t border-gray-100 dark:border-white/10">
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Título de Encabezado para Facturas PDF
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={settings.pdfConfig?.encabezadoFactura ?? 'FACTURA / COMPROBANTE DE COMPRA'}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    pdfConfig: { ...prev.pdfConfig, encabezadoFactura: e.target.value }
+                                                }))}
+                                                className={`w-full px-3.5 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Título de Encabezado para Reportes PDF
+                                            </label>
+                                            <input
+                                                type="text"
+                                                value={settings.pdfConfig?.encabezadoReporte ?? 'REPORTE OFICIAL DE GESTIÓN ADMINISTRATIVA'}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    pdfConfig: { ...prev.pdfConfig, encabezadoReporte: e.target.value }
+                                                }))}
+                                                className={`w-full px-3.5 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Pie de Página / Condiciones en Facturas PDF
+                                            </label>
+                                            <textarea
+                                                rows={2}
+                                                value={settings.pdfConfig?.piePaginaFactura ?? ''}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    pdfConfig: { ...prev.pdfConfig, piePaginaFactura: e.target.value }
+                                                }))}
+                                                className={`w-full px-3.5 py-2 rounded-xl border font-medium ${inputStyle}`}
+                                            />
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Pie de Página en Reportes PDF (Facturado / Taller / Stock)
+                                            </label>
+                                            <textarea
+                                                rows={2}
+                                                value={settings.pdfConfig?.piePaginaReporte ?? ''}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    pdfConfig: { ...prev.pdfConfig, piePaginaReporte: e.target.value }
+                                                }))}
+                                                className={`w-full px-3.5 py-2 rounded-xl border font-medium ${inputStyle}`}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    {/* Page Setup, Colors & Visual Checkboxes */}
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 text-xs pt-2 border-t border-gray-100 dark:border-white/10">
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Tamaño de Papel
+                                            </label>
+                                            <select
+                                                value={settings.pdfConfig?.tamanoPapel ?? 'letter'}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    pdfConfig: { ...prev.pdfConfig, tamanoPapel: e.target.value as any }
+                                                }))}
+                                                className={`w-full px-3 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                            >
+                                                <option value="letter">Carta (Letter)</option>
+                                                <option value="a4">A4 Estándar</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Orientación de Reportes
+                                            </label>
+                                            <select
+                                                value={settings.pdfConfig?.orientacionReporte ?? 'portrait'}
+                                                onChange={(e) => setSettings(prev => ({
+                                                    ...prev,
+                                                    pdfConfig: { ...prev.pdfConfig, orientacionReporte: e.target.value as any }
+                                                }))}
+                                                className={`w-full px-3 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                            >
+                                                <option value="portrait">Vertical (Portrait)</option>
+                                                <option value="landscape">Horizontal (Landscape)</option>
+                                            </select>
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Color Principal PDF
+                                            </label>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="color"
+                                                    value={settings.pdfConfig?.colorPrimario ?? '#5F2142'}
+                                                    onChange={(e) => setSettings(prev => ({
+                                                        ...prev,
+                                                        pdfConfig: { ...prev.pdfConfig, colorPrimario: e.target.value }
+                                                    }))}
+                                                    className="w-10 h-10 rounded-xl border cursor-pointer"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={settings.pdfConfig?.colorPrimario ?? '#5F2142'}
+                                                    onChange={(e) => setSettings(prev => ({
+                                                        ...prev,
+                                                        pdfConfig: { ...prev.pdfConfig, colorPrimario: e.target.value }
+                                                    }))}
+                                                    className={`w-full px-3 py-2 rounded-xl border font-mono font-bold ${inputStyle}`}
+                                                />
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Color Acento PDF
+                                            </label>
+                                            <div className="flex items-center gap-2">
+                                                <input
+                                                    type="color"
+                                                    value={settings.pdfConfig?.colorAcento ?? '#D86A33'}
+                                                    onChange={(e) => setSettings(prev => ({
+                                                        ...prev,
+                                                        pdfConfig: { ...prev.pdfConfig, colorAcento: e.target.value }
+                                                    }))}
+                                                    className="w-10 h-10 rounded-xl border cursor-pointer"
+                                                />
+                                                <input
+                                                    type="text"
+                                                    value={settings.pdfConfig?.colorAcento ?? '#D86A33'}
+                                                    onChange={(e) => setSettings(prev => ({
+                                                        ...prev,
+                                                        pdfConfig: { ...prev.pdfConfig, colorAcento: e.target.value }
+                                                    }))}
+                                                    className={`w-full px-3 py-2 rounded-xl border font-mono font-bold ${inputStyle}`}
+                                                />
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* Visual Toggles */}
+                                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2">
+                                        {[
+                                            { key: 'mostrarLogo', label: 'Mostrar Logo BOHEME' },
+                                            { key: 'mostrarTasaBcv', label: 'Mostrar Tasa BCV' },
+                                            { key: 'mostrarFirmas', label: 'Líneas de Firma y Sello' },
+                                            { key: 'mostrarSelloAgua', label: 'Marca de Agua Fondo' }
+                                        ].map(opt => (
+                                            <label
+                                                key={opt.key}
+                                                className={`flex items-center gap-2.5 p-3 rounded-2xl border cursor-pointer text-xs font-bold ${bgSubCard} ${borderDefault}`}
+                                            >
+                                                <input
+                                                    type="checkbox"
+                                                    checked={(settings.pdfConfig as any)?.[opt.key] !== false}
+                                                    onChange={(e) => setSettings(prev => ({
+                                                        ...prev,
+                                                        pdfConfig: { ...prev.pdfConfig, [opt.key]: e.target.checked }
+                                                    }))}
+                                                    className="w-4 h-4 rounded text-[#D86A33] focus:ring-[#D86A33]"
+                                                />
+                                                <span>{opt.label}</span>
+                                            </label>
+                                        ))}
+                                    </div>
+
+                                    {/* Quick Test / Preview Buttons & Save */}
+                                    <div className="pt-4 border-t border-gray-100 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            {orders[0] && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => generateInvoicePdf(orders[0], settings.pdfConfig, bcvRate)}
+                                                    className="px-3.5 py-2 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-xs font-bold inline-flex items-center gap-1.5"
+                                                >
+                                                    <Printer size={13} className="text-[#D86A33]" />
+                                                    <span>Vista Previa Factura PDF</span>
+                                                </button>
+                                            )}
+                                            <button
+                                                type="button"
+                                                onClick={() => generateBillingReportPdf(orders, 'Vista Previa General', settings.pdfConfig, bcvRate)}
+                                                className="px-3.5 py-2 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-xs font-bold inline-flex items-center gap-1.5"
+                                            >
+                                                <Printer size={13} className="text-[#D86A33]" />
+                                                <span>Vista Previa PDF Facturado</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => generateWorkshopReportPdf(orders, 'Vista Previa Taller', settings.pdfConfig)}
+                                                className="px-3.5 py-2 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-xs font-bold inline-flex items-center gap-1.5"
+                                            >
+                                                <Printer size={13} className="text-[#D86A33]" />
+                                                <span>Vista Previa PDF Taller</span>
+                                            </button>
+                                            <button
+                                                type="button"
+                                                onClick={() => generateStockReportPdf(products, 'Todo el Catálogo', settings.pdfConfig, bcvRate)}
+                                                className="px-3.5 py-2 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#D86A33] text-xs font-bold inline-flex items-center gap-1.5"
+                                            >
+                                                <Printer size={13} className="text-[#D86A33]" />
+                                                <span>Vista Previa PDF Stock</span>
+                                            </button>
+                                        </div>
+
+                                        <button
+                                            type="submit"
+                                            disabled={isSavingSettings}
+                                            className="px-6 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black shadow-md shadow-[#D86A33]/25 transition-all hover:scale-105"
+                                        >
+                                            {isSavingSettings ? 'Guardando...' : 'Guardar Correlativo y Configuración PDF'}
+                                        </button>
+                                    </div>
+                                </div>
+                            </form>
                         )}
 
                         {/* ========================================================= */}
@@ -3459,8 +4786,8 @@ export default function AdminPage() {
                                 />
                             </div>
 
-                            {/* Price & Category in 2 columns */}
-                            <div className="grid grid-cols-2 gap-3">
+                            {/* Price, Stock & Category in 3 columns */}
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                 <div>
                                     <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
                                         Precio (USD $) *
@@ -3473,6 +4800,20 @@ export default function AdminPage() {
                                         value={formPrice}
                                         onChange={(e) => setFormPrice(e.target.value)}
                                         className={`w-full px-3.5 py-2.5 rounded-2xl border font-medium ${inputStyle}`}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Stock Disponible (Uds) *
+                                    </label>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        required
+                                        value={formStock}
+                                        onChange={(e) => setFormStock(e.target.value)}
+                                        className={`w-full px-3.5 py-2.5 rounded-2xl border font-bold ${inputStyle}`}
                                     />
                                 </div>
 
@@ -4069,6 +5410,14 @@ export default function AdminPage() {
                             <div className="flex items-center gap-2">
                                 <button
                                     type="button"
+                                    onClick={() => generateInvoicePdf(viewingOrder, settings.pdfConfig, bcvRate)}
+                                    className="px-4 py-2 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black inline-flex items-center gap-1.5 shadow-xs"
+                                >
+                                    <Printer size={13} />
+                                    <span>Imprimir / PDF</span>
+                                </button>
+                                <button
+                                    type="button"
                                     onClick={() => {
                                         const ord = viewingOrder;
                                         setViewingOrder(null);
@@ -4491,6 +5840,208 @@ export default function AdminPage() {
                                 {actionLoading ? 'Guardando...' : 'Guardar Guía'}
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: AGREGAR / EDITAR CUENTA BANCARIA O MÉTODO DE PAGO ADICIONAL */}
+            {isExtraAccountModalOpen && (
+                <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+                    <div className={`rounded-3xl max-w-lg w-full p-6 sm:p-8 ${bgCard} border ${borderDefault} shadow-2xl space-y-4 my-6 max-h-[92vh] flex flex-col overflow-hidden text-xs`}>
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-white/10 shrink-0">
+                            <div>
+                                <h3 className="text-lg font-black text-[#5F2142] dark:text-[#FFC99C]">
+                                    {editingExtraAccountId ? 'Editar Cuenta Bancaria / de Pago' : '+ Agregar Nueva Cuenta Bancaria o de Pago'}
+                                </h3>
+                                <p className="text-[11px] text-gray-500 font-medium">
+                                    Esta cuenta estará disponible para que los clientes realicen su pago al formalizar pedidos.
+                                </p>
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setIsExtraAccountModalOpen(false)}
+                                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 flex items-center justify-center text-gray-500"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSaveExtraAccount} className="flex-1 overflow-y-auto py-2 pr-1 space-y-3.5">
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Tipo de Método *
+                                    </label>
+                                    <select
+                                        value={extraAccTipo}
+                                        onChange={(e) => {
+                                            const val = e.target.value as ExtraPaymentType;
+                                            setExtraAccTipo(val);
+                                            if (val === 'pago_movil' || val === 'transferencia') {
+                                                setExtraAccMoneda('BS');
+                                            } else {
+                                                setExtraAccMoneda('USD');
+                                            }
+                                        }}
+                                        className={`w-full px-3 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                    >
+                                        <option value="transferencia">Transferencia Bancaria</option>
+                                        <option value="pago_movil">Pago Móvil Adicional</option>
+                                        <option value="zelle">Zelle (USD)</option>
+                                        <option value="binance">Binance Pay Secundario</option>
+                                        <option value="zinli">Zinli (USD)</option>
+                                        <option value="paypal">PayPal (USD)</option>
+                                        <option value="efectivo">Efectivo / Divisas</option>
+                                        <option value="otro">Otro Método de Pago</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Moneda de Cobro *
+                                    </label>
+                                    <select
+                                        value={extraAccMoneda}
+                                        onChange={(e) => setExtraAccMoneda(e.target.value as 'BS' | 'USD')}
+                                        className={`w-full px-3 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                    >
+                                        <option value="BS">Bolívares (Bs. a Tasa BCV)</option>
+                                        <option value="USD">Dólares ($ USD / USDT)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Nombre Visible en Checkout *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={extraAccNombreMetodo}
+                                        onChange={(e) => setExtraAccNombreMetodo(e.target.value)}
+                                        placeholder="Ej: Transferencia Banesco / Zelle"
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Banco o Plataforma *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={extraAccBanco}
+                                        onChange={(e) => setExtraAccBanco(e.target.value)}
+                                        placeholder="Ej: Banesco (0134) / Mercantil / Zelle"
+                                        className={`w-full px-3.5 py-2.5 rounded-xl border font-bold ${inputStyle}`}
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                    Número de Cuenta (20 dígitos) / Correo / ID *
+                                </label>
+                                <input
+                                    type="text"
+                                    required
+                                    value={extraAccCuentaOCorreo}
+                                    onChange={(e) => setExtraAccCuentaOCorreo(e.target.value)}
+                                    placeholder="Ej: 0134-0000-00-0000000000 o pagos@boheme.com"
+                                    className={`w-full px-3.5 py-2.5 rounded-xl border font-mono font-bold ${inputStyle}`}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Titular *
+                                    </label>
+                                    <input
+                                        type="text"
+                                        required
+                                        value={extraAccTitular}
+                                        onChange={(e) => setExtraAccTitular(e.target.value)}
+                                        placeholder="BOHEME"
+                                        className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Cédula / RIF
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={extraAccCedula}
+                                        onChange={(e) => setExtraAccCedula(e.target.value)}
+                                        placeholder="V-24.354.847"
+                                        className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Teléfono (Si aplica)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={extraAccTelefono}
+                                        onChange={(e) => setExtraAccTelefono(e.target.value)}
+                                        placeholder="0414-0000000"
+                                        className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Tipo de Cuenta (Opcional)
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={extraAccTipoCuenta}
+                                        onChange={(e) => setExtraAccTipoCuenta(e.target.value)}
+                                        placeholder="Corriente / Ahorro / Corporativa"
+                                        className={`w-full px-3 py-2 rounded-xl border font-medium ${inputStyle}`}
+                                    />
+                                </div>
+
+                                <div>
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                        Nota o Instrucción al Cliente
+                                    </label>
+                                    <input
+                                        type="text"
+                                        value={extraAccInstrucciones}
+                                        onChange={(e) => setExtraAccInstrucciones(e.target.value)}
+                                        placeholder="Ej: Enviar captura con número de referencia"
+                                        className={`w-full px-3 py-2 rounded-xl border font-medium ${inputStyle}`}
+                                    />
+                                </div>
+                            </div>
+
+                            <div className="pt-3 border-t border-gray-100 dark:border-white/10 flex items-center justify-end gap-3 shrink-0">
+                                <button
+                                    type="button"
+                                    onClick={() => setIsExtraAccountModalOpen(false)}
+                                    className="px-4 py-2 rounded-full border border-gray-300 dark:border-white/10 font-bold"
+                                >
+                                    Cancelar
+                                </button>
+                                <button
+                                    type="submit"
+                                    disabled={isSavingSettings}
+                                    className="px-6 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white font-black shadow-md shadow-[#D86A33]/25"
+                                >
+                                    {isSavingSettings ? 'Guardando...' : editingExtraAccountId ? 'Actualizar Cuenta' : 'Guardar Nueva Cuenta'}
+                                </button>
+                            </div>
+                        </form>
                     </div>
                 </div>
             )}
