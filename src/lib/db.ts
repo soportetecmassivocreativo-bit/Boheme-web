@@ -32,11 +32,12 @@ export interface Product {
 export const CATEGORIES: Record<string, CategoryInfo> = {
     'gorros': {
         id: 'gorros',
-        title: 'Gorros',
+        title: 'Gorros Quirúrgicos',
         description: 'Explora nuestra colección de gorros diseñados para brindarte confort y estilo en tu labor diaria.',
         subcategories: [
             { id: 70, name: 'Gorritos en stock' },
-            { id: 71, name: 'Gorritos personalizados' }
+            { id: 71, name: 'Gorritos personalizados' },
+            { id: 72, name: 'Gorros especiales' }
         ]
     },
     'lanyards': {
@@ -130,6 +131,30 @@ export const CATEGORIES: Record<string, CategoryInfo> = {
         ]
     }
 };
+
+export function getSubcategoryName(categoriaSlug: string, subcategoriaId?: number): string {
+    const cat = CATEGORIES[categoriaSlug];
+    if (!cat) return 'General';
+    if (subcategoriaId !== undefined) {
+        const sub = cat.subcategories.find(s => s.id === Number(subcategoriaId));
+        if (sub) return sub.name;
+    }
+    return cat.subcategories[0]?.name || 'General';
+}
+
+export function getSectionAndCategoryLabel(categoriaSlug: string, subcategoriaId?: number): {
+    sectionTitle: string;
+    categoryName: string;
+    fullLabel: string;
+} {
+    const sectionTitle = CATEGORIES[categoriaSlug]?.title || categoriaSlug;
+    const categoryName = getSubcategoryName(categoriaSlug, subcategoriaId);
+    return {
+        sectionTitle,
+        categoryName,
+        fullLabel: `${sectionTitle} • Categoría: ${categoryName}`
+    };
+}
 
 // Static Mock Products matching production data
 let MOCK_PRODUCTS: Product[] = [
@@ -423,7 +448,7 @@ let MOCK_PRODUCTS: Product[] = [
         price: 10,
         image_url: '/cat_gorros.png',
         categoria_slug: 'gorros',
-        subcategoria_id: 70
+        subcategoria_id: 72
     },
     {
         id: '105',

@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useCartStore } from '@/lib/store';
 import { Plus, Minus, ShoppingCart, Sparkles } from 'lucide-react';
 import { parseImages } from '@/lib/utils';
-import { Product } from '@/lib/db';
+import { Product, CATEGORIES, getSubcategoryName } from '@/lib/db';
 import PersonalizeModal from './PersonalizeModal';
 
 interface ProductCardProps {
@@ -17,6 +17,8 @@ export default function ProductCard({ product }: ProductCardProps) {
     const [isPersonalizeOpen, setIsPersonalizeOpen] = useState(false);
 
     const firstImage = parseImages(product.image_url)[0];
+    const sectionTitle = CATEGORIES[product.categoria_slug]?.title || product.categoria_slug;
+    const categoryName = getSubcategoryName(product.categoria_slug, product.subcategoria_id);
 
     const isPersonalizable = Boolean(
         product.categoria_slug === 'productos-personalizados' ||
@@ -85,6 +87,14 @@ export default function ProductCard({ product }: ProductCardProps) {
                 {/* Content container */}
                 <div className="p-5 pt-2 flex-1 flex flex-col justify-between">
                     <div>
+                        <div className="flex flex-wrap items-center gap-1.5 mb-2">
+                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#5F2142]/10 text-[#5F2142]">
+                                {sectionTitle}
+                            </span>
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#FFF9F5] border border-[#D86A33]/40 text-[#D86A33]">
+                                ✦ {categoryName}
+                            </span>
+                        </div>
                         <h3 className="text-lg font-extrabold text-[#5F2142] mb-1.5 line-clamp-1 group-hover:text-[#D86A33] transition-colors">
                             {product.name}
                         </h3>

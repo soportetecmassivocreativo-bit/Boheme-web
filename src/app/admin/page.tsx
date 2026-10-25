@@ -111,6 +111,7 @@ export default function AdminPage() {
     const [products, setProducts] = useState<Product[]>([]);
     const [loadingProducts, setLoadingProducts] = useState(true);
     const [activeSection, setActiveSection] = useState<string>('gorros');
+    const [activeSubcategory, setActiveSubcategory] = useState<number | 'all'>('all');
     const [productSearch, setProductSearch] = useState('');
 
     // Orders / Invoices State (Módulo Facturado)
@@ -232,6 +233,7 @@ export default function AdminPage() {
     const [reportWorkshopStage, setReportWorkshopStage] = useState<string>('all');
     const [reportWorkshopDelivery, setReportWorkshopDelivery] = useState<'all' | 'local' | 'nacional'>('all');
     const [reportStockSection, setReportStockSection] = useState<string>('all');
+    const [reportStockSubcategory, setReportStockSubcategory] = useState<'all' | number>('all');
     const [reportStockFilter, setReportStockFilter] = useState<'all' | 'in_stock' | 'low_stock'>('all');
 
     // Modal / Form to Add or Edit Extra Bank / Payment Account
@@ -450,7 +452,7 @@ export default function AdminPage() {
     // ==========================================
     // PRODUCT ACTIONS (Máximo 10 imágenes)
     // ==========================================
-    const openCreateProductModal = () => {
+    const openCreateProductModal = (preselectedSubcategoryId?: number) => {
         setEditingProduct(null);
         setFormName('');
         setFormDescription('');
@@ -458,7 +460,10 @@ export default function AdminPage() {
         setFormStock(20);
         setFormCategory(activeSection);
         const catInfo = CATEGORIES[activeSection];
-        setFormSubcategory(catInfo?.subcategories[0]?.id);
+        const defaultSubId = preselectedSubcategoryId !== undefined
+            ? preselectedSubcategoryId
+            : (activeSubcategory !== 'all' ? activeSubcategory : catInfo?.subcategories[0]?.id);
+        setFormSubcategory(defaultSubId);
         
         // Start fresh so admin can drop/select images directly
         setFormImages([]);
@@ -636,6 +641,25 @@ export default function AdminPage() {
             alert('Error al eliminar');
         } finally {
             setActionLoading(false);
+        }
+    };
+
+    const handleChangeProductSubcategory = async (product: Product, newSubcategoryId: number) => {
+        try {
+            const res = await fetch(`/api/admin/products/${product.id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ subcategoria_id: newSubcategoryId })
+            });
+            if (res.ok) {
+                const subName = CATEGORIES[product.categoria_slug]?.subcategories.find(s => s.id === newSubcategoryId)?.name || 'General';
+                setProducts(prev => prev.map(p => p.id === product.id ? { ...p, subcategoria_id: newSubcategoryId } : p));
+                showToast(`✓ Categoría actualizada a: ${subName}`);
+            } else {
+                alert('Error al actualizar la categoría del producto');
+            }
+        } catch {
+            alert('Error de conexión al actualizar categoría');
         }
     };
 
@@ -1250,13 +1274,16 @@ export default function AdminPage() {
         return true;
     });
 
-    // Filter products by active section only (NO "TODOS")
-    const sectionProducts = products.filter(p => {
-        const matchesSection = p.categoria_slug === activeSection;
+    // All products in active section (used for subcategory pill counts)
+    const allSectionProducts = products.filter(p => p.categoria_slug === activeSection);
+
+    // Filter products by active section and optional subcategory (NO "TODOS" section)
+    const sectionProducts = allSectionProducts.filter(p => {
+        const matchesSubcategory = activeSubcategory === 'all' || Number(p.subcategoria_id) === Number(activeSubcategory);
         const matchesSearch = !productSearch.trim() || 
             p.name.toLowerCase().includes(productSearch.toLowerCase()) || 
             (p.description && p.description.toLowerCase().includes(productSearch.toLowerCase()));
-        return matchesSection && matchesSearch;
+        return matchesSubcategory && matchesSearch;
     });
 
     // Theme Classes
@@ -2648,159 +2675,393 @@ export default function AdminPage() {
                 )}
 
                 {/* ========================================================= */}
-                {/* TAB 2: AGREGAR PRODUCTOS (Por Sección, Sin "TODOS")       */}
+                {/* TAB 2: AGREGAR PRODUCTOS (Por Sección y Categoría)        */}
                 {/* ========================================================= */}
-                {activeTab === 'productos' && (
-                    <div className="space-y-6">
-                        {/* Section Header */}
-                        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div>
-                                <h1 className="text-2xl sm:text-3xl font-black text-[#5F2142] dark:text-[#FFC99C] tracking-tight">
-                                    Agregar Productos
-                                </h1>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                    Organizado por sección. Permite hasta 10 imágenes por producto.
-                                </p>
+                {activeTab === 'productos' && (() => {
+                    const currentCatInfo = CATEGORIES[activeSection];
+                    const subcats = currentCatInfo?.subcategories || [];
+                    const selectedSubcatObj = activeSubcategory !== 'all'
+                        ? subcats.find(s => s.id === Number(activeSubcategory))
+                        : undefined;
+
+                    // Group already-created products by their specified subcategory
+                    const subcatGroups = (activeSubcategory === 'all' ? subcats : subcats.filter(s => s.id === Number(activeSubcategory)))
+                        .map(sub => ({
+                            sub,
+                            items: sectionProducts.filter(p => Number(p.subcategoria_id) === sub.id)
+                        }))
+                        .filter(g => activeSubcategory !== 'all' || g.items.length > 0);
+
+                    const unassignedItems = activeSubcategory === 'all'
+                        ? sectionProducts.filter(p => !subcats.some(s => s.id === Number(p.subcategoria_id)))
+                        : [];
+
+                    return (
+                        <div className="space-y-6">
+                            {/* Section Header */}
+                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                                <div>
+                                    <h1 className="text-2xl sm:text-3xl font-black text-[#5F2142] dark:text-[#FFC99C] tracking-tight">
+                                        Agregar Productos
+                                    </h1>
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
+                                        Organizado por sección y por la categoría especificada al momento de la creación. Hasta 10 imágenes por producto.
+                                    </p>
+                                </div>
+
+                                <button
+                                    onClick={() => openCreateProductModal(activeSubcategory !== 'all' ? Number(activeSubcategory) : undefined)}
+                                    className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white font-black text-xs sm:text-sm transition-all hover:scale-105 shadow-md shadow-[#D86A33]/25"
+                                >
+                                    <Plus size={16} />
+                                    <span>
+                                        + Nuevo en {currentCatInfo?.title}
+                                        {selectedSubcatObj ? ` (${selectedSubcatObj.name})` : ''}
+                                    </span>
+                                </button>
                             </div>
 
-                            <button
-                                onClick={openCreateProductModal}
-                                className="inline-flex items-center gap-2 px-6 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white font-black text-xs sm:text-sm transition-all hover:scale-105 shadow-md shadow-[#D86A33]/25"
-                            >
-                                <Plus size={16} />
-                                <span>+ Nuevo Producto en {CATEGORIES[activeSection]?.title}</span>
-                            </button>
-                        </div>
+                            {/* Section Selector Buttons (NO "TODOS") */}
+                            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+                                {SECTIONS.map((sec) => {
+                                    const isSelected = activeSection === sec.slug;
+                                    const count = products.filter(p => p.categoria_slug === sec.slug).length;
+                                    const secSubcatsCount = CATEGORIES[sec.slug]?.subcategories.length || 0;
+                                    return (
+                                        <button
+                                            key={sec.slug}
+                                            onClick={() => {
+                                                setActiveSection(sec.slug);
+                                                setActiveSubcategory('all');
+                                            }}
+                                            className={`p-3.5 rounded-2xl border text-left transition-all ${
+                                                isSelected
+                                                    ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-md scale-105'
+                                                    : `${bgCard} ${borderDefault} text-gray-700 dark:text-gray-300 hover:border-[#D86A33]`
+                                            }`}
+                                        >
+                                            <div className="text-lg mb-1">{sec.icon}</div>
+                                            <div className="font-black text-xs leading-tight line-clamp-1">{sec.label}</div>
+                                            <div className={`text-[10px] mt-0.5 font-bold ${isSelected ? 'text-[#FFC99C]' : 'text-gray-400'}`}>
+                                                {count} productos • {secSubcatsCount} categorías
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
 
-                        {/* Section Selector Buttons (NO "TODOS") */}
-                        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                            {SECTIONS.map((sec) => {
-                                const isSelected = activeSection === sec.slug;
-                                const count = products.filter(p => p.categoria_slug === sec.slug).length;
-                                return (
-                                    <button
-                                        key={sec.slug}
-                                        onClick={() => setActiveSection(sec.slug)}
-                                        className={`p-3.5 rounded-2xl border text-left transition-all ${
-                                            isSelected
-                                                ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-md scale-105'
-                                                : `${bgCard} ${borderDefault} text-gray-700 dark:text-gray-300 hover:border-[#D86A33]`
-                                        }`}
-                                    >
-                                        <div className="text-lg mb-1">{sec.icon}</div>
-                                        <div className="font-black text-xs leading-tight line-clamp-1">{sec.label}</div>
-                                        <div className={`text-[10px] mt-0.5 font-bold ${isSelected ? 'text-[#FFC99C]' : 'text-gray-400'}`}>
-                                            {count} productos
+                            {/* Subcategories / Categorías Especificadas de la Sección Activa */}
+                            {subcats.length > 0 && (
+                                <div className={`p-4 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs space-y-3`}>
+                                    <div className="flex flex-wrap items-center justify-between gap-2">
+                                        <div className="flex items-center gap-2">
+                                            <Layers size={15} className="text-[#D86A33]" />
+                                            <span className="text-xs font-black uppercase tracking-wider text-[#5F2142] dark:text-[#FFC99C]">
+                                                Categorías de {currentCatInfo?.title}:
+                                            </span>
                                         </div>
+                                        <span className="text-[11px] text-gray-400 font-medium">
+                                            Filtra los productos creados o selecciona una categoría para crear uno nuevo
+                                        </span>
+                                    </div>
+
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveSubcategory('all')}
+                                            className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border ${
+                                                activeSubcategory === 'all'
+                                                    ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-xs'
+                                                    : 'bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
+                                            }`}
+                                        >
+                                            <span>✦ Todas las categorías de {currentCatInfo?.title}</span>
+                                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                                                activeSubcategory === 'all' ? 'bg-[#D86A33] text-white' : 'bg-gray-200 dark:bg-white/10 text-gray-700 dark:text-gray-300'
+                                            }`}>
+                                                {allSectionProducts.length}
+                                            </span>
+                                        </button>
+
+                                        {subcats.map(sub => {
+                                            const isSubActive = activeSubcategory !== 'all' && Number(activeSubcategory) === sub.id;
+                                            const subCount = allSectionProducts.filter(p => Number(p.subcategoria_id) === sub.id).length;
+                                            return (
+                                                <button
+                                                    key={sub.id}
+                                                    type="button"
+                                                    onClick={() => setActiveSubcategory(sub.id)}
+                                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border ${
+                                                        isSubActive
+                                                            ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-xs scale-105'
+                                                            : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
+                                                    }`}
+                                                >
+                                                    <span>{sub.name}</span>
+                                                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                                                        isSubActive
+                                                            ? 'bg-white/25 text-white'
+                                                            : subCount > 0
+                                                                ? 'bg-[#5F2142]/10 text-[#5F2142] dark:bg-[#FFC99C]/15 dark:text-[#FFC99C]'
+                                                                : 'bg-gray-100 dark:bg-white/5 text-gray-400'
+                                                    }`}>
+                                                        {subCount}
+                                                    </span>
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Search in active section */}
+                            <div className={`p-4 rounded-2xl ${bgCard} border ${borderDefault} shadow-xs flex items-center gap-3`}>
+                                <Search size={17} className="text-gray-400" />
+                                <input
+                                    type="text"
+                                    placeholder={`Buscar producto en ${currentCatInfo?.title}${selectedSubcatObj ? ` › ${selectedSubcatObj.name}` : ''}...`}
+                                    value={productSearch}
+                                    onChange={(e) => setProductSearch(e.target.value)}
+                                    className={`w-full outline-none text-xs sm:text-sm font-medium ${isDark ? 'bg-transparent text-white' : 'bg-transparent text-gray-900'}`}
+                                />
+                                {activeSubcategory !== 'all' && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setActiveSubcategory('all')}
+                                        className="px-3 py-1 rounded-xl bg-gray-100 dark:bg-white/10 text-xs font-bold text-gray-600 dark:text-gray-300 shrink-0 hover:bg-gray-200"
+                                    >
+                                        Ver todas las categorías
                                     </button>
-                                );
-                            })}
-                        </div>
-
-                        {/* Search in active section */}
-                        <div className={`p-4 rounded-2xl ${bgCard} border ${borderDefault} shadow-xs flex items-center gap-3`}>
-                            <Search size={17} className="text-gray-400" />
-                            <input
-                                type="text"
-                                placeholder={`Buscar en ${CATEGORIES[activeSection]?.title}...`}
-                                value={productSearch}
-                                onChange={(e) => setProductSearch(e.target.value)}
-                                className={`w-full outline-none text-xs sm:text-sm font-medium ${isDark ? 'bg-transparent text-white' : 'bg-transparent text-gray-900'}`}
-                            />
-                        </div>
-
-                        {/* Products Table in Active Section */}
-                        <div className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden`}>
-                            <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex items-center justify-between">
-                                <h3 className="font-black text-base text-[#5F2142] dark:text-[#FFC99C]">
-                                    {CATEGORIES[activeSection]?.title} ({sectionProducts.length})
-                                </h3>
-                                <span className="text-xs text-gray-500 font-medium">Precios en Dólares ($)</span>
+                                )}
                             </div>
 
+                            {/* Products Grouped by Category Specified at Creation */}
                             {sectionProducts.length === 0 ? (
-                                <div className="p-16 text-center text-gray-500">
-                                    <p className="font-bold">No hay productos en esta sección.</p>
+                                <div className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs p-14 text-center text-gray-500`}>
+                                    <p className="font-bold text-sm text-gray-700 dark:text-gray-200">
+                                        No hay productos creados en {currentCatInfo?.title}
+                                        {selectedSubcatObj ? ` › Categoría "${selectedSubcatObj.name}"` : ''}.
+                                    </p>
                                     <button
-                                        onClick={openCreateProductModal}
-                                        className="mt-3 px-4 py-2 rounded-full bg-[#D86A33] text-white font-bold text-xs"
+                                        onClick={() => openCreateProductModal(activeSubcategory !== 'all' ? Number(activeSubcategory) : undefined)}
+                                        className="mt-3 px-5 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white font-black text-xs shadow-xs"
                                     >
-                                        + Agregar Primer Producto
+                                        + Crear Producto en {selectedSubcatObj ? selectedSubcatObj.name : currentCatInfo?.title}
                                     </button>
                                 </div>
                             ) : (
-                                <div className="overflow-x-auto divide-y divide-gray-100 dark:divide-white/10">
-                                    <table className="w-full text-left border-collapse text-xs">
-                                        <thead>
-                                            <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/50 dark:bg-white/5">
-                                                <th className="py-3 px-5">Producto & Fotos</th>
-                                                <th className="py-3 px-5">Subcategoría</th>
-                                                <th className="py-3 px-5">Precio</th>
-                                                <th className="py-3 px-5 text-right">Acciones</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                                            {sectionProducts.map(p => {
-                                                const imgs = parseImages(p.image_url);
-                                                const firstImg = imgs[0] || '/cat_gorros.png';
-                                                const subcat = CATEGORIES[p.categoria_slug]?.subcategories.find(s => s.id === p.subcategoria_id);
-                                                return (
-                                                    <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
-                                                        <td className="py-3.5 px-5">
-                                                            <div className="flex items-center gap-3">
-                                                                <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-white/10 overflow-hidden shrink-0 relative flex items-center justify-center">
-                                                                    <img src={firstImg} alt={p.name} className="w-full h-full object-cover" />
-                                                                    {imgs.length > 1 && (
-                                                                        <span className="absolute bottom-0 right-0 bg-[#5F2142] text-white text-[9px] font-black px-1 rounded-tl">
-                                                                            +{imgs.length}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                                <div>
-                                                                    <div className="font-black text-gray-900 dark:text-white">{p.name}</div>
-                                                                    <div className="text-[11px] text-gray-500 line-clamp-1">{p.description}</div>
-                                                                </div>
-                                                            </div>
-                                                        </td>
+                                <div className="space-y-6">
+                                    {subcatGroups.map(({ sub, items }) => (
+                                        <div key={sub.id} className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden`}>
+                                            {/* Category Group Header */}
+                                            <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/3 flex flex-wrap items-center justify-between gap-3">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="px-3 py-1 rounded-full bg-[#5F2142] text-[#FFC99C] text-[11px] font-black uppercase tracking-wider">
+                                                        {currentCatInfo?.title}
+                                                    </span>
+                                                    <span className="text-[#D86A33] font-black">›</span>
+                                                    <h3 className="font-black text-sm sm:text-base text-[#5F2142] dark:text-[#FFC99C]">
+                                                        Categoría: <span className="text-[#D86A33]">{sub.name}</span>
+                                                    </h3>
+                                                    <span className="px-2.5 py-0.5 rounded-full bg-[#D86A33]/10 text-[#D86A33] text-xs font-black">
+                                                        {items.length} {items.length === 1 ? 'producto creado' : 'productos creados'}
+                                                    </span>
+                                                </div>
 
-                                                        <td className="py-3.5 px-5 whitespace-nowrap">
-                                                            <span className="text-xs text-gray-600 dark:text-gray-300 font-medium">
-                                                                {subcat?.name || 'General'}
-                                                            </span>
-                                                        </td>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openCreateProductModal(sub.id)}
+                                                    className="px-3.5 py-1.5 rounded-xl bg-[#D86A33] hover:bg-[#c25925] text-white text-[11px] font-black inline-flex items-center gap-1 shadow-2xs transition-all"
+                                                >
+                                                    <Plus size={13} />
+                                                    <span>Agregar en {sub.name}</span>
+                                                </button>
+                                            </div>
 
-                                                        <td className="py-3.5 px-5 whitespace-nowrap">
-                                                            <span className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
-                                                                ${p.price.toFixed(2)}
-                                                            </span>
-                                                        </td>
+                                            {items.length === 0 ? (
+                                                <div className="p-8 text-center text-xs text-gray-400">
+                                                    Aún no hay productos en la categoría <strong>{sub.name}</strong>.
+                                                </div>
+                                            ) : (
+                                                <div className="overflow-x-auto divide-y divide-gray-100 dark:divide-white/10">
+                                                    <table className="w-full text-left border-collapse text-xs">
+                                                        <thead>
+                                                            <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/40 dark:bg-white/2">
+                                                                <th className="py-3 px-5">Producto Creado & Fotos</th>
+                                                                <th className="py-3 px-5">Sección & Categoría Especificada</th>
+                                                                <th className="py-3 px-5 text-center">Stock</th>
+                                                                <th className="py-3 px-5">Precio ($ / Bs.)</th>
+                                                                <th className="py-3 px-5 text-right">Acciones</th>
+                                                            </tr>
+                                                        </thead>
+                                                        <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                                            {items.map(p => {
+                                                                const imgs = parseImages(p.image_url);
+                                                                const firstImg = imgs[0] || '/cat_gorros.png';
+                                                                const pSubcats = CATEGORIES[p.categoria_slug]?.subcategories || [];
+                                                                return (
+                                                                    <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
+                                                                        <td className="py-3.5 px-5">
+                                                                            <div className="flex items-center gap-3">
+                                                                                <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-white/10 overflow-hidden shrink-0 relative flex items-center justify-center border border-gray-200 dark:border-white/10">
+                                                                                    <img src={firstImg} alt={p.name} className="w-full h-full object-cover" />
+                                                                                    {imgs.length > 1 && (
+                                                                                        <span className="absolute bottom-0 right-0 bg-[#5F2142] text-white text-[9px] font-black px-1 rounded-tl">
+                                                                                            +{imgs.length}
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                                <div>
+                                                                                    <div className="font-black text-gray-900 dark:text-white text-xs sm:text-sm">{p.name}</div>
+                                                                                    <div className="text-[11px] text-gray-500 line-clamp-1 max-w-md">{p.description}</div>
+                                                                                    <div className="flex items-center gap-1.5 mt-1">
+                                                                                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#5F2142]/10 text-[#5F2142] dark:bg-[#FFC99C]/10 dark:text-[#FFC99C]">
+                                                                                            {CATEGORIES[p.categoria_slug]?.title}
+                                                                                        </span>
+                                                                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-md bg-[#D86A33]/15 text-[#D86A33]">
+                                                                                            ✦ {sub.name}
+                                                                                        </span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                        </td>
 
-                                                        <td className="py-3.5 px-5 text-right whitespace-nowrap">
-                                                            <div className="inline-flex items-center gap-2">
-                                                                <button
-                                                                    onClick={() => openEditProductModal(p)}
-                                                                    className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/10 hover:border-[#D86A33] hover:text-[#D86A33] flex items-center justify-center transition-all bg-white dark:bg-transparent"
-                                                                >
-                                                                    <Edit2 size={13} />
-                                                                </button>
-                                                                <button
-                                                                    onClick={() => setDeleteConfirmId(p.id)}
-                                                                    className="w-8 h-8 rounded-full border border-red-200 dark:border-red-900/40 text-red-600 hover:bg-red-50 flex items-center justify-center transition-all bg-white dark:bg-transparent"
-                                                                >
-                                                                    <Trash2 size={13} />
-                                                                </button>
-                                                            </div>
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
+                                                                        <td className="py-3.5 px-5 whitespace-nowrap">
+                                                                            <div className="space-y-1">
+                                                                                <span className="block text-[10px] font-bold uppercase text-gray-400">
+                                                                                    {CATEGORIES[p.categoria_slug]?.title} › Categoría:
+                                                                                </span>
+                                                                                <select
+                                                                                    value={p.subcategoria_id || ''}
+                                                                                    onChange={(e) => handleChangeProductSubcategory(p, Number(e.target.value))}
+                                                                                    className={`px-3 py-1.5 rounded-xl border text-xs font-black outline-none cursor-pointer transition-all hover:border-[#D86A33] ${inputStyle}`}
+                                                                                    title="Cambiar categoría especificada de este producto"
+                                                                                >
+                                                                                    {pSubcats.map(sc => (
+                                                                                        <option key={sc.id} value={sc.id}>
+                                                                                            {sc.name}
+                                                                                        </option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            </div>
+                                                                        </td>
+
+                                                                        <td className="py-3.5 px-5 text-center whitespace-nowrap">
+                                                                            <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                                                                {p.stock !== undefined ? p.stock : 20} uds
+                                                                            </span>
+                                                                        </td>
+
+                                                                        <td className="py-3.5 px-5 whitespace-nowrap">
+                                                                            <div className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
+                                                                                ${p.price.toFixed(2)} USD
+                                                                            </div>
+                                                                            <div className="text-[10px] font-bold text-[#D86A33]">
+                                                                                {(p.price * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs.
+                                                                            </div>
+                                                                        </td>
+
+                                                                        <td className="py-3.5 px-5 text-right whitespace-nowrap">
+                                                                            <div className="inline-flex items-center gap-2">
+                                                                                <button
+                                                                                    onClick={() => openEditProductModal(p)}
+                                                                                    className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/10 hover:border-[#D86A33] hover:text-[#D86A33] flex items-center justify-center transition-all bg-white dark:bg-transparent"
+                                                                                    title="Editar producto y categoría"
+                                                                                >
+                                                                                    <Edit2 size={13} />
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => setDeleteConfirmId(p.id)}
+                                                                                    className="w-8 h-8 rounded-full border border-red-200 dark:border-red-900/40 text-red-600 hover:bg-red-50 flex items-center justify-center transition-all bg-white dark:bg-transparent"
+                                                                                    title="Eliminar producto"
+                                                                                >
+                                                                                    <Trash2 size={13} />
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            })}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            )}
+                                        </div>
+                                    ))}
+
+                                    {/* Fallback block if any product in this section has no subcategory assigned */}
+                                    {unassignedItems.length > 0 && (
+                                        <div className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden`}>
+                                            <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 bg-amber-50/40 dark:bg-amber-950/20 flex items-center justify-between">
+                                                <h3 className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
+                                                    {currentCatInfo?.title} › Sin categoría específica asignada ({unassignedItems.length})
+                                                </h3>
+                                                <span className="text-[11px] text-amber-600 font-bold">
+                                                    Selecciona una categoría en el desplegable de cada fila
+                                                </span>
+                                            </div>
+                                            <div className="overflow-x-auto divide-y divide-gray-100 dark:divide-white/10">
+                                                <table className="w-full text-left border-collapse text-xs">
+                                                    <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                                        {unassignedItems.map(p => {
+                                                            const imgs = parseImages(p.image_url);
+                                                            const firstImg = imgs[0] || '/cat_gorros.png';
+                                                            const pSubcats = CATEGORIES[p.categoria_slug]?.subcategories || [];
+                                                            return (
+                                                                <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5">
+                                                                    <td className="py-3.5 px-5">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-white/10 overflow-hidden shrink-0">
+                                                                                <img src={firstImg} alt={p.name} className="w-full h-full object-cover" />
+                                                                            </div>
+                                                                            <div>
+                                                                                <div className="font-black text-gray-900 dark:text-white">{p.name}</div>
+                                                                                <div className="text-[11px] text-gray-500 line-clamp-1">{p.description}</div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+                                                                    <td className="py-3.5 px-5">
+                                                                        <select
+                                                                            value={p.subcategoria_id || ''}
+                                                                            onChange={(e) => handleChangeProductSubcategory(p, Number(e.target.value))}
+                                                                            className={`px-3 py-1.5 rounded-xl border text-xs font-black outline-none ${inputStyle}`}
+                                                                        >
+                                                                            <option value="">-- Asignar categoría --</option>
+                                                                            {pSubcats.map(sc => (
+                                                                                <option key={sc.id} value={sc.id}>{sc.name}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </td>
+                                                                    <td className="py-3.5 px-5 font-black text-[#5F2142] dark:text-[#FFC99C]">
+                                                                        ${p.price.toFixed(2)}
+                                                                    </td>
+                                                                    <td className="py-3.5 px-5 text-right">
+                                                                        <button
+                                                                            onClick={() => openEditProductModal(p)}
+                                                                            className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/10 hover:border-[#D86A33] inline-flex items-center justify-center mr-2"
+                                                                        >
+                                                                            <Edit2 size={13} />
+                                                                        </button>
+                                                                        <button
+                                                                            onClick={() => setDeleteConfirmId(p.id)}
+                                                                            className="w-8 h-8 rounded-full border border-red-200 text-red-600 inline-flex items-center justify-center"
+                                                                        >
+                                                                            <Trash2 size={13} />
+                                                                        </button>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
-                    </div>
-                )}
+                    );
+                })()}
 
                 {/* ========================================================= */}
                 {/* TAB 3: RESUMEN / DASHBOARD GENERAL                        */}
@@ -2932,6 +3193,7 @@ export default function AdminPage() {
                     // 3. Filtered Products for Reporte de Productos en Stock
                     const repStockProducts = products.filter(p => {
                         if (reportStockSection !== 'all' && p.categoria_slug !== reportStockSection) return false;
+                        if (reportStockSubcategory !== 'all' && Number(p.subcategoria_id) !== Number(reportStockSubcategory)) return false;
                         const qty = p.stock !== undefined ? Number(p.stock) : 20;
                         if (reportStockFilter === 'in_stock' && qty <= 0) return false;
                         if (reportStockFilter === 'low_stock' && qty > 5) return false;
@@ -3364,13 +3626,15 @@ export default function AdminPage() {
                                                     onClick={() => {
                                                         exportToCsv(
                                                             'Reporte_Stock_Productos_BOHEME',
-                                                            ['ID', 'Producto', 'Seccion', 'Stock Disponible', 'Precio Unit USD', 'Precio Unit Bs BCV', 'Valor Total Stock USD'],
+                                                            ['ID', 'Producto', 'Seccion', 'Categoria Especificada', 'Stock Disponible', 'Precio Unit USD', 'Precio Unit Bs BCV', 'Valor Total Stock USD'],
                                                             repStockProducts.map(p => {
                                                                 const qty = p.stock !== undefined ? Number(p.stock) : 20;
+                                                                const subcatName = CATEGORIES[p.categoria_slug]?.subcategories.find(s => s.id === Number(p.subcategoria_id))?.name || 'General';
                                                                 return [
                                                                     p.id,
                                                                     p.name,
                                                                     CATEGORIES[p.categoria_slug]?.title || p.categoria_slug,
+                                                                    subcatName,
                                                                     qty,
                                                                     p.price.toFixed(2),
                                                                     (p.price * bcvRate).toFixed(2),
@@ -3387,18 +3651,43 @@ export default function AdminPage() {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
+                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                                             <div>
                                                 <label className="block font-black text-gray-500 uppercase text-[10px] mb-1">Filtrar por Sección</label>
                                                 <select
                                                     value={reportStockSection}
-                                                    onChange={(e) => setReportStockSection(e.target.value)}
+                                                    onChange={(e) => {
+                                                        setReportStockSection(e.target.value);
+                                                        setReportStockSubcategory('all');
+                                                    }}
                                                     className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
                                                 >
                                                     <option value="all">Todas las Secciones ({products.length} productos)</option>
                                                     {SECTIONS.map(s => (
                                                         <option key={s.slug} value={s.slug}>{s.icon} {s.label}</option>
                                                     ))}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block font-black text-gray-500 uppercase text-[10px] mb-1">Filtrar por Categoría</label>
+                                                <select
+                                                    value={reportStockSubcategory}
+                                                    onChange={(e) => setReportStockSubcategory(e.target.value === 'all' ? 'all' : Number(e.target.value))}
+                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                >
+                                                    <option value="all">Todas las Categorías</option>
+                                                    {reportStockSection !== 'all'
+                                                        ? (CATEGORIES[reportStockSection]?.subcategories || []).map(sc => (
+                                                            <option key={sc.id} value={sc.id}>{sc.name}</option>
+                                                        ))
+                                                        : Object.values(CATEGORIES).flatMap(cat =>
+                                                            cat.subcategories.map(sc => (
+                                                                <option key={`${cat.id}-${sc.id}`} value={sc.id}>
+                                                                    {cat.title} › {sc.name}
+                                                                </option>
+                                                            ))
+                                                        )
+                                                    }
                                                 </select>
                                             </div>
                                             <div>
@@ -3431,7 +3720,7 @@ export default function AdminPage() {
                                                 <thead>
                                                     <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/50 dark:bg-white/5">
                                                         <th className="py-3 px-4">Producto</th>
-                                                        <th className="py-3 px-4">Sección</th>
+                                                        <th className="py-3 px-4">Sección & Categoría Especificada</th>
                                                         <th className="py-3 px-4 text-center">Stock</th>
                                                         <th className="py-3 px-4 text-right">Precio ($ USD)</th>
                                                         <th className="py-3 px-4 text-right">Equivalente (Bs.)</th>
@@ -3441,10 +3730,21 @@ export default function AdminPage() {
                                                 <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                                                     {repStockProducts.map(p => {
                                                         const qty = p.stock !== undefined ? Number(p.stock) : 20;
+                                                        const subcatName = CATEGORIES[p.categoria_slug]?.subcategories.find(s => s.id === Number(p.subcategoria_id))?.name || 'General';
                                                         return (
                                                             <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5">
                                                                 <td className="py-3 px-4 font-bold">{p.name}</td>
-                                                                <td className="py-3 px-4">{CATEGORIES[p.categoria_slug]?.title || p.categoria_slug}</td>
+                                                                <td className="py-3 px-4">
+                                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                                        <span className="font-bold text-[#5F2142] dark:text-[#FFC99C]">
+                                                                            {CATEGORIES[p.categoria_slug]?.title || p.categoria_slug}
+                                                                        </span>
+                                                                        <span className="text-gray-400">›</span>
+                                                                        <span className="px-2 py-0.5 rounded-md bg-[#D86A33]/15 text-[#D86A33] font-black text-[10px]">
+                                                                            ✦ {subcatName}
+                                                                        </span>
+                                                                    </div>
+                                                                </td>
                                                                 <td className="py-3 px-4 text-center">
                                                                     <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-black ${
                                                                         qty > 5 ? 'bg-emerald-100 text-emerald-800' : qty > 0 ? 'bg-amber-100 text-amber-800' : 'bg-red-100 text-red-800'
@@ -4444,7 +4744,10 @@ export default function AdminPage() {
                                         {SECTIONS.map(s => (
                                             <button
                                                 key={s.slug}
-                                                onClick={() => setActiveSection(s.slug)}
+                                                onClick={() => {
+                                                    setActiveSection(s.slug);
+                                                    setActiveSubcategory('all');
+                                                }}
                                                 className={`px-3 py-1.5 rounded-full text-xs font-black uppercase tracking-wider whitespace-nowrap transition-all ${
                                                     activeSection === s.slug
                                                         ? 'bg-[#5F2142] text-white shadow-xs'
@@ -4457,19 +4760,59 @@ export default function AdminPage() {
                                     </div>
 
                                     <button
-                                        onClick={openCreateProductModal}
+                                        onClick={() => openCreateProductModal(activeSubcategory !== 'all' ? Number(activeSubcategory) : undefined)}
                                         className="px-5 py-2 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black shadow-xs shrink-0"
                                     >
                                         + Agregar Producto
                                     </button>
                                 </div>
 
+                                {/* Subcategory Filter Bar for Configuraciones -> Productos */}
+                                {CATEGORIES[activeSection]?.subcategories && (
+                                    <div className={`p-3.5 rounded-2xl ${bgCard} border ${borderDefault} flex flex-wrap items-center gap-2`}>
+                                        <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 mr-1">
+                                            Categorías de {CATEGORIES[activeSection]?.title}:
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() => setActiveSubcategory('all')}
+                                            className={`px-3 py-1 rounded-xl text-[11px] font-black transition-all ${
+                                                activeSubcategory === 'all'
+                                                    ? 'bg-[#5F2142] text-white'
+                                                    : 'bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 hover:border-[#D86A33]'
+                                            }`}
+                                        >
+                                            ✦ Todas ({allSectionProducts.length})
+                                        </button>
+                                        {CATEGORIES[activeSection].subcategories.map(sub => {
+                                            const subCount = allSectionProducts.filter(p => Number(p.subcategoria_id) === sub.id).length;
+                                            const isSubActive = activeSubcategory !== 'all' && Number(activeSubcategory) === sub.id;
+                                            return (
+                                                <button
+                                                    key={sub.id}
+                                                    type="button"
+                                                    onClick={() => setActiveSubcategory(sub.id)}
+                                                    className={`px-3 py-1 rounded-xl text-[11px] font-black transition-all ${
+                                                        isSubActive
+                                                            ? 'bg-[#D86A33] text-white shadow-2xs'
+                                                            : 'bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10'
+                                                    }`}
+                                                >
+                                                    {sub.name} ({subCount})
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
                                 <div className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden`}>
                                     <div className="overflow-x-auto divide-y divide-gray-100 dark:divide-white/10">
                                         <table className="w-full text-left border-collapse text-xs">
                                             <thead>
                                                 <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/50 dark:bg-white/5">
-                                                    <th className="py-3 px-5">Producto</th>
+                                                    <th className="py-3 px-5">Producto Creado</th>
+                                                    <th className="py-3 px-5">Sección & Categoría Especificada</th>
+                                                    <th className="py-3 px-5 text-center">Stock</th>
                                                     <th className="py-3 px-5">Precio</th>
                                                     <th className="py-3 px-5 text-right">Acciones</th>
                                                 </tr>
@@ -4477,6 +4820,8 @@ export default function AdminPage() {
                                             <tbody className="divide-y divide-gray-100 dark:divide-white/5">
                                                 {sectionProducts.map(p => {
                                                     const imgs = parseImages(p.image_url);
+                                                    const pSubcats = CATEGORIES[p.categoria_slug]?.subcategories || [];
+                                                    const currentSubName = pSubcats.find(s => s.id === Number(p.subcategoria_id))?.name || 'General';
                                                     return (
                                                         <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5">
                                                             <td className="py-3 px-5">
@@ -4486,9 +4831,35 @@ export default function AdminPage() {
                                                                     </div>
                                                                     <div>
                                                                         <div className="font-bold text-gray-900 dark:text-white">{p.name}</div>
-                                                                        <div className="text-[10px] text-gray-400 font-bold">{imgs.length} fotos cargadas</div>
+                                                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                                                            <span className="text-[10px] text-gray-400 font-bold">{imgs.length} fotos</span>
+                                                                            <span className="text-[10px] font-black px-1.5 py-0.5 rounded bg-[#D86A33]/15 text-[#D86A33]">
+                                                                                ✦ {currentSubName}
+                                                                            </span>
+                                                                        </div>
                                                                     </div>
                                                                 </div>
+                                                            </td>
+                                                            <td className="py-3 px-5 whitespace-nowrap">
+                                                                <div className="space-y-1">
+                                                                    <span className="block text-[10px] font-bold uppercase text-gray-400">
+                                                                        {CATEGORIES[p.categoria_slug]?.title} › Categoría:
+                                                                    </span>
+                                                                    <select
+                                                                        value={p.subcategoria_id || ''}
+                                                                        onChange={(e) => handleChangeProductSubcategory(p, Number(e.target.value))}
+                                                                        className={`px-3 py-1 rounded-xl border text-xs font-black outline-none cursor-pointer ${inputStyle}`}
+                                                                    >
+                                                                        {pSubcats.map(sc => (
+                                                                            <option key={sc.id} value={sc.id}>{sc.name}</option>
+                                                                        ))}
+                                                                    </select>
+                                                                </div>
+                                                            </td>
+                                                            <td className="py-3 px-5 text-center whitespace-nowrap">
+                                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                                                    {p.stock !== undefined ? p.stock : 20} uds
+                                                                </span>
                                                             </td>
                                                             <td className="py-3 px-5 font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
                                                                 ${p.price.toFixed(2)} USD
@@ -4837,11 +5208,11 @@ export default function AdminPage() {
                                 </div>
                             </div>
 
-                            {/* Dynamic Subcategory */}
+                            {/* Dynamic Category / Subcategory of the Section */}
                             {CATEGORIES[formCategory] && CATEGORIES[formCategory].subcategories.length > 0 && (
-                                <div>
-                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
-                                        Subcategoría
+                                <div className="space-y-2">
+                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase">
+                                        Categoría de {CATEGORIES[formCategory]?.title} *
                                     </label>
                                     <select
                                         value={formSubcategory || ''}
@@ -4849,9 +5220,30 @@ export default function AdminPage() {
                                         className={`w-full px-3 py-2.5 rounded-2xl border font-bold ${inputStyle}`}
                                     >
                                         {CATEGORIES[formCategory].subcategories.map(s => (
-                                            <option key={s.id} value={s.id}>{s.name}</option>
+                                            <option key={s.id} value={s.id}>
+                                                {CATEGORIES[formCategory].title} › Categoría: {s.name}
+                                            </option>
                                         ))}
                                     </select>
+                                    <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                        {CATEGORIES[formCategory].subcategories.map(s => {
+                                            const isSelected = Number(formSubcategory) === s.id;
+                                            return (
+                                                <button
+                                                    key={s.id}
+                                                    type="button"
+                                                    onClick={() => setFormSubcategory(s.id)}
+                                                    className={`px-2.5 py-1 rounded-xl text-[11px] font-black transition-all border ${
+                                                        isSelected
+                                                            ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-2xs'
+                                                            : 'bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
+                                                    }`}
+                                                >
+                                                    {s.name}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             )}
 
