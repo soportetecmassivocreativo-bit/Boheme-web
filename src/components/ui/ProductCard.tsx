@@ -27,11 +27,13 @@ export default function ProductCard({ product }: ProductCardProps) {
     const isStockGorro = isGorroProduct && subcatId === 70;
     const isStockLanyard = isLanyardProduct && subcatId === 5;
     const isStockGorroOrLanyard = isStockGorro || isStockLanyard;
+    const isPortacarnet = isLanyardProduct && subcatId === 7;
+    const isEncargoEligible = isAccesoriosOrEquipos || isPortacarnet;
     const isLanyardWithForm = isLanyardProduct && (subcatId === 6 || subcatId === 75);
     const usesGorroForm = (isGorroProduct && !isStockGorro) || isLanyardWithForm;
 
     const availableStock = product.stock !== undefined ? Math.max(0, Number(product.stock)) : 20;
-    const isPorEncargo = isAccesoriosOrEquipos && (availableStock <= 0 || quantity > availableStock);
+    const isPorEncargo = isEncargoEligible && (availableStock <= 0 || quantity > availableStock);
 
     const firstImage = parseImages(product.image_url)[0];
     const sectionTitle = CATEGORIES[normalizedSlug]?.title || product.categoria_slug;
@@ -105,7 +107,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         } else if (isPersonalizable) {
             setIsPersonalizeOpen(true);
         } else {
-            const requiresEncargo = isAccesoriosOrEquipos && (availableStock <= 0 || finalQty > availableStock);
+            const requiresEncargo = isEncargoEligible && (availableStock <= 0 || finalQty > availableStock);
             addItem({
                 cart_item_id: `${product.id}-${Date.now()}`,
                 id: product.id,
@@ -121,7 +123,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 cinta: product.cinta,
                 is_personalizado: false,
                 es_por_encargo: requiresEncargo,
-                stock_disponible: (isAccesoriosOrEquipos || isStockGorroOrLanyard) ? availableStock : undefined
+                stock_disponible: (isEncargoEligible || isStockGorroOrLanyard) ? availableStock : undefined
             });
             toggleCart();
         }
@@ -204,15 +206,15 @@ export default function ProductCard({ product }: ProductCardProps) {
                             {product.description}
                         </p>
 
-                        {/* Stock visibility for Accesorios, Equipos Médicos, Gorros en Stock & Lanyards en Stock */}
-                        {(isAccesoriosOrEquipos || isStockGorroOrLanyard) && (
+                        {/* Stock visibility for Accesorios, Equipos Médicos, Portacarnet, Gorros en Stock & Lanyards en Stock */}
+                        {(isEncargoEligible || isStockGorroOrLanyard) && (
                             <div className="mb-3 flex flex-wrap items-center gap-1.5">
                                 {availableStock > 0 ? (
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-50 border border-emerald-200 text-emerald-700">
                                         <PackageCheck size={12} />
                                         <span>Stock disponible: {availableStock} {availableStock === 1 ? 'ud.' : 'uds.'}</span>
                                     </span>
-                                ) : isAccesoriosOrEquipos ? (
+                                ) : isEncargoEligible ? (
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-50 border border-amber-300 text-amber-800">
                                         <Clock size={12} />
                                         <span>Stock: 0 uds. • Disponible por encargo</span>

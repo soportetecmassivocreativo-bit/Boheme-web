@@ -80,7 +80,10 @@ export const useCartStore = create<CartStore>((set) => ({
             const updatedQty = isEphemeralStock && stockDisp !== undefined
                 ? Math.min(Math.max(1, stockDisp), rawUpdatedQty)
                 : rawUpdatedQty;
-            const isEncargoCat = currentItem.categoria_slug === 'accesorios-medicos' || currentItem.categoria_slug === 'equipos-medicos';
+            const isEncargoCat =
+                currentItem.categoria_slug === 'accesorios-medicos' ||
+                currentItem.categoria_slug === 'equipos-medicos' ||
+                (currentItem.categoria_slug === 'lanyards' && Number(currentItem.subcategoria_id) === 7);
             newItems[existingIndex] = {
                 ...currentItem,
                 quantity: updatedQty,
@@ -105,7 +108,10 @@ export const useCartStore = create<CartStore>((set) => ({
             const safeQty = isEphemeralStock && item.stock_disponible !== undefined
                 ? Math.min(Math.max(1, item.stock_disponible), Math.max(1, quantity))
                 : Math.max(1, quantity);
-            const isEncargoCat = item.categoria_slug === 'accesorios-medicos' || item.categoria_slug === 'equipos-medicos';
+            const isEncargoCat =
+                item.categoria_slug === 'accesorios-medicos' ||
+                item.categoria_slug === 'equipos-medicos' ||
+                (item.categoria_slug === 'lanyards' && Number(item.subcategoria_id) === 7);
             const esPorEncargo = isEncargoCat && item.stock_disponible !== undefined
                 ? (item.stock_disponible <= 0 || safeQty > item.stock_disponible)
                 : item.es_por_encargo;
