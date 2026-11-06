@@ -7272,8 +7272,15 @@ export default function AdminPage() {
                                 <div className="divide-y divide-gray-200/50 dark:divide-white/10 space-y-2 pt-1">
                                     {viewingOrder.items.map((it, idx) => (
                                         <div key={idx} className="pt-2">
-                                            <div className="flex justify-between font-bold">
-                                                <span>{it.quantity}x {it.name}</span>
+                                            <div className="flex justify-between font-bold items-center gap-2">
+                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                    <span>{it.quantity}x {it.name}</span>
+                                                    {it.es_por_encargo && (
+                                                        <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-black">
+                                                            📦 POR ENCARGO{it.stock_disponible !== undefined ? ` (Stock: ${it.stock_disponible} uds)` : ''}
+                                                        </span>
+                                                    )}
+                                                </div>
                                                 <span className="text-[#D86A33]">${(it.price * it.quantity).toFixed(2)}</span>
                                             </div>
                                             {(it.is_personalizado || it.genero || it.modelo || it.subcategoria_especial || (it.adicionales && it.adicionales.length > 0) || (it.imagenes_personalizadas && it.imagenes_personalizadas.length > 0)) && (

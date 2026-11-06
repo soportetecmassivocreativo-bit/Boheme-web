@@ -1220,6 +1220,8 @@ export interface OrderItem {
     detalles_personalizados?: string;
     texto_personalizado?: string;
     imagenes_personalizadas?: string[];
+    es_por_encargo?: boolean;
+    stock_disponible?: number;
     // Taller / Production specific
     estado_taller?: string;
     notas_taller?: string;

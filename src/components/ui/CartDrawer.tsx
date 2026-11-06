@@ -161,17 +161,49 @@ export default function CartDrawer() {
                                                     <p className="text-xs text-[#D86A33] font-medium mt-1">{item.type_color}</p>
                                                 )}
 
+                                                {/* Stock / Encargo Status Badge */}
+                                                {item.es_por_encargo ? (
+                                                    <div className="mt-1.5 px-2.5 py-1 rounded-xl bg-amber-50 border border-amber-300 text-[10px] font-black text-amber-800 inline-flex items-center gap-1">
+                                                        <span>📦 SOLICITADO POR ENCARGO</span>
+                                                        {item.stock_disponible !== undefined && (
+                                                            <span className="font-bold text-amber-700">
+                                                                (Stock actual: {item.stock_disponible} uds)
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                ) : item.stock_disponible !== undefined ? (
+                                                    <div className="mt-1 text-[10px] font-bold text-emerald-700">
+                                                        ✓ En stock ({item.stock_disponible} uds disponibles)
+                                                    </div>
+                                                ) : null}
+
                                                 {/* Quantity & Delete Controls */}
                                                 <div className="flex items-center justify-between mt-3">
                                                     <div className="flex items-center border border-gray-200 bg-gray-50 rounded-xl p-0.5">
                                                         <button
+                                                            type="button"
                                                             onClick={() => updateQuantity(item.cart_item_id, Math.max(1, item.quantity - 1))}
                                                             className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-500 hover:text-[#D86A33]"
                                                         >
                                                             <Minus size={14} />
                                                         </button>
-                                                        <span className="px-2 text-xs font-black text-[#5F2142]">{item.quantity}</span>
+                                                        <input
+                                                            type="text"
+                                                            inputMode="numeric"
+                                                            pattern="[0-9]*"
+                                                            value={item.quantity}
+                                                            onChange={(e) => {
+                                                                const digits = e.target.value.replace(/[^0-9]/g, '');
+                                                                const parsed = parseInt(digits, 10);
+                                                                if (!isNaN(parsed) && parsed >= 1) {
+                                                                    updateQuantity(item.cart_item_id, parsed);
+                                                                }
+                                                            }}
+                                                            aria-label="Cantidad"
+                                                            className="w-9 text-center text-xs font-black text-[#5F2142] bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-[#D86A33] rounded-md py-0.5"
+                                                        />
                                                         <button
+                                                            type="button"
                                                             onClick={() => updateQuantity(item.cart_item_id, item.quantity + 1)}
                                                             className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-500 hover:text-[#D86A33]"
                                                         >

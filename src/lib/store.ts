@@ -25,6 +25,9 @@ export interface CartItem {
     detalles_personalizados?: string;
     texto_personalizado?: string;
     imagenes_personalizadas?: string[];
+    // Stock & Encargo tracking (for Accesorios & Equipos Médicos)
+    es_por_encargo?: boolean;
+    stock_disponible?: number;
 }
 
 interface CartStore {
@@ -68,7 +71,17 @@ export const useCartStore = create<CartStore>((set) => ({
         });
         if (existingIndex > -1) {
             const newItems = [...state.items];
-            newItems[existingIndex].quantity += (newItem.quantity || 1);
+            const updatedQty = newItems[existingIndex].quantity + (newItem.quantity || 1);
+            const stockDisp = newItem.stock_disponible !== undefined ? newItem.stock_disponible : newItems[existingIndex].stock_disponible;
+            const isEncargoCat = newItems[existingIndex].categoria_slug === 'accesorios-medicos' || newItems[existingIndex].categoria_slug === 'equipos-medicos';
+            newItems[existingIndex] = {
+                ...newItems[existingIndex],
+                quantity: updatedQty,
+                stock_disponible: stockDisp,
+                es_por_encargo: isEncargoCat && stockDisp !== undefined
+                    ? (stockDisp <= 0 || updatedQty > stockDisp)
+                    : newItems[existingIndex].es_por_encargo
+            };
             return { items: newItems };
         }
         return { items: [...state.items, { ...newItem, quantity: newItem.quantity || 1 }] };
@@ -77,7 +90,15 @@ export const useCartStore = create<CartStore>((set) => ({
         items: state.items.filter((item) => item.cart_item_id !== cart_item_id),
     })),
     updateQuantity: (cart_item_id, quantity) => set((state) => ({
-        items: state.items.map((item) => item.cart_item_id === cart_item_id ? { ...item, quantity } : item),
+        items: state.items.map((item) => {
+            if (item.cart_item_id !== cart_item_id) return item;
+            const safeQty = Math.max(1, quantity);
+            const isEncargoCat = item.categoria_slug === 'accesorios-medicos' || item.categoria_slug === 'equipos-medicos';
+            const esPorEncargo = isEncargoCat && item.stock_disponible !== undefined
+                ? (item.stock_disponible <= 0 || safeQty > item.stock_disponible)
+                : item.es_por_encargo;
+            return { ...item, quantity: safeQty, es_por_encargo: esPorEncargo };
+        }),
     })),
     clearCart: () => set({ items: [] }),
 }));

@@ -894,9 +894,21 @@ export default function GorroConfigModal({
                                 >
                                     <Minus size={15} />
                                 </button>
-                                <span className="w-12 text-center font-black text-sm text-gray-900">
-                                    {quantity}
-                                </span>
+                                <input
+                                    type="text"
+                                    inputMode="numeric"
+                                    pattern="[0-9]*"
+                                    value={quantity}
+                                    onChange={(e) => {
+                                        const digits = e.target.value.replace(/[^0-9]/g, '');
+                                        const parsed = parseInt(digits, 10);
+                                        if (!isNaN(parsed) && parsed >= 1) {
+                                            setQuantity(parsed);
+                                        }
+                                    }}
+                                    aria-label="Cantidad requerida"
+                                    className="w-12 text-center font-black text-sm text-gray-900 bg-transparent outline-none focus:bg-[#FFF9F5] focus:ring-1 focus:ring-[#D86A33] rounded-md py-0.5"
+                                />
                                 <button
                                     type="button"
                                     onClick={() => setQuantity(q => q + 1)}

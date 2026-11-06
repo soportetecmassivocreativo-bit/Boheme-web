@@ -240,6 +240,9 @@ export default function CheckoutModal() {
         items.forEach((item, idx) => {
             const itemTotal = (item.price * item.quantity).toFixed(2);
             msg += `*${idx + 1}. ${item.quantity}x ${item.name}* — $${itemTotal}\n`;
+            if (item.es_por_encargo) {
+                msg += `   📦 *MODALIDAD: SOLICITADO POR ENCARGO*${item.stock_disponible !== undefined ? ` (Stock actual: ${item.stock_disponible} uds)` : ''}\n`;
+            }
 
             if (item.genero) msg += `   ▫️ *Género:* ${item.genero}\n`;
             if (item.modelo) msg += `   ▫️ *Estilo / Ajuste:* ${item.modelo}\n`;
@@ -362,7 +365,9 @@ export default function CheckoutModal() {
                         especialidad_personalizada: it.especialidad_personalizada,
                         color_preferencia: it.color_preferencia,
                         detalles_personalizados: it.detalles_personalizados,
-                        imagenes_personalizadas: it.imagenes_personalizadas
+                        imagenes_personalizadas: it.imagenes_personalizadas,
+                        es_por_encargo: it.es_por_encargo,
+                        stock_disponible: it.stock_disponible
                     }))
                 })
             });
@@ -466,6 +471,11 @@ export default function CheckoutModal() {
                                         <div key={it.cart_item_id} className="py-1.5 flex justify-between items-start gap-2">
                                             <div>
                                                 <span className="font-bold text-gray-800">{it.quantity}x {it.name}</span>
+                                                {it.es_por_encargo && (
+                                                    <div className="text-[10px] font-black text-amber-800 bg-amber-100 border border-amber-300 px-2 py-0.5 rounded-md inline-block ml-1.5">
+                                                        📦 POR ENCARGO
+                                                    </div>
+                                                )}
                                                 {it.is_personalizado && (
                                                     <div className="text-[11px] text-[#D86A33] font-medium mt-0.5">
                                                         ✦ Personalizado: {it.nombre_personalizado || it.texto_personalizado || 'A la medida'}

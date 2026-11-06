@@ -173,7 +173,21 @@ export default function PersonalizeModal({ product, isOpen, onClose }: Personali
                             >
                                 -
                             </button>
-                            <span className="px-3 text-sm font-black text-[#5F2142]">{quantity}</span>
+                            <input
+                                type="text"
+                                inputMode="numeric"
+                                pattern="[0-9]*"
+                                value={quantity}
+                                onChange={(e) => {
+                                    const digits = e.target.value.replace(/[^0-9]/g, '');
+                                    const parsed = parseInt(digits, 10);
+                                    if (!isNaN(parsed) && parsed >= 1) {
+                                        setQuantity(parsed);
+                                    }
+                                }}
+                                aria-label="Cantidad requerida"
+                                className="w-10 text-center text-sm font-black text-[#5F2142] bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-[#D86A33] rounded-md py-0.5"
+                            />
                             <button
                                 type="button"
                                 onClick={() => setQuantity(prev => prev + 1)}
