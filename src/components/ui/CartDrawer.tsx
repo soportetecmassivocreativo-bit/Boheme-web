@@ -179,37 +179,44 @@ export default function CartDrawer() {
 
                                                 {/* Quantity & Delete Controls */}
                                                 <div className="flex items-center justify-between mt-3">
-                                                    <div className="flex items-center border border-gray-200 bg-gray-50 rounded-xl p-0.5">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => updateQuantity(item.cart_item_id, Math.max(1, item.quantity - 1))}
-                                                            className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-500 hover:text-[#D86A33]"
-                                                        >
-                                                            <Minus size={14} />
-                                                        </button>
-                                                        <input
-                                                            type="text"
-                                                            inputMode="numeric"
-                                                            pattern="[0-9]*"
-                                                            value={item.quantity}
-                                                            onChange={(e) => {
-                                                                const digits = e.target.value.replace(/[^0-9]/g, '');
-                                                                const parsed = parseInt(digits, 10);
-                                                                if (!isNaN(parsed) && parsed >= 1) {
-                                                                    updateQuantity(item.cart_item_id, parsed);
-                                                                }
-                                                            }}
-                                                            aria-label="Cantidad"
-                                                            className="w-9 text-center text-xs font-black text-[#5F2142] bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-[#D86A33] rounded-md py-0.5"
-                                                        />
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => updateQuantity(item.cart_item_id, item.quantity + 1)}
-                                                            className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-500 hover:text-[#D86A33]"
-                                                        >
-                                                            <Plus size={14} />
-                                                        </button>
-                                                    </div>
+                                                    {((item.categoria_slug === 'gorros' && Number(item.subcategoria_id) === 70) ||
+                                                      (item.categoria_slug === 'lanyards' && Number(item.subcategoria_id) === 5)) ? (
+                                                        <span className="text-[11px] font-black text-[#5F2142] bg-[#FFF4EB] border border-[#FFC99C]/70 px-2.5 py-1 rounded-xl">
+                                                            Pieza única
+                                                        </span>
+                                                    ) : (
+                                                        <div className="flex items-center border border-gray-200 bg-gray-50 rounded-xl p-0.5">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => updateQuantity(item.cart_item_id, Math.max(1, item.quantity - 1))}
+                                                                className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-500 hover:text-[#D86A33]"
+                                                            >
+                                                                <Minus size={14} />
+                                                            </button>
+                                                            <input
+                                                                type="text"
+                                                                inputMode="numeric"
+                                                                pattern="[0-9]*"
+                                                                value={item.quantity}
+                                                                onChange={(e) => {
+                                                                    const digits = e.target.value.replace(/[^0-9]/g, '');
+                                                                    const parsed = parseInt(digits, 10);
+                                                                    if (!isNaN(parsed) && parsed >= 1) {
+                                                                        updateQuantity(item.cart_item_id, parsed);
+                                                                    }
+                                                                }}
+                                                                aria-label="Cantidad"
+                                                                className="w-9 text-center text-xs font-black text-[#5F2142] bg-transparent outline-none focus:bg-white focus:ring-1 focus:ring-[#D86A33] rounded-md py-0.5"
+                                                            />
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => updateQuantity(item.cart_item_id, item.quantity + 1)}
+                                                                className="w-6 h-6 rounded-lg flex items-center justify-center text-gray-500 hover:text-[#D86A33]"
+                                                            >
+                                                                <Plus size={14} />
+                                                            </button>
+                                                        </div>
+                                                    )}
 
                                                     <button
                                                         onClick={() => removeItem(item.cart_item_id)}

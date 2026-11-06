@@ -1999,7 +1999,7 @@ export async function createOrder(
     ORDERS.unshift(newOrder);
     scheduleSaveOrdersToDisk();
 
-    // Deduct stock for purchased items; if a Stock Gorro (70) or Stock Lanyard (5) runs out of stock, delete it automatically
+    // Deduct stock for purchased items; if a Stock Gorro (70) or Stock Lanyard (5) is sold, delete it automatically (since it is a unique single product)
     if (Array.isArray(newOrder.items) && newOrder.items.length > 0) {
         loadProductsFromDisk(false);
         for (const item of newOrder.items) {
@@ -2008,8 +2008,12 @@ export async function createOrder(
             if (!currentProd) continue;
 
             const isStockGorOrLan = isEphemeralStockItem(currentProd);
+            if (isStockGorOrLan) {
+                await deleteProduct(currentProd.id);
+                continue;
+            }
+
             const isTrackedStock =
-                isStockGorOrLan ||
                 currentProd.categoria_slug === 'accesorios-medicos' ||
                 currentProd.categoria_slug === 'equipos-medicos' ||
                 (normalizeCategorySlug(currentProd.categoria_slug) === 'lanyards' && Number(currentProd.subcategoria_id) === 7);
@@ -2018,12 +2022,7 @@ export async function createOrder(
                 const currentStock = currentProd.stock !== undefined ? Number(currentProd.stock) : 20;
                 const soldQty = Math.max(1, Number(item.quantity) || 1);
                 const remainingStock = Math.max(0, currentStock - soldQty);
-
-                if (isStockGorOrLan && remainingStock <= 0) {
-                    await deleteProduct(currentProd.id);
-                } else {
-                    await updateProduct(currentProd.id, { stock: remainingStock });
-                }
+                await updateProduct(currentProd.id, { stock: remainingStock });
             }
         }
     }

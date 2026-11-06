@@ -1,0 +1,113 @@
+{
+  "gorros": [
+    {
+      "id": 70,
+      "name": "Stock",
+      "subcategories": []
+    },
+    {
+      "id": 73,
+      "name": "Básicos",
+      "subcategories": []
+    },
+    {
+      "id": 71,
+      "name": "Personalizados",
+      "subcategories": []
+    },
+    {
+      "id": 72,
+      "name": "Especiales",
+      "subcategories": [
+        "Reversible",
+        "Cintillo",
+        "Ponytail",
+        "Coquette"
+      ]
+    },
+    {
+      "id": 74,
+      "name": "Diseña tu idea",
+      "subcategories": []
+    }
+  ],
+  "lanyards": [
+    {
+      "id": 5,
+      "name": "Lanyards en stock",
+      "subcategories": []
+    },
+    {
+      "id": 6,
+      "name": "Lanyards personalizados",
+      "subcategories": []
+    },
+    {
+      "id": 7,
+      "name": "Portacarnet",
+      "subcategories": []
+    },
+    {
+      "id": 75,
+      "name": "Diseña tu idea",
+      "subcategories": []
+    }
+  ],
+  "accesorios-medicos": [
+    {
+      "id": 10,
+      "name": "Calculadoras"
+    },
+    {
+      "id": 201,
+      "name": "Atomizadores"
+    },
+    {
+      "id": 202,
+      "name": "Carpetas"
+    }
+  ],
+  "equipos-medicos": [],
+  "productos-personalizados": [
+    {
+      "id": 57,
+      "name": "Franelas con estampado DTF"
+    },
+    {
+      "id": 58,
+      "name": "Llaveros acrílicos"
+    },
+    {
+      "id": 59,
+      "name": "Peluches"
+    },
+    {
+      "id": 60,
+      "name": "Cojines"
+    },
+    {
+      "id": 61,
+      "name": "Cartucheras"
+    },
+    {
+      "id": 62,
+      "name": "Delantales"
+    },
+    {
+      "id": 63,
+      "name": "Pañoletas"
+    },
+    {
+      "id": 64,
+      "name": "Totebag"
+    },
+    {
+      "id": 65,
+      "name": "Fotos polaroid"
+    },
+    {
+      "id": 66,
+      "name": "Minilibretas"
+    }
+  ]
+}

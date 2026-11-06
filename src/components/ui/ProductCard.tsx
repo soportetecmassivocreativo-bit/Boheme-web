@@ -65,9 +65,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     };
 
     const handleQuantityIncrement = () => {
-        const next = isStockGorroOrLanyard
-            ? Math.min(Math.max(1, availableStock), quantity + 1)
-            : quantity + 1;
+        const next = quantity + 1;
         setQuantity(next);
         setQuantityInput(String(next));
     };
@@ -78,11 +76,7 @@ export default function ProductCard({ product }: ProductCardProps) {
         if (digitsOnly !== '') {
             const parsed = parseInt(digitsOnly, 10);
             if (!isNaN(parsed) && parsed >= 1) {
-                const clamped = isStockGorroOrLanyard ? Math.min(Math.max(1, availableStock), parsed) : parsed;
-                setQuantity(clamped);
-                if (isStockGorroOrLanyard && parsed > availableStock) {
-                    setQuantityInput(String(clamped));
-                }
+                setQuantity(parsed);
             }
         }
     };
@@ -93,15 +87,14 @@ export default function ProductCard({ product }: ProductCardProps) {
             setQuantity(1);
             setQuantityInput('1');
         } else {
-            const clamped = isStockGorroOrLanyard ? Math.min(Math.max(1, availableStock), parsed) : parsed;
-            setQuantity(clamped);
-            setQuantityInput(String(clamped));
+            setQuantity(parsed);
+            setQuantityInput(String(parsed));
         }
     };
 
     const handleActionClick = () => {
         const rawQty = Math.max(1, parseInt(quantityInput, 10) || quantity || 1);
-        const finalQty = isStockGorroOrLanyard ? Math.min(Math.max(1, availableStock), rawQty) : rawQty;
+        const finalQty = isStockGorroOrLanyard ? 1 : rawQty;
         if (usesGorroForm) {
             setIsGorroModalOpen(true);
         } else if (isPersonalizable) {
@@ -123,7 +116,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 cinta: product.cinta,
                 is_personalizado: false,
                 es_por_encargo: requiresEncargo,
-                stock_disponible: (isEncargoEligible || isStockGorroOrLanyard) ? availableStock : undefined
+                stock_disponible: isEncargoEligible ? availableStock : undefined
             });
             toggleCart();
         }
@@ -206,20 +199,20 @@ export default function ProductCard({ product }: ProductCardProps) {
                             {product.description}
                         </p>
 
-                        {/* Stock visibility for Accesorios, Equipos Médicos, Portacarnet, Gorros en Stock & Lanyards en Stock */}
-                        {(isEncargoEligible || isStockGorroOrLanyard) && (
+                        {/* Stock visibility for Accesorios, Equipos Médicos & Portacarnet */}
+                        {isEncargoEligible && (
                             <div className="mb-3 flex flex-wrap items-center gap-1.5">
                                 {availableStock > 0 ? (
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-50 border border-emerald-200 text-emerald-700">
                                         <PackageCheck size={12} />
                                         <span>Stock disponible: {availableStock} {availableStock === 1 ? 'ud.' : 'uds.'}</span>
                                     </span>
-                                ) : isEncargoEligible ? (
+                                ) : (
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-50 border border-amber-300 text-amber-800">
                                         <Clock size={12} />
                                         <span>Stock: 0 uds. • Disponible por encargo</span>
                                     </span>
-                                ) : null}
+                                )}
                             </div>
                         )}
                     </div>
@@ -239,8 +232,8 @@ export default function ProductCard({ product }: ProductCardProps) {
 
                         {/* Actions */}
                         <div className="flex items-center gap-2.5">
-                            {/* Quantity Selector with numeric input (shown for Stock gorros, Accesorios, Equipos Médicos, and non-customized items) */}
-                            {(!isPersonalizable && !usesGorroForm) && (
+                            {/* Quantity Selector with numeric input (shown for Accesorios, Equipos Médicos, Portacarnet, and non-unique items) */}
+                            {(!isPersonalizable && !usesGorroForm && !isStockGorroOrLanyard) && (
                                 <div className="flex items-center border border-[#FFC99C]/60 rounded-full bg-[#FFF9F5] p-0.5">
                                     <button
                                         type="button"

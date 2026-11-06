@@ -711,12 +711,16 @@ export default function AdminPage() {
             return;
         }
 
+        const isUniqueStockItem =
+            (formCategory === 'gorros' && Number(formSubcategory) === 70) ||
+            (formCategory === 'lanyards' && Number(formSubcategory) === 5);
+
         setActionLoading(true);
         const payload = {
             name: formName.trim(),
             description: formDescription.trim(),
             price: Number(formPrice),
-            stock: Number(formStock) >= 0 ? Number(formStock) : 20,
+            stock: isUniqueStockItem ? 1 : (Number(formStock) >= 0 ? Number(formStock) : 20),
             categoria_slug: formCategory,
             subcategoria_id: formSubcategory ? Number(formSubcategory) : undefined,
             subcategoria_especial: (formCategory === 'gorros' && Number(formSubcategory) === 72) ? formSubcategoryEspecial : undefined,
@@ -3893,7 +3897,9 @@ export default function AdminPage() {
                                                                     <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/40 dark:bg-white/2">
                                                                         <th className="py-3 px-5">Producto Creado & Fotos</th>
                                                                         <th className="py-3 px-5">Sección & Categoría Especificada</th>
-                                                                        <th className="py-3 px-5 text-center">Stock</th>
+                                                                        {sub.id === 7 && (
+                                                                            <th className="py-3 px-5 text-center">Stock</th>
+                                                                        )}
                                                                         <th className="py-3 px-5">Precio ($ / Bs.)</th>
                                                                         <th className="py-3 px-5 text-right">Acciones</th>
                                                                     </tr>
@@ -3931,11 +3937,13 @@ export default function AdminPage() {
                                                                                         </span>
                                                                                     </td>
 
-                                                                                    <td className="py-2 px-5 text-center whitespace-nowrap">
-                                                                                        <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                                                                                            {p.stock !== undefined ? p.stock : 20} uds
-                                                                                        </span>
-                                                                                    </td>
+                                                                                    {sub.id === 7 && (
+                                                                                        <td className="py-2 px-5 text-center whitespace-nowrap">
+                                                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                                                                                {p.stock !== undefined ? p.stock : 20} uds
+                                                                                            </span>
+                                                                                        </td>
+                                                                                    )}
 
                                                                                     <td className="py-2 px-5 whitespace-nowrap font-black text-xs text-[#5F2142] dark:text-[#FFC99C]">
                                                                                         ${p.price.toFixed(2)} USD
@@ -4019,11 +4027,13 @@ export default function AdminPage() {
                                                                                     </div>
                                                                                 </td>
 
-                                                                                <td className="py-3.5 px-5 text-center whitespace-nowrap">
-                                                                                    <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                                                                                        {p.stock !== undefined ? p.stock : 20} uds
-                                                                                    </span>
-                                                                                </td>
+                                                                                {sub.id === 7 && (
+                                                                                    <td className="py-3.5 px-5 text-center whitespace-nowrap">
+                                                                                        <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                                                                            {p.stock !== undefined ? p.stock : 20} uds
+                                                                                        </span>
+                                                                                    </td>
+                                                                                )}
 
                                                                                 <td className="py-3.5 px-5 whitespace-nowrap">
                                                                                     <div className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
@@ -6603,56 +6613,66 @@ export default function AdminPage() {
                                 />
                             </div>
 
-                            {/* Price, Stock & Category in 3 columns */}
-                            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                <div>
-                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
-                                        Precio (USD $) *
-                                    </label>
-                                    <input
-                                        type="number"
-                                        step="0.5"
-                                        min="0"
-                                        required
-                                        value={formPrice}
-                                        onChange={(e) => setFormPrice(e.target.value)}
-                                        className={`w-full px-3.5 py-2.5 rounded-2xl border font-medium ${inputStyle}`}
-                                    />
-                                </div>
+                            {/* Price, Stock & Category in columns */}
+                            {(() => {
+                                const showStockField =
+                                    formCategory === 'accesorios-medicos' ||
+                                    formCategory === 'equipos-medicos' ||
+                                    (formCategory === 'lanyards' && Number(formSubcategory) === 7);
+                                return (
+                                    <div className={`grid grid-cols-1 ${showStockField ? 'sm:grid-cols-3' : 'sm:grid-cols-2'} gap-3`}>
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Precio (USD $) *
+                                            </label>
+                                            <input
+                                                type="number"
+                                                step="0.5"
+                                                min="0"
+                                                required
+                                                value={formPrice}
+                                                onChange={(e) => setFormPrice(e.target.value)}
+                                                className={`w-full px-3.5 py-2.5 rounded-2xl border font-medium ${inputStyle}`}
+                                            />
+                                        </div>
 
-                                <div>
-                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
-                                        Stock Disponible (Uds) *
-                                    </label>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        required
-                                        value={formStock}
-                                        onChange={(e) => setFormStock(e.target.value)}
-                                        className={`w-full px-3.5 py-2.5 rounded-2xl border font-bold ${inputStyle}`}
-                                    />
-                                </div>
+                                        {showStockField && (
+                                            <div>
+                                                <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                    Stock Disponible (Uds) *
+                                                </label>
+                                                <input
+                                                    type="number"
+                                                    min="0"
+                                                    required
+                                                    value={formStock}
+                                                    onChange={(e) => setFormStock(e.target.value)}
+                                                    className={`w-full px-3.5 py-2.5 rounded-2xl border font-bold ${inputStyle}`}
+                                                />
+                                            </div>
+                                        )}
 
-                                <div>
-                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
-                                        Sección *
-                                    </label>
-                                    <select
-                                        value={formCategory}
-                                        onChange={(e) => {
-                                            setFormCategory(e.target.value);
-                                            const sub = CATEGORIES[e.target.value]?.subcategories[0]?.id;
-                                            setFormSubcategory(sub);
-                                        }}
-                                        className={`w-full px-3 py-2.5 rounded-2xl border font-bold ${inputStyle}`}
-                                    >
-                                        {SECTIONS.map(s => (
-                                            <option key={s.slug} value={s.slug}>{s.label}</option>
-                                        ))}
-                                    </select>
-                                </div>
-                            </div>
+                                        <div>
+                                            <label className="block font-black text-gray-700 dark:text-gray-300 uppercase mb-1">
+                                                Sección *
+                                            </label>
+                                            <select
+                                                value={formCategory}
+                                                onChange={(e) => {
+                                                    setFormCategory(e.target.value);
+                                                    const sub = CATEGORIES[e.target.value]?.subcategories[0]?.id;
+                                                    setFormSubcategory(sub);
+                                                }}
+                                                className={`w-full px-3 py-2.5 rounded-2xl border font-bold ${inputStyle}`}
+                                            >
+                                                {SECTIONS.map(s => (
+                                                    <option key={s.slug} value={s.slug}>{s.label}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </div>
+                                );
+                            })()}
 
                             {/* Dynamic Category / Subcategory of the Section */}
                             {CATEGORIES[formCategory] && CATEGORIES[formCategory].subcategories.length > 0 && (

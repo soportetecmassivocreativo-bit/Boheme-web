@@ -77,9 +77,7 @@ export const useCartStore = create<CartStore>((set) => ({
                 (currentItem.categoria_slug === 'gorros' && Number(currentItem.subcategoria_id) === 70) ||
                 (currentItem.categoria_slug === 'lanyards' && Number(currentItem.subcategoria_id) === 5);
             const rawUpdatedQty = currentItem.quantity + (newItem.quantity || 1);
-            const updatedQty = isEphemeralStock && stockDisp !== undefined
-                ? Math.min(Math.max(1, stockDisp), rawUpdatedQty)
-                : rawUpdatedQty;
+            const updatedQty = isEphemeralStock ? 1 : rawUpdatedQty;
             const isEncargoCat =
                 currentItem.categoria_slug === 'accesorios-medicos' ||
                 currentItem.categoria_slug === 'equipos-medicos' ||
@@ -87,7 +85,7 @@ export const useCartStore = create<CartStore>((set) => ({
             newItems[existingIndex] = {
                 ...currentItem,
                 quantity: updatedQty,
-                stock_disponible: stockDisp,
+                stock_disponible: isEphemeralStock ? undefined : stockDisp,
                 es_por_encargo: isEncargoCat && stockDisp !== undefined
                     ? (stockDisp <= 0 || updatedQty > stockDisp)
                     : currentItem.es_por_encargo
@@ -105,9 +103,7 @@ export const useCartStore = create<CartStore>((set) => ({
             const isEphemeralStock =
                 (item.categoria_slug === 'gorros' && Number(item.subcategoria_id) === 70) ||
                 (item.categoria_slug === 'lanyards' && Number(item.subcategoria_id) === 5);
-            const safeQty = isEphemeralStock && item.stock_disponible !== undefined
-                ? Math.min(Math.max(1, item.stock_disponible), Math.max(1, quantity))
-                : Math.max(1, quantity);
+            const safeQty = isEphemeralStock ? 1 : Math.max(1, quantity);
             const isEncargoCat =
                 item.categoria_slug === 'accesorios-medicos' ||
                 item.categoria_slug === 'equipos-medicos' ||
