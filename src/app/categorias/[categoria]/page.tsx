@@ -114,7 +114,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                         <span>{category.title}</span>
                         {selectedSubcategoryObj && (
                             <span className="text-xl md:text-2xl font-black px-4 py-1 rounded-full bg-[#D86A33] text-white shadow-sm">
-                                {selectedSubcategoryObj.id === 74 ? selectedSubcategoryObj.name : `Categoría: ${selectedSubcategoryObj.name}`}
+                                {selectedSubcategoryObj.id === 74 || selectedSubcategoryObj.id === 75 ? selectedSubcategoryObj.name : `Categoría: ${selectedSubcategoryObj.name}`}
                                 {especial ? ` › ${especial}` : ''}
                             </span>
                         )}
@@ -221,7 +221,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                                         </span>
                                         <span className="text-[#D86A33] font-black">›</span>
                                         <h2 className="text-xl sm:text-2xl font-black text-[#5F2142]">
-                                            {sub.id === 74 ? (
+                                            {sub.id === 74 || sub.id === 75 ? (
                                                 <span className="text-[#D86A33]">{sub.name}</span>
                                             ) : (
                                                 <>Categoría: <span className="text-[#D86A33]">{sub.name}</span></>

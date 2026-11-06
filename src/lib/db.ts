@@ -119,9 +119,10 @@ export const CATEGORIES: Record<string, CategoryInfo> = {
         title: 'Lanyards',
         description: 'Explora nuestra colección de lanyards diseñados para brindarte confort y estilo en tu labor diaria.',
         subcategories: [
-            { id: 5, name: 'Lanyards Básicos' },
-            { id: 6, name: 'Lanyards personalizados' },
-            { id: 7, name: 'Portacarnet transparente' }
+            { id: 5, name: 'Lanyards en stock', subcategories: [] },
+            { id: 6, name: 'Lanyards personalizados', subcategories: [] },
+            { id: 7, name: 'Portacarnet', subcategories: [] },
+            { id: 75, name: 'Diseña tu idea', subcategories: [] }
         ]
     },
     'accesorios-medicos': {
@@ -658,6 +659,15 @@ let MOCK_PRODUCTS: Product[] = [
         image_url: '/cat_accesorios.png',
         categoria_slug: 'lanyards',
         subcategoria_id: 7
+    },
+    {
+        id: '207',
+        name: 'Diseña tu idea',
+        description: 'Crea tu lanyard personalizado con el diseño que desees: indica nombre, texto libre y adjunta hasta 5 imágenes de referencia.',
+        price: 5,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'lanyards',
+        subcategoria_id: 75
     },
 
     // ==========================================
@@ -1536,6 +1546,15 @@ function loadProductsFromDisk(force = false) {
                         image_url: '/cat_gorros.png',
                         categoria_slug: 'gorros',
                         subcategoria_id: 74
+                    },
+                    {
+                        id: '207',
+                        name: 'Diseña tu idea',
+                        description: 'Crea tu lanyard personalizado con el diseño que desees: indica nombre, texto libre y adjunta hasta 5 imágenes de referencia.',
+                        price: 5,
+                        image_url: '/cat_accesorios.png',
+                        categoria_slug: 'lanyards',
+                        subcategoria_id: 75
                     }
                 ];
 
@@ -1546,7 +1565,7 @@ function loadProductsFromDisk(force = false) {
                     if (existingIdx === -1) {
                         merged.push(defProd);
                         changed = true;
-                    } else if (defProd.id === '112' && merged[existingIdx].name !== 'Diseña tu idea') {
+                    } else if ((defProd.id === '112' || defProd.id === '207') && merged[existingIdx].name !== 'Diseña tu idea') {
                         merged[existingIdx] = { ...merged[existingIdx], name: 'Diseña tu idea' };
                         changed = true;
                     } else if (defProd.subcategoria_especial && !merged[existingIdx].subcategoria_especial) {

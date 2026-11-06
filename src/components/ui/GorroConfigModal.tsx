@@ -96,39 +96,42 @@ export default function GorroConfigModal({
     const [activeImgIdx, setActiveImgIdx] = useState(0);
     const [isZoomed, setIsZoomed] = useState(false);
 
-    // Determine category inside Gorros Quirúrgicos:
-    // 70 = Stock (no modal), 73 = Básicos, 71 = Personalizados, 72 = Especiales, 74 = Diseña tu idea
-    const subcatId = Number(product.subcategoria_id) || 70;
-    const isDisenaTuIdea = subcatId === 74;
-    const isPersonalizadoCategory = subcatId === 71 || product.name.toLowerCase().includes('personaliz');
-    const isEspecialCategory = subcatId === 72;
+    const normalizedCategorySlug = normalizeCategorySlug(product.categoria_slug);
+    const isLanyard = normalizedCategorySlug === 'lanyards';
+    const subcatId = Number(product.subcategoria_id) || (isLanyard ? 5 : 70);
+    const isDisenaTuIdea = subcatId === 74 || subcatId === 75;
+    const isPersonalizadoCategory = subcatId === 71 || subcatId === 6 || product.name.toLowerCase().includes('personaliz');
+    const isEspecialCategory = !isLanyard && subcatId === 72;
 
-    // Model selector for "Diseña tu idea" (adapts price and whether Gender/Style is shown)
+    // Model selector for "Diseña tu idea" in Gorros (adapts price and whether Gender/Style is shown)
     const [disenaModelId, setDisenaModelId] = useState<string>(GORROS_DISENA_TU_IDEA_MODELS[0].id);
 
     const activeDisenaModel = GORROS_DISENA_TU_IDEA_MODELS.find(m => m.id === disenaModelId) || GORROS_DISENA_TU_IDEA_MODELS[0];
 
     // Check if this specific Gorro Especial is exclusively for women (Cintillo, Ponytail, Coquette)
-    const effectiveEspecialSubcat = isDisenaTuIdea
-        ? (activeDisenaModel.id !== 'Personalizado Clásico' ? activeDisenaModel.id : undefined)
-        : product.subcategoria_especial;
+    const effectiveEspecialSubcat = isLanyard
+        ? undefined
+        : isDisenaTuIdea
+            ? (activeDisenaModel.id !== 'Personalizado Clásico' ? activeDisenaModel.id : undefined)
+            : product.subcategoria_especial;
 
     const isExclusivoDamaEspecial = Boolean(
-        (isEspecialCategory &&
-            effectiveEspecialSubcat &&
-            FEMALE_ONLY_ESPECIALES.includes(effectiveEspecialSubcat.toLowerCase())) ||
-        (isEspecialCategory &&
-            FEMALE_ONLY_ESPECIALES.some(k => product.name.toLowerCase().includes(k))) ||
-        (isDisenaTuIdea && !activeDisenaModel.allowsGenderAndStyle)
+        !isLanyard && (
+            (isEspecialCategory &&
+                effectiveEspecialSubcat &&
+                FEMALE_ONLY_ESPECIALES.includes(effectiveEspecialSubcat.toLowerCase())) ||
+            (isEspecialCategory &&
+                FEMALE_ONLY_ESPECIALES.some(k => product.name.toLowerCase().includes(k))) ||
+            (isDisenaTuIdea && !activeDisenaModel.allowsGenderAndStyle)
+        )
     );
 
-    // Has personalization fields (Nombre, Texto libre & up to 5 reference images):
-    // True for Personalizados (71), Especiales (72: Cintillo, Ponytail, Coquette, Reversible), and Diseña tu idea (74)
+    // Has personalization fields (Nombre, Texto libre & in Diseña tu idea up to 5 reference images):
     const hasPersonalizationCapability = Boolean(
-        isPersonalizadoCategory || isEspecialCategory || isDisenaTuIdea
+        isLanyard || isPersonalizadoCategory || isEspecialCategory || isDisenaTuIdea
     );
 
-    const categoryName = getSubcategoryName(normalizeCategorySlug(product.categoria_slug), subcatId);
+    const categoryName = getSubcategoryName(normalizedCategorySlug, subcatId);
 
     // 1. Género: Dama | Caballero
     const [genero, setGenero] = useState<'Dama' | 'Caballero'>(
@@ -236,31 +239,37 @@ export default function GorroConfigModal({
         setReferenceImages(prev => prev.filter((_, idx) => idx !== idxToRemove));
     };
 
-    // Base price adapts dynamically if in "Diseña tu idea"
-    const effectiveBasePrice = isDisenaTuIdea ? activeDisenaModel.price : product.price;
-    const adicionalesUnitCost = selectedAdicionales.length * 0.5;
+    // Base price adapts dynamically if in Gorros "Diseña tu idea"
+    const effectiveBasePrice = (!isLanyard && isDisenaTuIdea) ? activeDisenaModel.price : product.price;
+    const adicionalesUnitCost = isLanyard ? 0 : selectedAdicionales.length * 0.5;
     const unitPrice = Number((effectiveBasePrice + adicionalesUnitCost).toFixed(2));
     const totalPrice = Number((unitPrice * quantity).toFixed(2));
 
-    const effectiveGenero = isExclusivoDamaEspecial ? 'Dama' : genero;
-    const effectiveEstilo = isExclusivoDamaEspecial
-        ? `Modelo ${effectiveEspecialSubcat || 'Especial'}`
-        : estilo;
+    const effectiveGenero = isLanyard ? undefined : (isExclusivoDamaEspecial ? 'Dama' : genero);
+    const effectiveEstilo = isLanyard
+        ? undefined
+        : isExclusivoDamaEspecial
+            ? `Modelo ${effectiveEspecialSubcat || 'Especial'}`
+            : estilo;
 
     const buildConfiguredCartItem = () => {
         const adicionalesSummary =
-            selectedAdicionales.length > 0
+            !isLanyard && selectedAdicionales.length > 0
                 ? `Adicionales (+$${adicionalesUnitCost.toFixed(2)}): ${selectedAdicionales.join(', ')}`
                 : undefined;
 
-        const configSummaryParts = [
-            isDisenaTuIdea ? `Diseño: ${activeDisenaModel.label}` : null,
-            isExclusivoDamaEspecial
-                ? `Exclusivo Dama (${effectiveEspecialSubcat || product.name})`
-                : `Género: ${effectiveGenero} • Estilo: ${effectiveEstilo}`,
-            !isExclusivoDamaEspecial && effectiveEspecialSubcat ? `Especial: ${effectiveEspecialSubcat}` : null,
-            adicionalesSummary || null
-        ].filter(Boolean);
+        const configSummaryParts = isLanyard
+            ? [
+                  isDisenaTuIdea ? 'Diseño a medida (Diseña tu idea)' : 'Lanyard Personalizado'
+              ]
+            : [
+                  isDisenaTuIdea ? `Diseño: ${activeDisenaModel.label}` : null,
+                  isExclusivoDamaEspecial
+                      ? `Exclusivo Dama (${effectiveEspecialSubcat || product.name})`
+                      : `Género: ${effectiveGenero} • Estilo: ${effectiveEstilo}`,
+                  !isExclusivoDamaEspecial && effectiveEspecialSubcat ? `Especial: ${effectiveEspecialSubcat}` : null,
+                  adicionalesSummary || null
+              ].filter(Boolean);
 
         const detallesFinales = [
             configSummaryParts.join(' • '),
@@ -270,11 +279,11 @@ export default function GorroConfigModal({
             .join(' | ');
 
         const itemDisplayName = isDisenaTuIdea
-            ? `Diseña tu idea (${activeDisenaModel.label})`
+            ? (isLanyard ? 'Diseña tu idea (Lanyard)' : `Diseña tu idea (${activeDisenaModel.label})`)
             : product.name;
 
         return {
-            cart_item_id: `${product.id}-gorro-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            cart_item_id: `${product.id}-${isLanyard ? 'lanyard' : 'gorro'}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             id: product.id,
             name: itemDisplayName,
             price: unitPrice,
@@ -286,11 +295,13 @@ export default function GorroConfigModal({
             subcategoria_especial: effectiveEspecialSubcat,
             genero: effectiveGenero,
             modelo: effectiveEstilo,
-            adicionales: selectedAdicionales,
-            recargo_adicionales: adicionalesUnitCost,
-            type_color: isExclusivoDamaEspecial
-                ? `👩 Exclusivo Dama • ${effectiveEspecialSubcat || 'Especial'}`
-                : `${effectiveGenero} • ${effectiveEstilo}${effectiveEspecialSubcat ? ` • ${effectiveEspecialSubcat}` : ''}`,
+            adicionales: isLanyard ? undefined : selectedAdicionales,
+            recargo_adicionales: isLanyard ? undefined : adicionalesUnitCost,
+            type_color: isLanyard
+                ? '✨ Diseño Personalizado'
+                : isExclusivoDamaEspecial
+                    ? `👩 Exclusivo Dama • ${effectiveEspecialSubcat || 'Especial'}`
+                    : `${effectiveGenero} • ${effectiveEstilo}${effectiveEspecialSubcat ? ` • ${effectiveEspecialSubcat}` : ''}`,
             is_personalizado: Boolean(
                 hasPersonalizationCapability &&
                 (isDisenaTuIdea || isPersonalizadoCategory || nombrePersonalizado.trim() || textoLibre.trim() || (isDisenaTuIdea && referenceImages.length > 0))
@@ -374,7 +385,13 @@ export default function GorroConfigModal({
                         {/* Live Floating Configuration Summary Overlay */}
                         <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-md border border-[#FFC99C]/80 rounded-2xl p-3 shadow-lg space-y-1.5 pointer-events-none">
                             <div className="flex items-center justify-between gap-2 text-xs">
-                                {isExclusivoDamaEspecial ? (
+                                {isLanyard ? (
+                                    <span className="font-black text-[#5F2142] flex items-center gap-1.5">
+                                        <span>✨ Lanyard Personalizado</span>
+                                        <span className="text-[#D86A33]">•</span>
+                                        <span className="text-[#D86A33]">Se trabaja con tu diseño</span>
+                                    </span>
+                                ) : isExclusivoDamaEspecial ? (
                                     <span className="font-black text-[#5F2142] flex items-center gap-1.5">
                                         <span>👩 Exclusivo Dama</span>
                                         <span className="text-[#D86A33]">•</span>
@@ -394,14 +411,14 @@ export default function GorroConfigModal({
                                     </span>
                                 )}
 
-                                {selectedAdicionales.length > 0 && (
+                                {!isLanyard && selectedAdicionales.length > 0 && (
                                     <span className="px-2 py-0.5 rounded-full bg-[#D86A33]/15 text-[#D86A33] font-black text-[10px]">
                                         +{selectedAdicionales.length} (+${adicionalesUnitCost.toFixed(2)})
                                     </span>
                                 )}
                             </div>
 
-                            {selectedAdicionales.length > 0 && (
+                            {!isLanyard && selectedAdicionales.length > 0 && (
                                 <div className="flex flex-wrap gap-1">
                                     {selectedAdicionales.map(ad => (
                                         <span
@@ -462,7 +479,7 @@ export default function GorroConfigModal({
                     {/* Brand & Product Header */}
                     <div>
                         <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">
-                            BOHEME • Gorros Quirúrgicos
+                            BOHEME • {isLanyard ? 'Lanyards' : 'Gorros Quirúrgicos'}
                         </p>
                         <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-tight">
                             {isDisenaTuIdea ? 'Diseña tu idea' : product.name}
@@ -507,9 +524,9 @@ export default function GorroConfigModal({
                     )}
 
                     {/* ========================================================= */}
-                    {/* SELECTOR DE MODELO EN "DISEÑA TU IDEA" (PRECIO ADAPTADO)  */}
+                    {/* SELECTOR DE MODELO EN "DISEÑA TU IDEA" (SOLO EN GORROS)   */}
                     {/* ========================================================= */}
-                    {isDisenaTuIdea && (
+                    {!isLanyard && isDisenaTuIdea && (
                         <div className="p-4 rounded-3xl bg-[#FFF9F5] border-2 border-[#FFC99C] space-y-3">
                             <div className="flex items-center justify-between">
                                 <label className="text-xs font-black uppercase tracking-wider text-[#5F2142]">
@@ -555,9 +572,9 @@ export default function GorroConfigModal({
                     )}
 
                     {/* ========================================================= */}
-                    {/* GÉNERO Y ESTILO (Se oculta en Cintillo, Ponytail y Coquette) */}
+                    {/* GÉNERO Y ESTILO (No aplica en Lanyards ni en Cintillo/Ponytail/Coquette) */}
                     {/* ========================================================= */}
-                    {isExclusivoDamaEspecial ? (
+                    {isLanyard ? null : isExclusivoDamaEspecial ? (
                         <div className="p-3.5 rounded-2xl bg-[#FFF9F5] border border-[#FFC99C] flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                                 <span className="text-lg">👩</span>
@@ -648,69 +665,71 @@ export default function GorroConfigModal({
                     )}
 
                     {/* ========================================================= */}
-                    {/* ADICIONALES DESDE $0.50 POR ADICIONAL                     */}
+                    {/* ADICIONALES DESDE $0.50 POR ADICIONAL (SOLO EN GORROS)    */}
                     {/* ========================================================= */}
-                    <div className="space-y-2.5 pt-1">
-                        <div className="flex items-center justify-between">
-                            <label className="text-xs font-black uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
-                                <Scissors size={14} className="text-[#D86A33]" />
-                                <span>Adicionales ($0.50 USD c/u)</span>
-                            </label>
-                            <span className="text-[11px] font-black text-[#D86A33]">
-                                {selectedAdicionales.length === 0
-                                    ? 'Opcional'
-                                    : `+${selectedAdicionales.length} ($${adicionalesUnitCost.toFixed(2)} USD)`}
-                            </span>
-                        </div>
+                    {!isLanyard && (
+                        <div className="space-y-2.5 pt-1">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-black uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
+                                    <Scissors size={14} className="text-[#D86A33]" />
+                                    <span>Adicionales ($0.50 USD c/u)</span>
+                                </label>
+                                <span className="text-[11px] font-black text-[#D86A33]">
+                                    {selectedAdicionales.length === 0
+                                        ? 'Opcional'
+                                        : `+${selectedAdicionales.length} ($${adicionalesUnitCost.toFixed(2)} USD)`}
+                                </span>
+                            </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                            {GORROS_ADICIONALES_OPTIONS.map(ad => {
-                                const isChecked = selectedAdicionales.includes(ad.label);
-                                return (
-                                    <button
-                                        key={ad.id}
-                                        type="button"
-                                        onClick={() => toggleAdicional(ad.label)}
-                                        className={`p-3 rounded-2xl border text-left transition-all flex items-start justify-between gap-2 ${
-                                            isChecked
-                                                ? 'bg-[#FFF4EB] border-2 border-[#D86A33] shadow-xs'
-                                                : 'bg-white border-gray-200 hover:border-[#D86A33]/60'
-                                        }`}
-                                    >
-                                        <div className="flex items-start gap-2.5">
-                                            <div
-                                                className={`w-5 h-5 rounded-md mt-0.5 flex items-center justify-center shrink-0 border transition-colors ${
-                                                    isChecked
-                                                        ? 'bg-[#D86A33] border-[#D86A33] text-white'
-                                                        : 'border-gray-300 bg-white'
-                                                }`}
-                                            >
-                                                {isChecked && <Check size={12} />}
-                                            </div>
-                                            <div>
-                                                <div className="text-xs font-black text-gray-900 leading-tight">
-                                                    {ad.label}
-                                                </div>
-                                                <div className="text-[10px] text-gray-500 mt-0.5">
-                                                    {ad.desc}
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <span
-                                            className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                                {GORROS_ADICIONALES_OPTIONS.map(ad => {
+                                    const isChecked = selectedAdicionales.includes(ad.label);
+                                    return (
+                                        <button
+                                            key={ad.id}
+                                            type="button"
+                                            onClick={() => toggleAdicional(ad.label)}
+                                            className={`p-3 rounded-2xl border text-left transition-all flex items-start justify-between gap-2 ${
                                                 isChecked
-                                                    ? 'bg-[#D86A33] text-white'
-                                                    : 'bg-gray-100 text-gray-700'
+                                                    ? 'bg-[#FFF4EB] border-2 border-[#D86A33] shadow-xs'
+                                                    : 'bg-white border-gray-200 hover:border-[#D86A33]/60'
                                             }`}
                                         >
-                                            +$0.50
-                                        </span>
-                                    </button>
-                                );
-                            })}
+                                            <div className="flex items-start gap-2.5">
+                                                <div
+                                                    className={`w-5 h-5 rounded-md mt-0.5 flex items-center justify-center shrink-0 border transition-colors ${
+                                                        isChecked
+                                                            ? 'bg-[#D86A33] border-[#D86A33] text-white'
+                                                            : 'border-gray-300 bg-white'
+                                                    }`}
+                                                >
+                                                    {isChecked && <Check size={12} />}
+                                                </div>
+                                                <div>
+                                                    <div className="text-xs font-black text-gray-900 leading-tight">
+                                                        {ad.label}
+                                                    </div>
+                                                    <div className="text-[10px] text-gray-500 mt-0.5">
+                                                        {ad.desc}
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <span
+                                                className={`px-2 py-0.5 rounded-full text-[10px] font-black shrink-0 ${
+                                                    isChecked
+                                                        ? 'bg-[#D86A33] text-white'
+                                                        : 'bg-gray-100 text-gray-700'
+                                                }`}
+                                            >
+                                                +$0.50
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
                         </div>
-                    </div>
+                    )}
 
                     {/* ========================================================= */}
                     {/* NOMBRE, TEXTO LIBRE Y (SOLO EN DISEÑA TU IDEA) IMÁGENES   */}
@@ -723,12 +742,12 @@ export default function GorroConfigModal({
                                 </span>
                                 <div>
                                     <h4 className="text-xs sm:text-sm font-black text-[#5F2142] uppercase tracking-wider">
-                                        Personalización de tu Gorro
+                                        {isLanyard ? 'Personalización de tu Lanyard' : 'Personalización de tu Gorro'}
                                     </h4>
                                     <p className="text-[11px] text-gray-500 font-medium">
                                         {isDisenaTuIdea
-                                            ? 'Indica el nombre, texto libre y adjunta hasta 5 imágenes de referencia'
-                                            : 'Indica el nombre y texto libre para tu personalizado'}
+                                            ? 'Indica el nombre, texto libre de tu diseño y adjunta hasta 5 imágenes de referencia'
+                                            : 'Indica el nombre y texto libre para el diseño de tu personalizado'}
                                     </p>
                                 </div>
                             </div>

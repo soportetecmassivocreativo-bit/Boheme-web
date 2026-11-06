@@ -20,9 +20,11 @@ export default function ProductCard({ product }: ProductCardProps) {
 
     const normalizedSlug = normalizeCategorySlug(product.categoria_slug);
     const isGorroProduct = normalizedSlug === 'gorros';
-    const subcatId = Number(product.subcategoria_id) || 70;
+    const isLanyardProduct = normalizedSlug === 'lanyards';
+    const subcatId = Number(product.subcategoria_id) || (isGorroProduct ? 70 : isLanyardProduct ? 5 : 0);
     const isStockGorro = isGorroProduct && subcatId === 70;
-    const usesGorroForm = isGorroProduct && !isStockGorro;
+    const isLanyardWithForm = isLanyardProduct && (subcatId === 6 || subcatId === 75);
+    const usesGorroForm = (isGorroProduct && !isStockGorro) || isLanyardWithForm;
 
     const firstImage = parseImages(product.image_url)[0];
     const sectionTitle = CATEGORIES[normalizedSlug]?.title || product.categoria_slug;
@@ -33,10 +35,11 @@ export default function ProductCard({ product }: ProductCardProps) {
             product.categoria_slug === 'productos-personalizados' ||
             subcatId === 71 ||
             subcatId === 74 ||
+            subcatId === 75 ||
             (isGorroProduct && subcatId === 72) ||
             subcatId === 6 ||
-            product.name.toLowerCase().includes('personaliz') ||
-            (product.description && product.description.toLowerCase().includes('personaliz'))
+            (!isLanyardProduct && product.name.toLowerCase().includes('personaliz')) ||
+            (!isLanyardProduct && product.description && product.description.toLowerCase().includes('personaliz'))
         )
     );
 
@@ -73,7 +76,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                     <span className={`washi-tape text-[10px] font-black px-2.5 py-0.5 tracking-wider uppercase inline-block -rotate-3 ${
                         isPersonalizable ? 'text-[#D86A33] border border-[#D86A33]/40' : 'text-[#5F2142]'
                     }`}>
-                        {subcatId === 74
+                        {subcatId === 74 || subcatId === 75
                             ? '★ DISEÑA TU IDEA'
                             : product.subcategoria_especial
                                 ? `★ ${product.subcategoria_especial.toUpperCase()}`
@@ -182,11 +185,13 @@ export default function ProductCard({ product }: ProductCardProps) {
                                             <Sliders size={14} />
                                         )}
                                         <span>
-                                            {subcatId === 74
+                                            {subcatId === 74 || subcatId === 75
                                                 ? 'Diseñar mi Idea'
-                                                : isPersonalizable
-                                                    ? 'Personalizar Gorro'
-                                                    : 'Elegir Opciones'}
+                                                : isLanyardProduct
+                                                    ? 'Personalizar Lanyard'
+                                                    : isPersonalizable
+                                                        ? 'Personalizar Gorro'
+                                                        : 'Elegir Opciones'}
                                         </span>
                                     </>
                                 ) : isPersonalizable ? (
