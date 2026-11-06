@@ -1568,14 +1568,10 @@ export default function AdminPage() {
     // Filter products by active section and optional subcategory (NO "TODOS" section)
     const sectionProducts = allSectionProducts.filter(p => {
         const matchesSubcategory = activeSubcategory === 'all' || Number(p.subcategoria_id) === Number(activeSubcategory);
-        const matchesEspecial =
-            activeSection !== 'gorros' ||
-            activeEspecialFilter === 'all' ||
-            (Number(p.subcategoria_id) === 72 && (p.subcategoria_especial || '').toLowerCase() === activeEspecialFilter.toLowerCase());
         const matchesSearch = !productSearch.trim() || 
             p.name.toLowerCase().includes(productSearch.toLowerCase()) || 
             (p.description && p.description.toLowerCase().includes(productSearch.toLowerCase()));
-        return matchesSubcategory && matchesEspecial && matchesSearch;
+        return matchesSubcategory && matchesSearch;
     });
 
     // Pagination slices for Facturado, Taller y Pedidos, and Agregar Productos
@@ -3329,52 +3325,6 @@ export default function AdminPage() {
                                             );
                                         })}
                                     </div>
-
-                                    {/* Subcategorías específicas únicamente cuando se selecciona su categoría (ej. Especiales › Reversible, Cintillo, Ponytail, Coquette) */}
-                                    {selectedSubcatObj?.subcategories && selectedSubcatObj.subcategories.length > 0 && (
-                                        <div className="pt-3 border-t border-gray-100 dark:border-white/10 flex flex-wrap items-center gap-2">
-                                            <span className="text-[11px] font-black uppercase tracking-wider text-[#D86A33] flex items-center gap-1 mr-1">
-                                                <Sparkles size={13} />
-                                                <span>Subcategorías de {selectedSubcatObj.name}:</span>
-                                            </span>
-                                            <button
-                                                type="button"
-                                                onClick={() => setActiveEspecialFilter('all')}
-                                                className={`px-3 py-1 rounded-xl text-[11px] font-black transition-all border ${
-                                                    activeEspecialFilter === 'all'
-                                                        ? 'bg-[#5F2142] text-white border-[#5F2142]'
-                                                        : 'bg-white dark:bg-neutral-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
-                                                }`}
-                                            >
-                                                Todas ({allSectionProducts.filter(p => Number(p.subcategoria_id) === selectedSubcatObj.id).length})
-                                            </button>
-                                            {selectedSubcatObj.subcategories.map(subEsp => {
-                                                const espActive = activeEspecialFilter === subEsp;
-                                                const espCount = allSectionProducts.filter(
-                                                    p => Number(p.subcategoria_id) === selectedSubcatObj.id && (p.subcategoria_especial || '').toLowerCase() === subEsp.toLowerCase()
-                                                ).length;
-                                                return (
-                                                    <button
-                                                        key={subEsp}
-                                                        type="button"
-                                                        onClick={() => setActiveEspecialFilter(subEsp)}
-                                                        className={`px-3 py-1 rounded-xl text-[11px] font-black transition-all border flex items-center gap-1.5 ${
-                                                            espActive
-                                                                ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-2xs scale-105'
-                                                                : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
-                                                        }`}
-                                                    >
-                                                        <span>{subEsp}</span>
-                                                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${
-                                                            espActive ? 'bg-white/25 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-500'
-                                                        }`}>
-                                                            {espCount}
-                                                        </span>
-                                                    </button>
-                                                );
-                                            })}
-                                        </div>
-                                    )}
                                 </div>
                             )}
 
