@@ -130,62 +130,14 @@ export const CATEGORIES: Record<string, CategoryInfo> = {
         title: 'Accesorios',
         description: 'Explora nuestra colección de accesorios diseñados para brindarte confort y estilo en tu labor diaria.',
         subcategories: [
-            { id: 8, name: 'Cintas metricas' },
-            { id: 9, name: 'Adipometro' },
-            { id: 10, name: 'Calculadoras' },
-            { id: 12, name: 'Tabla portadocumentos' },
-            { id: 13, name: 'Caliper' },
-            { id: 14, name: 'Diapason' },
-            { id: 15, name: 'Martillo neurologico taylor' },
-            { id: 16, name: 'Martillo neurologico Buck' },
-            { id: 17, name: 'Estuche estetoscopio' },
-            { id: 18, name: 'Goniometro' },
-            { id: 19, name: 'Atomizador alcohol portatil' },
-            { id: 20, name: 'Atomizador de perfume' },
-            { id: 21, name: 'Koala medico Maxi' },
-            { id: 22, name: 'Koala medico clásico' },
-            { id: 23, name: 'Koala enfermeria (riñonera)' },
-            { id: 24, name: 'Kit de sutura (cirugia menor)' },
-            { id: 25, name: 'Pad de practica sutura' },
-            { id: 26, name: 'Toniquete automatico' },
-            { id: 27, name: 'Torniquete liga' },
-            { id: 28, name: 'Rompeampolla básico' },
-            { id: 29, name: 'Rompeampolla animado' },
-            { id: 30, name: 'Rompeampolla silicon' },
-            { id: 31, name: 'Llaveros animados salud' },
-            { id: 32, name: 'Tijera de trauma' },
-            { id: 33, name: 'Tinta para sello' },
-            { id: 34, name: 'Pines para bata' },
-            { id: 35, name: 'Pines estetoscopio' },
-            { id: 36, name: 'Estuche oximetro' },
-            { id: 37, name: 'Mesa para laptop' }
+            { id: 10, name: 'Calculadoras' }
         ]
     },
     'equipos-medicos': {
         id: 'equipos-medicos',
         title: 'Equipos médicos',
         description: 'Explora nuestra colección de equipos médicos diseñados para brindarte confort y estilo en tu labor diaria.',
-        subcategories: [
-            { id: 38, name: 'Tensiometro manual básico color (negro)' },
-            { id: 39, name: 'Tensiometro manual doble campana colores' },
-            { id: 40, name: 'Tensiometro digital de brazalete' },
-            { id: 41, name: 'Tensiometro digital de muñeca' },
-            { id: 42, name: 'Otoscopio basico' },
-            { id: 43, name: 'Otoscopio profesional' },
-            { id: 44, name: 'Estetoscopio básico' },
-            { id: 45, name: 'Estetoscopio doble campana' },
-            { id: 46, name: 'Doppler fetal portatil' },
-            { id: 47, name: 'Linterna frontal' },
-            { id: 48, name: 'Linterna pupilar' },
-            { id: 49, name: 'Glucometro' },
-            { id: 50, name: 'Oximetro adulto básico' },
-            { id: 51, name: 'Oximetro adulto recargable' },
-            { id: 52, name: 'Oximetro pediatrico' },
-            { id: 53, name: 'Nebulizador portatil' },
-            { id: 54, name: 'Nebulizador de compresor' },
-            { id: 55, name: 'Termometro digital animado' },
-            { id: 56, name: 'Termometro digital basico' }
-        ]
+        subcategories: []
     },
     'productos-personalizados': {
         id: 'productos-personalizados',
@@ -239,9 +191,8 @@ let MOCK_PRODUCTS: Product[] = [
         name: 'Cinta Métrica Retractil',
         description: 'Basica | Largo: 150cm Colores variados (Consultar)',
         price: 2,
-        image_url: '/cat_accesorios.png', // Fallback to category image
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 8
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '2',
@@ -249,8 +200,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Plastico | Generico. Instrumento para la medición del porcentaje de grasa corporal. Rango de Medición: 0-70mm. Colores: Negro, Blanco y Rosado',
         price: 5,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 9
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '3',
@@ -285,8 +235,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Apertura frontal. Colores: Variados (Consultar disponibilidad). Tamaño: A4 (23,7X36cm). Capacidad: 100 hojas',
         price: 5,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 12
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '7',
@@ -294,8 +243,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Apertura Lateral. Modelo con almacenamiento inferior. Colores: Variados. Tamaño: Carta',
         price: 8,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 12
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '8',
@@ -303,8 +251,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Instrumento de precisión para medir intervalos y distancias entre ondas en un electrocardiograma. Colores: Negro, rosado, azul (Consultar Disponibilidad). Tamaño: 12cm de largo.',
         price: 10,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 13
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '9',
@@ -312,8 +259,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Con Sordina. Colores: Plateado, Dorado, Azul, Rosado. Incluye martillo. Tamaño: 17,5cm',
         price: 12,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 14
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '10',
@@ -321,8 +267,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Cada diapasón incluye un martillo de madera con cabeza de goma, llave Allen, paño y estuche de terciopelo.',
         price: 25,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 14
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '11',
@@ -330,8 +275,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Ideal para exploración de reflejos. Colores: Negro, rojo, azul, rosado. Tamaño: 18,5cm',
         price: 6,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 15
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '12',
@@ -339,8 +283,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Función 3 en 1: Pruebas de reflejos, sensibilidad al dolor y tacto fino. Incluye martillo, aguja y pincel.',
         price: 10,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 16
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '13',
@@ -348,8 +291,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Contenido del Kit: Martillo Babinski, Martillo cuadrado Queen, Rueda wartenberg, Martillo buck, Martillo tromner reflex.',
         price: 22,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 16
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '14',
@@ -357,8 +299,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Util para Littmann y otros modelos. Bolsillo interno de malla. Colores: Variados',
         price: 18,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 17
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '15',
@@ -366,8 +307,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Modelo de 360 grados de 6, 8 o 12 pulgadas.',
         price: 5,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 18
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '16',
@@ -375,8 +315,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Capacidad: 50ml. Colores: Variados (Consultar disponibilidad)',
         price: 2,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 19
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '17',
@@ -384,8 +323,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Ideal para llevar tu perfume preferido a todo lugar. Capacidad: 5ml. Colores variados.',
         price: 3,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 20
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '18',
@@ -393,8 +331,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Materiales resistentes y lavables (nylon/poliéster). Múltiples compartimentos organizados y soportes elásticos.',
         price: 15,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 21
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '19',
@@ -402,8 +339,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Koala médico talla L. Múltiples bolsillos y compartimentos con cremallera.',
         price: 10,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 22
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '20',
@@ -411,8 +347,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Excelente para organizar e instrumentar rápido durante guardias y prácticas. Talla L.',
         price: 12,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 23
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '21',
@@ -420,8 +355,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Pad de sutura de silicona para practicar tus técnicas preferidas. 3 capas de piel. Medidas: 12x17x1,3 cm',
         price: 12,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 25
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '22',
@@ -429,8 +363,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Contiene: 01 Piel sintética, Tijera de iris, Pinza de disección con diente, Mango de bisturí, Pinza hemostasia curva, Porta aguja, suturas y bisturíes.',
         price: 20,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 24
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '23',
@@ -438,8 +371,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Kit profesional de acero inoxidable: Tijera iris, Pinzas de disección, Mangos, Pinza hemostática, Sonda acanalada, bisturí y suturas de nylon.',
         price: 35,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 24
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '24',
@@ -447,8 +379,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Sistema de bloqueo y liberación rápida. Medida: 40cm. Elástico y cómodo.',
         price: 4,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 26
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '25',
@@ -456,8 +387,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Torniquete de liga de alta elasticidad. Medidas: 45x2.5cm. Color: Azul',
         price: 2,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 27
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '26',
@@ -465,8 +395,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Modelos animados divertidos impresos en 3D para romper ampollas sin riesgo.',
         price: 3,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 29
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '27',
@@ -474,8 +403,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Modelos de silicona premium suave y flexible. Diseños surtidos.',
         price: 4,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 30
+        categoria_slug: 'accesorios-medicos'
     },
     {
         id: '28',
@@ -483,8 +411,63 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Tijera de trauma de alta resistencia para cortar ropa y vendajes. Medidas: 15cm o 19cm.',
         price: 6,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 32
+        categoria_slug: 'accesorios-medicos'
+    },
+    {
+        id: '29',
+        name: 'Rompeampolla Básico',
+        description: 'Protector ergonómico básico para apertura segura de ampollas de vidrio.',
+        price: 2,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'accesorios-medicos'
+    },
+    {
+        id: '30',
+        name: 'Llaveros Animados Salud',
+        description: 'Llaveros temáticos con figuras animadas del área de la salud.',
+        price: 3,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'accesorios-medicos'
+    },
+    {
+        id: '31',
+        name: 'Tinta para Sello',
+        description: 'Frasco de tinta de secado rápido para sellos automáticos profesionales.',
+        price: 3,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'accesorios-medicos'
+    },
+    {
+        id: '32',
+        name: 'Pines para Bata',
+        description: 'Pines metálicos esmaltados con motivos de salud para decorar tu bata o uniforme.',
+        price: 3,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'accesorios-medicos'
+    },
+    {
+        id: '33',
+        name: 'Pines Estetoscopio',
+        description: 'Charms y pines decorativos ajustables para personalizar la manguera de tu estetoscopio.',
+        price: 3,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'accesorios-medicos'
+    },
+    {
+        id: '34',
+        name: 'Estuche Oxímetro',
+        description: 'Funda protectora rígida con cierre para resguardar tu oxímetro de pulso.',
+        price: 5,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'accesorios-medicos'
+    },
+    {
+        id: '35',
+        name: 'Mesa para Laptop',
+        description: 'Mesa plegable portátil multiuso ideal para estudio, guardia o trabajo en casa.',
+        price: 18,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'accesorios-medicos'
     },
 
     // ==========================================
@@ -672,7 +655,7 @@ let MOCK_PRODUCTS: Product[] = [
     },
 
     // ==========================================
-    // EQUIPOS MÉDICOS (Subcategories: 38 - Tensiometro manual, 40 - Tensiometro digital, 44/45 - Estetoscopio, 46 - Doppler, 48 - Linterna, 50 - Oximetro, 55 - Termometro)
+    // EQUIPOS MÉDICOS
     // ==========================================
     {
         id: '301',
@@ -680,8 +663,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Excelente acústica para auscultación cardíaca y pulmonar. Olivas blandas ergonómicas y campana de acero inoxidable.',
         price: 25,
         image_url: '/cat_equipos.png',
-        categoria_slug: 'equipos-medicos',
-        subcategoria_id: 45
+        categoria_slug: 'equipos-medicos'
     },
     {
         id: '302',
@@ -689,8 +671,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Modelo ligero ideal para estudiantes, enfermería y uso diario de rutina. Alta sensibilidad acústica.',
         price: 16,
         image_url: '/cat_equipos.png',
-        categoria_slug: 'equipos-medicos',
-        subcategoria_id: 44
+        categoria_slug: 'equipos-medicos'
     },
     {
         id: '303',
@@ -698,8 +679,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Kit de tensiómetro aneroide con manómetro de precisión, perilla con válvula de liberación y estuche protector.',
         price: 22,
         image_url: '/cat_equipos.png',
-        categoria_slug: 'equipos-medicos',
-        subcategoria_id: 38
+        categoria_slug: 'equipos-medicos'
     },
     {
         id: '304',
@@ -707,8 +687,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Medición precisa de presión arterial y frecuencia cardíaca con pantalla LCD grande retroiluminada y memoria de lecturas.',
         price: 30,
         image_url: '/cat_equipos.png',
-        categoria_slug: 'equipos-medicos',
-        subcategoria_id: 40
+        categoria_slug: 'equipos-medicos'
     },
     {
         id: '305',
@@ -716,8 +695,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Linterna de diagnóstico tipo bolígrafo con luz blanca LED, clip metálico y escala de dilatación pupilar impresa.',
         price: 5,
         image_url: '/cat_equipos.png',
-        categoria_slug: 'equipos-medicos',
-        subcategoria_id: 48
+        categoria_slug: 'equipos-medicos'
     },
     {
         id: '306',
@@ -725,8 +703,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Mide SpO2 (oxígeno en sangre) y pulso en tiempo real. Pantalla OLED multidireccional con curva pletismográfica.',
         price: 15,
         image_url: '/cat_equipos.png',
-        categoria_slug: 'equipos-medicos',
-        subcategoria_id: 50
+        categoria_slug: 'equipos-medicos'
     },
     {
         id: '307',
@@ -734,8 +711,7 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Lectura precisa en 10 segundos con alarma de fiebre y memoria de última medición. Punta flexible lavable.',
         price: 6,
         image_url: '/cat_equipos.png',
-        categoria_slug: 'equipos-medicos',
-        subcategoria_id: 55
+        categoria_slug: 'equipos-medicos'
     },
     {
         id: '308',
@@ -743,8 +719,95 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Detector de latidos fetales portátil de alta sensibilidad sonora con altavoz integrado y display digital.',
         price: 38,
         image_url: '/cat_equipos.png',
-        categoria_slug: 'equipos-medicos',
-        subcategoria_id: 46
+        categoria_slug: 'equipos-medicos'
+    },
+    {
+        id: '309',
+        name: 'Tensiómetro Manual Doble Campana Colores',
+        description: 'Kit completo de tensiómetro manual aneroide junto con estetoscopio doble campana en colores variados.',
+        price: 26,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos'
+    },
+    {
+        id: '310',
+        name: 'Tensiómetro Digital de Muñeca',
+        description: 'Monitor automático compacto de presión arterial y pulso para muñeca con estuche rígido portátil.',
+        price: 22,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos'
+    },
+    {
+        id: '311',
+        name: 'Otoscopio Básico',
+        description: 'Otoscopio de diagnóstico con iluminación LED brillante y juego de espéculos reutilizables de distintos tamaños.',
+        price: 25,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos'
+    },
+    {
+        id: '312',
+        name: 'Otoscopio Profesional',
+        description: 'Otoscopio clínico de fibra óptica con lente de aumento giratoria y estuche protector de alta durabilidad.',
+        price: 45,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos'
+    },
+    {
+        id: '313',
+        name: 'Linterna Frontal',
+        description: 'Linterna frontal médica recargable con banda elástica ajustable y enfoque de luz blanca directa.',
+        price: 12,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos'
+    },
+    {
+        id: '314',
+        name: 'Glucómetro',
+        description: 'Medidor digital rápido de glucosa en sangre con pantalla de alta visibilidad y estuche organizador.',
+        price: 20,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos'
+    },
+    {
+        id: '315',
+        name: 'Oxímetro Adulto Recargable',
+        description: 'Oxímetro de pulso digital con batería recargable por USB, pantalla OLED y alarma configurable.',
+        price: 20,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos'
+    },
+    {
+        id: '316',
+        name: 'Oxímetro Pediátrico',
+        description: 'Oxímetro de pulso diseñado especialmente con sensor anatómico pediátrico e infantil de lectura rápida.',
+        price: 22,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos'
+    },
+    {
+        id: '317',
+        name: 'Nebulizador Portátil',
+        description: 'Nebulizador ultrasónico malla mesh silencioso, compacto y portátil para adultos y niños.',
+        price: 25,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos'
+    },
+    {
+        id: '318',
+        name: 'Nebulizador de Compresor',
+        description: 'Nebulizador de compresor de pistón de uso continuo con kit completo de mascarilla adulto y pediátrica.',
+        price: 38,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos'
+    },
+    {
+        id: '319',
+        name: 'Termómetro Digital Animado',
+        description: 'Termómetro clínico digital con punta flexible y diseño animado ideal para pediatría.',
+        price: 8,
+        image_url: '/cat_equipos.png',
+        categoria_slug: 'equipos-medicos'
     },
 
     // ==========================================
@@ -1589,16 +1652,35 @@ function loadProductsFromDisk(force = false) {
                         image_url: '/cat_accesorios.png',
                         categoria_slug: 'lanyards',
                         subcategoria_id: 75
-                    }
+                    },
+                    ...MOCK_PRODUCTS.filter(mp => mp.categoria_slug === 'accesorios-medicos' || mp.categoria_slug === 'equipos-medicos')
                 ];
 
                 let merged: Product[] = parsed.map((p: Product) => {
-                    if (p.categoria_slug === 'accesorios-medicos' && Number(p.subcategoria_id) === 11) {
-                        return { ...p, subcategoria_id: 10 };
+                    if (p.categoria_slug === 'accesorios-medicos') {
+                        const subId = Number(p.subcategoria_id);
+                        if (subId === 11) {
+                            return { ...p, subcategoria_id: 10 };
+                        }
+                        if (subId >= 8 && subId <= 37 && subId !== 10) {
+                            return { ...p, subcategoria_id: undefined };
+                        }
+                    }
+                    if (p.categoria_slug === 'equipos-medicos') {
+                        const subId = Number(p.subcategoria_id);
+                        if (subId >= 38 && subId <= 56) {
+                            return { ...p, subcategoria_id: undefined };
+                        }
                     }
                     return p;
                 });
-                let changed = parsed.some((p: Product) => p.categoria_slug === 'accesorios-medicos' && Number(p.subcategoria_id) === 11);
+                let changed = parsed.some((p: Product) => {
+                    const subId = Number(p.subcategoria_id);
+                    return (
+                        (p.categoria_slug === 'accesorios-medicos' && subId >= 8 && subId <= 37 && subId !== 10) ||
+                        (p.categoria_slug === 'equipos-medicos' && subId >= 38 && subId <= 56)
+                    );
+                });
                 for (const defProd of defaultGorrosSpecials) {
                     const existingIdx = merged.findIndex(p => p.id === defProd.id);
                     if (existingIdx === -1) {
@@ -1646,16 +1728,27 @@ export function loadCategoriesFromDisk(force = false) {
             const data = fs.readFileSync(CATEGORIES_FILE, 'utf-8');
             const parsed: Record<string, Subcategory[]> = JSON.parse(data);
             if (parsed && typeof parsed === 'object') {
+                let needsResave = false;
                 for (const [slug, storedSubcats] of Object.entries(parsed)) {
-                    if (CATEGORIES[slug] && Array.isArray(storedSubcats) && storedSubcats.length > 0) {
+                    if (CATEGORIES[slug] && Array.isArray(storedSubcats)) {
                         let cleaned = storedSubcats;
                         if (slug === 'accesorios-medicos') {
                             cleaned = storedSubcats
-                                .filter(s => s.id !== 11)
+                                .filter(s => s.id === 10 || s.id > 200)
                                 .map(s => (s.id === 10 ? { ...s, name: 'Calculadoras' } : s));
+                            if (!cleaned.some(s => s.id === 10)) {
+                                cleaned.unshift({ id: 10, name: 'Calculadoras' });
+                            }
+                            if (cleaned.length !== storedSubcats.length) needsResave = true;
+                        } else if (slug === 'equipos-medicos') {
+                            cleaned = storedSubcats.filter(s => s.id > 200);
+                            if (cleaned.length !== storedSubcats.length) needsResave = true;
                         }
                         CATEGORIES[slug].subcategories = cleaned;
                     }
+                }
+                if (needsResave) {
+                    scheduleSaveCategoriesToDisk();
                 }
             }
         }

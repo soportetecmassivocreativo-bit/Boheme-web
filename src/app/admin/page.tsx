@@ -3544,9 +3544,9 @@ export default function AdminPage() {
                                         + Crear Producto en {selectedSubcatObj ? selectedSubcatObj.name : currentCatInfo?.title}
                                     </button>
                                 </div>
-                                ) : activeSection === 'accesorios-medicos' ? (
+                                ) : (activeSection === 'accesorios-medicos' || activeSection === 'equipos-medicos') ? (
                                     <div className="space-y-6">
-                                        {/* Todos los accesorios disponibles juntos, sin distribuir por categorías, mostrando tarjetita si tienen categoría asignada */}
+                                        {/* Todos los accesorios o equipos médicos disponibles juntos, sin distribuir por bloques de categorías */}
                                         <div className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden transition-all`}>
                                             <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/3 flex flex-wrap items-center justify-between gap-3">
                                                 <div className="flex flex-wrap items-center gap-2">
@@ -3554,10 +3554,10 @@ export default function AdminPage() {
                                                         {currentCatInfo?.title}
                                                     </span>
                                                     <h3 className="font-black text-sm sm:text-base text-[#5F2142] dark:text-[#FFC99C]">
-                                                        Todos los Accesorios Disponibles
+                                                        {activeSection === 'equipos-medicos' ? 'Todos los Equipos Médicos Disponibles' : 'Todos los Accesorios Disponibles'}
                                                     </h3>
                                                     <span className="px-2.5 py-0.5 rounded-full bg-[#D86A33]/10 text-[#D86A33] text-xs font-black">
-                                                        {sectionProducts.length} {sectionProducts.length === 1 ? 'accesorio' : 'accesorios'}
+                                                        {sectionProducts.length} {sectionProducts.length === 1 ? 'producto' : 'productos'}
                                                     </span>
                                                 </div>
 
@@ -3567,7 +3567,7 @@ export default function AdminPage() {
                                                     className="px-3.5 py-1.5 rounded-xl bg-[#D86A33] hover:bg-[#c25925] text-white text-[11px] font-black inline-flex items-center gap-1 shadow-2xs transition-all"
                                                 >
                                                     <Plus size={13} />
-                                                    <span>+ Nuevo Accesorio</span>
+                                                    <span>{activeSection === 'equipos-medicos' ? '+ Nuevo Equipo Médico' : '+ Nuevo Accesorio'}</span>
                                                 </button>
                                             </div>
 
@@ -3575,7 +3575,7 @@ export default function AdminPage() {
                                                 <table className="w-full text-left border-collapse text-xs">
                                                     <thead>
                                                         <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/40 dark:bg-white/2">
-                                                            <th className="py-3 px-5">Accesorio & Fotos</th>
+                                                            <th className="py-3 px-5">Producto & Fotos</th>
                                                             <th className="py-3 px-5">Categoría Asignada</th>
                                                             <th className="py-3 px-5 text-center">Stock</th>
                                                             <th className="py-3 px-5">Precio ($ / Bs.)</th>
@@ -6129,7 +6129,7 @@ export default function AdminPage() {
                                 </div>
 
                                 {/* Subcategory Filter Bar for Configuraciones -> Productos */}
-                                {CATEGORIES[activeSection]?.subcategories && (
+                                {CATEGORIES[activeSection]?.subcategories && CATEGORIES[activeSection].subcategories.length > 0 && (
                                     <div className={`p-3.5 rounded-2xl ${bgCard} border ${borderDefault} flex flex-wrap items-center gap-2`}>
                                         <span className="text-[10px] font-black uppercase tracking-wider text-gray-400 mr-1">
                                             Categorías de {CATEGORIES[activeSection]?.title}:

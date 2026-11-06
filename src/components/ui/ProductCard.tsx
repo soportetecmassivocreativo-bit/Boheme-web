@@ -34,6 +34,12 @@ export default function ProductCard({ product }: ProductCardProps) {
     const firstImage = parseImages(product.image_url)[0];
     const sectionTitle = CATEGORIES[normalizedSlug]?.title || product.categoria_slug;
     const categoryName = getSubcategoryName(normalizedSlug, product.subcategoria_id);
+    const hasAssignedSubcategory = Boolean(
+        product.subcategoria_id !== undefined &&
+        CATEGORIES[normalizedSlug]?.subcategories.some(
+            s => s.id === Number(product.subcategoria_id) || (normalizedSlug === 'accesorios-medicos' && Number(product.subcategoria_id) === 11 && s.id === 10)
+        )
+    );
 
     const isPersonalizable = Boolean(
         !isStockGorro && (
@@ -165,7 +171,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#5F2142]/10 text-[#5F2142]">
                                 {sectionTitle}
                             </span>
-                            {(normalizedSlug !== 'accesorios-medicos' || product.subcategoria_id !== undefined) && (
+                            {hasAssignedSubcategory && (
                                 <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#FFF9F5] border border-[#D86A33]/40 text-[#D86A33]">
                                     ✦ {categoryName}
                                 </span>

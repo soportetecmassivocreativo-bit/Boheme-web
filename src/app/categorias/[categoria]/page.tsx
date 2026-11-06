@@ -133,8 +133,8 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                 {/* Search Bar by Description & Name in all Ecommerce Sections */}
                 <CatalogSearchBar categoryTitle={category.title} initialQuery={buscar || ''} />
 
-                {/* Subcategories Filter Bar (Not shown as filter bar if user wants all accessories together, or kept clean) */}
-                {normalizedCategoria !== 'accesorios-medicos' && (
+                {/* Subcategories Filter Bar (Only shown when the section has subcategories and is not Accesorios / Equipos Médicos) */}
+                {normalizedCategoria !== 'accesorios-medicos' && normalizedCategoria !== 'equipos-medicos' && category.subcategories.length > 0 && (
                     <div className="mb-8 overflow-x-auto pb-3 scrollbar-thin">
                         <div className="flex space-x-2.5 items-center">
                             {/* "Todas las Categorías" Filter Link */}
@@ -193,8 +193,8 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                             Estamos preparando nuevos diseños increíbles para esta categoría.
                         </p>
                     </div>
-                ) : normalizedCategoria === 'accesorios-medicos' ? (
-                    /* Accesorios médicos: Todos los accesorios disponibles juntos, sin distribuir por bloques de categorías (cada producto muestra su tarjetita de categoría) */
+                ) : (normalizedCategoria === 'accesorios-medicos' || normalizedCategoria === 'equipos-medicos') ? (
+                    /* Accesorios y Equipos médicos: Todos los productos disponibles juntos en una sola vista */
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
                         {products.map((product) => (
                             <ProductCard key={product.id} product={product} />
