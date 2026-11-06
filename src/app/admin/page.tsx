@@ -558,9 +558,10 @@ export default function AdminPage() {
     // ==========================================
     const handleCreateAccesorioCategory = async (e?: React.FormEvent, selectInForm = false) => {
         if (e) e.preventDefault();
+        const targetSection = selectInForm ? formCategory : activeSection;
         const cleanName = newAccesorioCatName.trim();
         if (!cleanName) {
-            alert('Por favor ingresa el nombre de la nueva categoría de Accesorios.');
+            alert('Por favor ingresa el nombre de la nueva categoría.');
             return;
         }
         setIsCreatingAccesorioCat(true);
@@ -569,17 +570,17 @@ export default function AdminPage() {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    sectionSlug: 'accesorios-medicos',
+                    sectionSlug: targetSection,
                     name: cleanName
                 })
             });
             const data = await res.json();
             if (res.ok && data.subcategory) {
-                if (Array.isArray(data.subcategories)) {
-                    CATEGORIES['accesorios-medicos'].subcategories = data.subcategories;
+                if (Array.isArray(data.subcategories) && CATEGORIES[targetSection]) {
+                    CATEGORIES[targetSection].subcategories = data.subcategories;
                     setCategoriesMap(prev => ({
                         ...prev,
-                        'accesorios-medicos': data.subcategories
+                        [targetSection]: data.subcategories
                     }));
                 }
                 setCategoriesVersion(v => v + 1);
@@ -590,7 +591,7 @@ export default function AdminPage() {
                 } else {
                     setActiveSubcategory('all');
                 }
-                showToast(`✓ Categoría "${data.subcategory.name}" guardada en Accesorios`);
+                showToast(`✓ Categoría "${data.subcategory.name}" guardada`);
             } else {
                 alert(data.error || 'No se pudo crear la categoría.');
             }
@@ -601,25 +602,28 @@ export default function AdminPage() {
         }
     };
 
-    const handleDeleteAccesorioCategory = async (subId: number, subName: string) => {
+    const handleDeleteAccesorioCategory = async (subId: number, subName: string, sectionSlugParam?: string) => {
+        const targetSection = sectionSlugParam || activeSection;
         try {
             const res = await fetch('/api/admin/categories', {
                 method: 'DELETE',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    sectionSlug: 'accesorios-medicos',
+                    sectionSlug: targetSection,
                     subcategoryId: subId
                 })
             });
             const data = await res.json();
             if (res.ok && Array.isArray(data.subcategories)) {
-                CATEGORIES['accesorios-medicos'].subcategories = data.subcategories;
+                if (CATEGORIES[targetSection]) {
+                    CATEGORIES[targetSection].subcategories = data.subcategories;
+                }
                 setCategoriesMap(prev => ({
                     ...prev,
-                    'accesorios-medicos': data.subcategories
+                    [targetSection]: data.subcategories
                 }));
                 setProducts(prev => prev.map(p => (
-                    p.categoria_slug === 'accesorios-medicos' && Number(p.subcategoria_id) === Number(subId)
+                    p.categoria_slug === targetSection && Number(p.subcategoria_id) === Number(subId)
                         ? { ...p, subcategoria_id: undefined, subcategoria_nombre: undefined }
                         : p
                 )));
@@ -3401,7 +3405,7 @@ export default function AdminPage() {
                             </div>
 
                             {/* Subcategories / Categorías Especificadas de la Sección Activa */}
-                            {subcats.length > 0 && (
+                            {(subcats.length > 0 || activeSection === 'accesorios-medicos' || activeSection === 'equipos-medicos' || activeSection === 'productos-personalizados') && (
                                 <div className={`p-4 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs space-y-3`}>
                                     <div className="flex flex-wrap items-center justify-between gap-2">
                                         <div className="flex items-center gap-2">
@@ -3414,7 +3418,7 @@ export default function AdminPage() {
                                             <span className="text-[11px] text-gray-400 font-medium">
                                                 Filtra los productos creados o selecciona una categoría para crear uno nuevo
                                             </span>
-                                            {activeSection === 'accesorios-medicos' && (
+                                            {(activeSection === 'accesorios-medicos' || activeSection === 'equipos-medicos' || activeSection === 'productos-personalizados') && (
                                                 <button
                                                     type="button"
                                                     onClick={() => setShowCreateCatInput(prev => !prev)}
@@ -3427,7 +3431,7 @@ export default function AdminPage() {
                                         </div>
                                     </div>
 
-                                    {activeSection === 'accesorios-medicos' && showCreateCatInput && (
+                                    {(activeSection === 'accesorios-medicos' || activeSection === 'equipos-medicos' || activeSection === 'productos-personalizados') && showCreateCatInput && (
                                         <form
                                             onSubmit={(e) => handleCreateAccesorioCategory(e, false)}
                                             className={`p-3 rounded-2xl ${bgSubCard} border ${borderDefault} flex flex-col sm:flex-row items-stretch sm:items-center gap-2`}
@@ -3436,7 +3440,7 @@ export default function AdminPage() {
                                                 type="text"
                                                 value={newAccesorioCatName}
                                                 onChange={(e) => setNewAccesorioCatName(e.target.value)}
-                                                placeholder="Nombre de la nueva categoría en Accesorios..."
+                                                placeholder={`Nombre de la nueva categoría en ${currentCatInfo?.title}...`}
                                                 className={`flex-1 px-3.5 py-2 rounded-xl border text-xs font-bold outline-none ${inputStyle}`}
                                             />
                                             <div className="flex items-center gap-2">
@@ -3485,6 +3489,11 @@ export default function AdminPage() {
                                         {subcats.map(sub => {
                                             const isSubActive = activeSubcategory !== 'all' && Number(activeSubcategory) === sub.id;
                                             const subCount = allSectionProducts.filter(p => Number(p.subcategoria_id) === sub.id).length;
+                                            const canDeleteCat =
+                                                sub.id > 200 ||
+                                                activeSection === 'accesorios-medicos' ||
+                                                activeSection === 'equipos-medicos' ||
+                                                activeSection === 'productos-personalizados';
                                             return (
                                                 <div
                                                     key={sub.id}
@@ -3508,12 +3517,12 @@ export default function AdminPage() {
                                                     }`}>
                                                         {subCount}
                                                     </span>
-                                                    {activeSection === 'accesorios-medicos' && (
+                                                    {canDeleteCat && (
                                                         <button
                                                             type="button"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                handleDeleteAccesorioCategory(sub.id, sub.name);
+                                                                handleDeleteAccesorioCategory(sub.id, sub.name, activeSection);
                                                             }}
                                                             title={`Eliminar categoría ${sub.name}`}
                                                             className={`ml-0.5 w-4 h-4 rounded-full inline-flex items-center justify-center text-xs font-black leading-none transition-colors ${
@@ -6268,19 +6277,40 @@ export default function AdminPage() {
                                         {CATEGORIES[activeSection].subcategories.map(sub => {
                                             const subCount = allSectionProducts.filter(p => Number(p.subcategoria_id) === sub.id).length;
                                             const isSubActive = activeSubcategory !== 'all' && Number(activeSubcategory) === sub.id;
+                                            const canDeleteCat =
+                                                sub.id > 200 ||
+                                                activeSection === 'accesorios-medicos' ||
+                                                activeSection === 'equipos-medicos' ||
+                                                activeSection === 'productos-personalizados';
                                             return (
-                                                <button
+                                                <div
                                                     key={sub.id}
-                                                    type="button"
                                                     onClick={() => setActiveSubcategory(sub.id)}
-                                                    className={`px-3 py-1 rounded-xl text-[11px] font-black transition-all ${
+                                                    className={`px-3 py-1 rounded-xl text-[11px] font-black transition-all inline-flex items-center gap-1.5 cursor-pointer select-none ${
                                                         isSubActive
                                                             ? 'bg-[#D86A33] text-white shadow-2xs'
                                                             : 'bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10'
                                                     }`}
                                                 >
-                                                    {sub.name} ({subCount})
-                                                </button>
+                                                    <span>{sub.name} ({subCount})</span>
+                                                    {canDeleteCat && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleDeleteAccesorioCategory(sub.id, sub.name, activeSection);
+                                                            }}
+                                                            title={`Eliminar categoría ${sub.name}`}
+                                                            className={`w-4 h-4 rounded-full inline-flex items-center justify-center text-xs font-black leading-none transition-colors ${
+                                                                isSubActive
+                                                                    ? 'bg-white/25 hover:bg-red-600 text-white'
+                                                                    : 'bg-red-50 hover:bg-red-500 text-red-600 hover:text-white dark:bg-red-950/50 dark:text-red-400'
+                                                            }`}
+                                                        >
+                                                            −
+                                                        </button>
+                                                    )}
+                                                </div>
                                             );
                                         })}
                                     </div>
@@ -6785,13 +6815,13 @@ export default function AdminPage() {
                             })()}
 
                             {/* Dynamic Category / Subcategory of the Section */}
-                            {CATEGORIES[formCategory] && CATEGORIES[formCategory].subcategories.length > 0 && (
+                            {CATEGORIES[formCategory] && (CATEGORIES[formCategory].subcategories.length > 0 || formCategory === 'accesorios-medicos' || formCategory === 'equipos-medicos' || formCategory === 'productos-personalizados') && (
                                 <div className="space-y-2">
                                     <div className="flex items-center justify-between gap-2">
                                         <label className="block font-black text-gray-700 dark:text-gray-300 uppercase">
-                                            Categoría de {CATEGORIES[formCategory]?.title} *
+                                            Categoría de {CATEGORIES[formCategory]?.title}
                                         </label>
-                                        {formCategory === 'accesorios-medicos' && (
+                                        {(formCategory === 'accesorios-medicos' || formCategory === 'equipos-medicos' || formCategory === 'productos-personalizados') && (
                                             <button
                                                 type="button"
                                                 onClick={() => setShowCreateCatInput(prev => !prev)}
@@ -6803,13 +6833,13 @@ export default function AdminPage() {
                                         )}
                                     </div>
 
-                                    {formCategory === 'accesorios-medicos' && showCreateCatInput && (
+                                    {(formCategory === 'accesorios-medicos' || formCategory === 'equipos-medicos' || formCategory === 'productos-personalizados') && showCreateCatInput && (
                                         <div className={`p-2.5 rounded-2xl ${bgSubCard} border ${borderDefault} flex items-center gap-2`}>
                                             <input
                                                 type="text"
                                                 value={newAccesorioCatName}
                                                 onChange={(e) => setNewAccesorioCatName(e.target.value)}
-                                                placeholder="Nueva categoría en Accesorios..."
+                                                placeholder={`Nueva categoría en ${CATEGORIES[formCategory]?.title}...`}
                                                 className={`flex-1 px-3 py-1.5 rounded-xl border text-xs font-bold outline-none ${inputStyle}`}
                                             />
                                             <button
@@ -6827,7 +6857,7 @@ export default function AdminPage() {
                                         onChange={(e) => setFormSubcategory(e.target.value ? Number(e.target.value) : undefined)}
                                         className={`w-full px-3 py-2.5 rounded-2xl border font-bold ${inputStyle}`}
                                     >
-                                        {formCategory === 'accesorios-medicos' && (
+                                        {(formCategory === 'accesorios-medicos' || formCategory === 'equipos-medicos' || formCategory === 'productos-personalizados') && (
                                             <option value="">-- Sin categoría asignada --</option>
                                         )}
                                         {CATEGORIES[formCategory].subcategories.map(s => (
@@ -6837,7 +6867,7 @@ export default function AdminPage() {
                                         ))}
                                     </select>
                                     <div className="flex flex-wrap gap-1.5 pt-0.5">
-                                        {formCategory === 'accesorios-medicos' && (
+                                        {(formCategory === 'accesorios-medicos' || formCategory === 'equipos-medicos' || formCategory === 'productos-personalizados') && (
                                             <button
                                                 type="button"
                                                 onClick={() => setFormSubcategory(undefined)}
@@ -6852,6 +6882,11 @@ export default function AdminPage() {
                                         )}
                                         {CATEGORIES[formCategory].subcategories.map(s => {
                                             const isSelected = Number(formSubcategory) === s.id;
+                                            const canDeleteCat =
+                                                s.id > 200 ||
+                                                formCategory === 'accesorios-medicos' ||
+                                                formCategory === 'equipos-medicos' ||
+                                                formCategory === 'productos-personalizados';
                                             return (
                                                 <div
                                                     key={s.id}
@@ -6863,12 +6898,12 @@ export default function AdminPage() {
                                                     }`}
                                                 >
                                                     <span>{s.name}</span>
-                                                    {formCategory === 'accesorios-medicos' && (
+                                                    {canDeleteCat && (
                                                         <button
                                                             type="button"
                                                             onClick={(e) => {
                                                                 e.stopPropagation();
-                                                                handleDeleteAccesorioCategory(s.id, s.name);
+                                                                handleDeleteAccesorioCategory(s.id, s.name, formCategory);
                                                             }}
                                                             title={`Eliminar categoría ${s.name}`}
                                                             className={`w-4 h-4 rounded-full inline-flex items-center justify-center text-xs font-black leading-none transition-colors ${
