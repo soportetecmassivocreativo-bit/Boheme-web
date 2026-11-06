@@ -40,7 +40,7 @@ export default function NosotrosPage() {
                                 ¿Listo para destacar en cada turno?
                             </h3>
                             <p className="text-gray-600 max-w-xl mx-auto mb-8 text-sm sm:text-base font-normal leading-relaxed">
-                                Descubre nuestra colección de gorritos, lanyards y accesorios médicos diseñados para combinar máxima comodidad y estilo único.
+                                Descubre nuestra colección de gorritos, lanyards y accesorios diseñados para combinar máxima comodidad y estilo único.
                             </p>
                             <div className="flex flex-col sm:flex-row justify-center gap-4">
                                 <Link 

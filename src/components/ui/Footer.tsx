@@ -37,7 +37,7 @@ export default function Footer() {
                         </Link>
                         
                         <p className="text-[#FFF5EE]/80 text-sm md:text-base leading-relaxed max-w-sm font-light">
-                            Le ponemos color, estilo y buena onda a tu rutina de trabajo. Gorritos quirúrgicos, lanyards y accesorios médicos con diseño único y máxima calidad.
+                            Le ponemos color, estilo y buena onda a tu rutina de trabajo. Gorritos quirúrgicos, lanyards y accesorios con diseño único y máxima calidad.
                         </p>
 
                         {/* Social Buttons with alternating sticker badges */}
@@ -95,7 +95,7 @@ export default function Footer() {
                             <li>
                                 <Link href="/categorias/accesorios-medicos" className="hover:text-[#FFC99C] transition-colors inline-flex items-center gap-1.5 group">
                                     <span className="text-[#D86A33] text-xs transition-transform group-hover:translate-x-1">✦</span>
-                                    Accesorios Médicos
+                                    Accesorios
                                 </Link>
                             </li>
                             <li>

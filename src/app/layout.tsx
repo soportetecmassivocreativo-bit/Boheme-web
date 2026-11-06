@@ -7,7 +7,7 @@ import WhatsAppButton from "@/components/ui/WhatsAppButton";
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
 export const metadata: Metadata = {
-    title: "BOHEME | Equipos y Accesorios Médicos",
+    title: "BOHEME | Equipos y Accesorios",
     description: "Gorros quirúrgicos, lanyards, accesorios y equipos médicos de alta calidad.",
 };
 

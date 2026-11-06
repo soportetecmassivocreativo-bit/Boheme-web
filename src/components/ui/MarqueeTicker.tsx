@@ -12,7 +12,7 @@ const DEFAULT_ITEMS = [
     "ESTILO & COMODIDAD PRO",
     "ENVÍOS A TODA VENEZUELA",
     "100% HECHO CON AMOR",
-    "ACCESORIOS MÉDICOS ÚNICOS"
+    "ACCESORIOS ÚNICOS"
 ];
 
 export default function MarqueeTicker({ 

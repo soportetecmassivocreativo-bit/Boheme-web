@@ -42,7 +42,7 @@ const CATEGORIAS_FAVORITES = [
     },
     {
         slug: 'accesorios-medicos',
-        title: 'Accesorios Médicos',
+        title: 'Accesorios',
         subtitle: 'Tijeras, pines & koalas',
         tag: '★ ESENCIALES',
         tagStyle: 'bg-white border border-[#D86A33] text-[#D86A33]',

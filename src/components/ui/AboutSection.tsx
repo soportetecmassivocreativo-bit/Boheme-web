@@ -108,7 +108,7 @@ export default function AboutSection() {
                             </h3>
                             
                             <p className="text-gray-600 text-base sm:text-lg leading-relaxed font-normal">
-                                En <strong className="text-[#5F2142] font-black">Boheme</strong> diseñamos y fabricamos gorritos quirúrgicos, lanyards y accesorios médicos personalizados que combinan comodidad, excelente calidad y un toque único para tu día a día.
+                                En <strong className="text-[#5F2142] font-black">Boheme</strong> diseñamos y fabricamos gorritos quirúrgicos, lanyards y accesorios personalizados que combinan comodidad, excelente calidad y un toque único para tu día a día.
                             </p>
                             
                             <p className="text-gray-600 text-base sm:text-lg leading-relaxed font-normal">
@@ -186,7 +186,7 @@ export default function AboutSection() {
                     {activeTab === 'vision' && (
                         <div className="space-y-6 animate-fadeIn">
                             <h3 className="text-xl sm:text-2xl font-bold text-[#5F2142] tracking-tight">
-                                Nuestra Meta: Ser la marca referente y más querida de accesorios médicos
+                                Nuestra Meta: Ser la marca referente y más querida de accesorios
                             </h3>
                             
                             <p className="text-gray-600 text-base sm:text-lg leading-relaxed font-normal">

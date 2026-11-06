@@ -87,7 +87,7 @@ import {
 const SECTIONS = [
     { slug: 'gorros', label: 'Gorros Quirúrgicos', icon: '🧢' },
     { slug: 'lanyards', label: 'Lanyards & Cintas', icon: '🎀' },
-    { slug: 'accesorios-medicos', label: 'Accesorios Médicos', icon: '🩺' },
+    { slug: 'accesorios-medicos', label: 'Accesorios', icon: '🩺' },
     { slug: 'equipos-medicos', label: 'Equipos Médicos', icon: '⚡' },
     { slug: 'productos-personalizados', label: 'Productos Personalizados', icon: '✨' }
 ];
@@ -543,7 +543,7 @@ export default function AdminPage() {
         if (e) e.preventDefault();
         const cleanName = newAccesorioCatName.trim();
         if (!cleanName) {
-            alert('Por favor ingresa el nombre de la nueva categoría de Accesorios médicos.');
+            alert('Por favor ingresa el nombre de la nueva categoría de Accesorios.');
             return;
         }
         setIsCreatingAccesorioCat(true);
@@ -569,7 +569,7 @@ export default function AdminPage() {
                 } else {
                     setActiveSubcategory(data.subcategory.id);
                 }
-                showToast(`✓ Categoría "${data.subcategory.name}" creada en Accesorios médicos`);
+                showToast(`✓ Categoría "${data.subcategory.name}" creada en Accesorios`);
             } else {
                 alert(data.error || 'No se pudo crear la categoría.');
             }
@@ -1624,7 +1624,9 @@ export default function AdminPage() {
     });
 
     // All products in active section (used for subcategory pill counts)
-    const allSectionProducts = products.filter(p => p.categoria_slug === activeSection);
+    const allSectionProducts = products
+        .filter(p => p.categoria_slug === activeSection)
+        .sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
 
     // Filter products by active section and optional subcategory (NO "TODOS" section)
     const sectionProducts = allSectionProducts.filter(p => {
@@ -2093,7 +2095,7 @@ export default function AdminPage() {
                                         <option value="all">Todas las Categorías</option>
                                         <option value="gorros">Gorros Quirúrgicos</option>
                                         <option value="lanyards">Lanyards & Cintas</option>
-                                        <option value="accesorios-medicos">Accesorios Médicos</option>
+                                        <option value="accesorios-medicos">Accesorios</option>
                                         <option value="equipos-medicos">Equipos Médicos</option>
                                         <option value="productos-personalizados">Personalizados</option>
                                     </select>
@@ -3355,7 +3357,7 @@ export default function AdminPage() {
                                                 type="text"
                                                 value={newAccesorioCatName}
                                                 onChange={(e) => setNewAccesorioCatName(e.target.value)}
-                                                placeholder="Nombre de la nueva categoría en Accesorios médicos..."
+                                                placeholder="Nombre de la nueva categoría en Accesorios..."
                                                 className={`flex-1 px-3.5 py-2 rounded-xl border text-xs font-bold outline-none ${inputStyle}`}
                                             />
                                             <div className="flex items-center gap-2">

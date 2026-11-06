@@ -48,7 +48,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
 
     const subcategoriaId = subcategoria ? parseInt(subcategoria, 10) : undefined;
     const requestedPage = pagina ? Math.max(1, parseInt(pagina, 10) || 1) : 1;
-    const itemsPerPage = por_pagina ? Math.min(48, Math.max(4, parseInt(por_pagina, 10) || 8)) : 8;
+    const itemsPerPage = 12;
 
     const {
         paginatedProducts: products,
@@ -80,15 +80,13 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
         p => !category.subcategories.some(s => s.id === p.subcategoria_id)
     );
 
-    // Helper to build pagination URLs preserving active subcategory, search query and page size
-    const buildPageUrl = (targetPage: number, customLimit?: number) => {
+    // Helper to build pagination URLs preserving active subcategory and search query
+    const buildPageUrl = (targetPage: number) => {
         const paramsObj = new URLSearchParams();
         if (subcategoriaId) paramsObj.set('subcategoria', String(subcategoriaId));
         if (especial) paramsObj.set('especial', especial);
         if (buscar && buscar.trim()) paramsObj.set('buscar', buscar.trim());
         if (targetPage > 1) paramsObj.set('pagina', String(targetPage));
-        const limitToUse = customLimit ?? itemsPerPage;
-        if (limitToUse !== 8) paramsObj.set('por_pagina', String(limitToUse));
         const qs = paramsObj.toString();
         return `/categorias/${categoria}${qs ? `?${qs}` : ''}`;
     };
@@ -137,7 +135,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
 
                 {/* Subcategories Filter Bar (Not shown as filter bar if user wants all accessories together, or kept clean) */}
                 {normalizedCategoria !== 'accesorios-medicos' && (
-                    <div className="mb-4 overflow-x-auto pb-3 scrollbar-thin">
+                    <div className="mb-8 overflow-x-auto pb-3 scrollbar-thin">
                         <div className="flex space-x-2.5 items-center">
                             {/* "Todas las Categorías" Filter Link */}
                             <Link
@@ -145,7 +143,6 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                                     (() => {
                                         const p = new URLSearchParams();
                                         if (buscar && buscar.trim()) p.set('buscar', buscar.trim());
-                                        if (itemsPerPage !== 8) p.set('por_pagina', String(itemsPerPage));
                                         const qs = p.toString();
                                         return qs ? `?${qs}` : '';
                                     })()
@@ -166,7 +163,6 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                                 const subParams = new URLSearchParams();
                                 subParams.set('subcategoria', String(sub.id));
                                 if (buscar && buscar.trim()) subParams.set('buscar', buscar.trim());
-                                if (itemsPerPage !== 8) subParams.set('por_pagina', String(itemsPerPage));
 
                                 return (
                                     <Link
@@ -182,37 +178,6 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                                     </Link>
                                 );
                             })}
-                        </div>
-                    </div>
-                )}
-
-                {/* Top Pagination & Items Per Page Summary Bar */}
-                {pagination.totalItems > 0 && (
-                    <div className="mb-8 p-4 rounded-2xl bg-[#FFF9F5] border border-[#FFC99C]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
-                        <div className="flex items-center gap-2 text-[#5F2142] font-bold">
-                            <Layers size={15} className="text-[#D86A33]" />
-                            <span>
-                                Mostrando <strong className="font-black text-[#D86A33]">{startItemIdx}–{endItemIdx}</strong> de{' '}
-                                <strong className="font-black">{pagination.totalItems}</strong> productos disponibles
-                                {pagination.totalPages > 1 && ` • Página ${pagination.page} de ${pagination.totalPages}`}
-                            </span>
-                        </div>
-
-                        <div className="flex flex-wrap items-center gap-2">
-                            <span className="text-[11px] font-bold text-[#5F2142]/70">Productos por página:</span>
-                            {[8, 12, 24].map(size => (
-                                <Link
-                                    key={size}
-                                    href={buildPageUrl(1, size)}
-                                    className={`px-3 py-1 rounded-xl font-black text-xs border transition-all ${
-                                        itemsPerPage === size
-                                            ? 'bg-[#5F2142] text-[#FFC99C] border-[#5F2142] shadow-2xs'
-                                            : 'bg-white text-[#5F2142] border-[#FFC99C]/60 hover:border-[#D86A33]'
-                                    }`}
-                                >
-                                    {size}
-                                </Link>
-                            ))}
                         </div>
                     </div>
                 )}

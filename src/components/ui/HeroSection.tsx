@@ -91,7 +91,7 @@ export default function HeroSection() {
                 {/* Badge with stitch border */}
                 <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full bg-[#FFF4EB] border-2 border-dashed border-[#D86A33] text-[#5F2142] text-xs sm:text-sm font-black tracking-wider uppercase mb-6 shadow-sm hover:scale-105 transition-transform">
                     <span className="text-[#D86A33]">✦</span>
-                    <span>Accesorios Médicos con Estilo</span>
+                    <span>Accesorios con Estilo</span>
                     <span className="text-[#D86A33]">✦</span>
                 </div>
 

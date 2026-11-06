@@ -60,7 +60,7 @@ export default function CartDrawer() {
                                     </div>
                                     <p className="font-bold text-gray-700 text-base">Tu carrito está vacío.</p>
                                     <p className="text-xs text-gray-400 max-w-xs">
-                                        Explora nuestra colección y añade gorros o accesorios médicos a tu pedido.
+                                        Explora nuestra colección y añade gorros o accesorios a tu pedido.
                                     </p>
                                     <button
                                         onClick={toggleCart}

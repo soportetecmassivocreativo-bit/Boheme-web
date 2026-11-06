@@ -127,8 +127,8 @@ export const CATEGORIES: Record<string, CategoryInfo> = {
     },
     'accesorios-medicos': {
         id: 'accesorios-medicos',
-        title: 'Accesorios médicos',
-        description: 'Explora nuestra colección de accesorios médicos diseñados para brindarte confort y estilo en tu labor diaria.',
+        title: 'Accesorios',
+        description: 'Explora nuestra colección de accesorios diseñados para brindarte confort y estilo en tu labor diaria.',
         subcategories: [
             { id: 8, name: 'Cintas metricas' },
             { id: 9, name: 'Adipometro' },
@@ -1003,6 +1003,11 @@ export async function fetchCategoryProducts(
         });
     }
 
+    // Always sort alphabetically by product name across all sections
+    filtered = [...filtered].sort((a, b) =>
+        a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+    );
+
     const totalItems = filtered.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / limit));
     const safePage = Math.min(page, totalPages);
@@ -1028,7 +1033,8 @@ export async function fetchCategoryProducts(
 }
 
 export async function fetchAllProducts(): Promise<Product[]> {
-    return getOrFetchCatalogProducts();
+    const all = await getOrFetchCatalogProducts();
+    return [...all].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
 }
 
 export async function fetchPaginatedProducts(options?: {
@@ -1057,12 +1063,17 @@ export async function fetchPaginatedProducts(options?: {
         filtered = filtered.filter(p => {
             const nameNorm = normalizeText(p.name || '');
             const descNorm = normalizeText(p.description || '');
-            const subcatNorm = normalizeText(getSubcategoryName(normalizedSlug, p.subcategoria_id) || '');
+            const subcatNorm = normalizeText(getSubcategoryName(p.categoria_slug, p.subcategoria_id) || '');
             return nameNorm.includes(q) || descNorm.includes(q) || subcatNorm.includes(q);
         });
     }
 
-    const limit = Math.min(200, Math.max(1, Number(options?.limit) || 24));
+    const limit = Math.min(200, Math.max(1, Number(options?.limit) || 12));
+    // Always sort alphabetically by product name across all sections
+    filtered = [...filtered].sort((a, b) =>
+        a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })
+    );
+
     const totalItems = filtered.length;
     const totalPages = Math.max(1, Math.ceil(totalItems / limit));
     const page = Math.min(Math.max(1, Number(options?.page) || 1), totalPages);
