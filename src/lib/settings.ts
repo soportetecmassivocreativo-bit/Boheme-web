@@ -168,10 +168,29 @@ export const DEFAULT_SETTINGS: SiteSettings = {
 
 const SETTINGS_FILE = path.join(process.cwd(), '.site_settings.json');
 let memorySettings: SiteSettings = { ...DEFAULT_SETTINGS };
+let settingsLoadedOnce = false;
+let lastDiskCheckTime = 0;
+let lastKnownMtimeMs = 0;
+const DISK_CHECK_TTL_MS = 5000; // Check disk mtime at most once every 5s under high concurrency
 
-function loadSettingsFromDisk(): SiteSettings {
+// Serialized async write queue to prevent file lock contention when 100 users order simultaneously
+let pendingWritePromise: Promise<void> | null = null;
+let writeQueued = false;
+
+function loadSettingsFromDisk(force = false): SiteSettings {
+    const now = Date.now();
+    if (!force && settingsLoadedOnce && (now - lastDiskCheckTime < DISK_CHECK_TTL_MS)) {
+        return memorySettings;
+    }
+    lastDiskCheckTime = now;
+
     try {
         if (fs.existsSync(SETTINGS_FILE)) {
+            const stat = fs.statSync(SETTINGS_FILE);
+            if (!force && settingsLoadedOnce && stat.mtimeMs === lastKnownMtimeMs) {
+                return memorySettings;
+            }
+            lastKnownMtimeMs = stat.mtimeMs;
             const raw = fs.readFileSync(SETTINGS_FILE, 'utf-8');
             const parsed = JSON.parse(raw);
             if (parsed) {
@@ -190,21 +209,49 @@ function loadSettingsFromDisk(): SiteSettings {
                 };
             }
         }
+        settingsLoadedOnce = true;
     } catch {
-        // Keep defaults
+        // Keep in-memory settings on transient read error
+        settingsLoadedOnce = true;
     }
     return memorySettings;
 }
 
 // Initial load
-loadSettingsFromDisk();
+loadSettingsFromDisk(true);
 
-function saveToDisk(settings: SiteSettings) {
-    try {
-        fs.writeFileSync(SETTINGS_FILE, JSON.stringify(settings, null, 2), 'utf-8');
-    } catch {
-        // Disk write fallback
+function scheduleSaveToDisk() {
+    if (pendingWritePromise) {
+        writeQueued = true;
+        return;
     }
+
+    const flush = async () => {
+        try {
+            const payload = JSON.stringify(memorySettings, null, 2);
+            const tmpFile = `${SETTINGS_FILE}.tmp`;
+            await fs.promises.writeFile(tmpFile, payload, 'utf-8');
+            await fs.promises.rename(tmpFile, SETTINGS_FILE);
+            try {
+                const stat = await fs.promises.stat(SETTINGS_FILE);
+                lastKnownMtimeMs = stat.mtimeMs;
+                lastDiskCheckTime = Date.now();
+            } catch {}
+        } catch {
+            // Fallback direct async write if rename across locks fails on Windows
+            try {
+                await fs.promises.writeFile(SETTINGS_FILE, JSON.stringify(memorySettings, null, 2), 'utf-8');
+            } catch {}
+        } finally {
+            pendingWritePromise = null;
+            if (writeQueued) {
+                writeQueued = false;
+                scheduleSaveToDisk();
+            }
+        }
+    };
+
+    pendingWritePromise = flush();
 }
 
 export function formatInvoiceCorrelative(correlativo: InvoiceCorrelativeSettings, numOverride?: number): string {
@@ -217,7 +264,7 @@ export function formatInvoiceCorrelative(correlativo: InvoiceCorrelativeSettings
 }
 
 export function consumeNextInvoiceNumber(): string {
-    loadSettingsFromDisk();
+    loadSettingsFromDisk(false);
     const currentCorrelativo = memorySettings.correlativo || DEFAULT_SETTINGS.correlativo;
     const formatted = formatInvoiceCorrelative(currentCorrelativo);
     memorySettings = {
@@ -228,20 +275,20 @@ export function consumeNextInvoiceNumber(): string {
         },
         lastUpdated: new Date().toISOString()
     };
-    saveToDisk(memorySettings);
+    scheduleSaveToDisk();
     return formatted;
 }
 
 export function getSiteSettingsSync(): SiteSettings {
-    return loadSettingsFromDisk();
+    return loadSettingsFromDisk(false);
 }
 
 export async function getSiteSettings(): Promise<SiteSettings> {
-    return loadSettingsFromDisk();
+    return loadSettingsFromDisk(false);
 }
 
 export async function updateSiteSettings(updates: Partial<SiteSettings>): Promise<SiteSettings> {
-    loadSettingsFromDisk();
+    loadSettingsFromDisk(false);
     const updated: SiteSettings = {
         ...memorySettings,
         ...updates,
@@ -280,6 +327,9 @@ export async function updateSiteSettings(updates: Partial<SiteSettings>): Promis
     };
 
     memorySettings = updated;
-    saveToDisk(updated);
+    scheduleSaveToDisk();
+    if (pendingWritePromise) {
+        await pendingWritePromise;
+    }
     return updated;
 }

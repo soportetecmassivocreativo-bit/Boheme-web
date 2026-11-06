@@ -1,11 +1,40 @@
 import { NextResponse } from 'next/server';
-import { fetchAllProducts, createProduct } from '@/lib/db';
+import { fetchAllProducts, fetchPaginatedProducts, createProduct } from '@/lib/db';
 import { getAdminSession } from '@/lib/auth';
 
-export async function GET() {
+export async function GET(request: Request) {
     try {
+        const { searchParams } = new URL(request.url);
+        const pageParam = searchParams.get('page');
+        const limitParam = searchParams.get('limit');
+        const categoriaParam = searchParams.get('categoria') || undefined;
+        const subcategoriaParam = searchParams.get('subcategoria');
+        const searchParam = searchParams.get('search') || undefined;
+
+        if (pageParam || limitParam) {
+            const { products, pagination } = await fetchPaginatedProducts({
+                page: pageParam ? parseInt(pageParam, 10) : 1,
+                limit: limitParam ? parseInt(limitParam, 10) : 24,
+                categoria_slug: categoriaParam,
+                subcategoria_id: subcategoriaParam ? parseInt(subcategoriaParam, 10) : undefined,
+                search: searchParam
+            });
+            return NextResponse.json({ success: true, products, pagination });
+        }
+
         const products = await fetchAllProducts();
-        return NextResponse.json({ success: true, products });
+        return NextResponse.json({
+            success: true,
+            products,
+            pagination: {
+                page: 1,
+                limit: products.length || 1,
+                totalItems: products.length,
+                totalPages: 1,
+                hasNextPage: false,
+                hasPrevPage: false
+            }
+        });
     } catch (error: any) {
         return NextResponse.json(
             { error: 'Error al obtener los productos: ' + error.message },

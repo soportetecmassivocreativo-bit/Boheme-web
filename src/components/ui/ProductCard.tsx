@@ -68,6 +68,8 @@ export default function ProductCard({ product }: ProductCardProps) {
                         <img 
                             src={firstImage} 
                             alt={product.name} 
+                            loading="lazy"
+                            decoding="async"
                             className="object-cover w-full h-full transition-transform duration-700 group-hover:scale-105"
                         />
                     ) : (

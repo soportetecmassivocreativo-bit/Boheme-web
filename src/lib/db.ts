@@ -680,12 +680,31 @@ let MOCK_PRODUCTS: Product[] = [
     }
 ];
 
-// Circuit breaker & timeout helper to prevent hanging when remote database is slow or unreachable
+// Circuit breaker, in-memory cache & single-flight deduplication to prevent DB saturation under 100+ concurrent users
 let supabaseCircuitTripped = false;
 let lastTripTime = 0;
 const CIRCUIT_RESET_MS = 60000; // Wait 60s before retrying database if it fails
 
-async function executeWithTimeout<T>(promise: Promise<T>, timeoutMs = 1200): Promise<T> {
+export interface PaginationMeta {
+    page: number;
+    limit: number;
+    totalItems: number;
+    totalPages: number;
+    hasNextPage: boolean;
+    hasPrevPage: boolean;
+}
+
+let cachedRemoteProducts: Product[] | null = null;
+let lastProductsCacheTime = 0;
+const PRODUCTS_CACHE_TTL_MS = 30000; // 30s RAM cache to absorb 100+ simultaneous visitors
+let inflightProductsPromise: Promise<Product[]> | null = null;
+
+export function invalidateProductsCache() {
+    cachedRemoteProducts = null;
+    lastProductsCacheTime = 0;
+}
+
+async function executeWithTimeout<T>(promise: Promise<T>, timeoutMs = 1500): Promise<T> {
     let timeoutId: NodeJS.Timeout;
     const timeoutPromise = new Promise<never>((_, reject) => {
         timeoutId = setTimeout(() => reject(new Error('Database query timed out')), timeoutMs);
@@ -712,128 +731,212 @@ function tripCircuit(err?: any) {
     console.warn('Supabase circuit breaker activated. Serving local catalog cache.', err?.message || err);
 }
 
-export async function fetchCategoryProducts(categorySlug: string, subcategoryId?: number): Promise<{
-    category: CategoryInfo | null;
-    products: Product[];
-}> {
-    const category = CATEGORIES[categorySlug] || null;
-    if (!category) {
-        return { category: null, products: [] };
-    }
-
-    // Query Supabase if configured and circuit breaker is closed
-    if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
-        try {
-            let query = supabase
-                .from('products')
-                .select('*')
-                .eq('categoria_slug', categorySlug);
-
-            if (subcategoryId) {
-                query = query.eq('subcategoria_id', subcategoryId);
-            }
-
-            const { data, error } = await executeWithTimeout(query as unknown as Promise<any>, 1200);
-
-            if (error) {
-                tripCircuit(error);
-            } else if (data && data.length > 0) {
-                const products: Product[] = data.map((row: any) => ({
-                    id: String(row.id),
-                    name: String(row.name),
-                    description: String(row.description || ''),
-                    price: Number(row.price),
-                    image_url: String(row.image_url || ''),
-                    categoria_slug: String(row.categoria_slug),
-                    subcategoria_id: row.subcategoria_id ? Number(row.subcategoria_id) : undefined,
-                    type_color: row.type_color ? String(row.type_color) : undefined,
-                    genero: row.genero ? String(row.genero) : undefined,
-                    modelo: row.modelo ? String(row.modelo) : undefined,
-                    cinta: row.cinta ? String(row.cinta) : undefined,
-                }));
-
-                return { category, products };
-            }
-        } catch (error) {
-            tripCircuit(error);
-        }
-    }
-
-    // Fast and resilient fallback to local catalog products
-    let products = MOCK_PRODUCTS.filter(p => p.categoria_slug === categorySlug);
-    if (subcategoryId) {
-        products = products.filter(p => p.subcategoria_id === subcategoryId);
-    }
-
-    return { category, products };
+function mapRowToProduct(row: any): Product {
+    return {
+        id: String(row.id),
+        name: String(row.name),
+        description: String(row.description || ''),
+        price: Number(row.price),
+        image_url: String(row.image_url || ''),
+        categoria_slug: String(row.categoria_slug),
+        subcategoria_id: row.subcategoria_id ? Number(row.subcategoria_id) : undefined,
+        type_color: row.type_color ? String(row.type_color) : undefined,
+        genero: row.genero ? String(row.genero) : undefined,
+        modelo: row.modelo ? String(row.modelo) : undefined,
+        cinta: row.cinta ? String(row.cinta) : undefined,
+        stock: row.stock !== undefined ? Number(row.stock) : 20,
+        disponible: row.disponible !== undefined ? Boolean(row.disponible) : true,
+    };
 }
 
-export async function fetchAllProducts(): Promise<Product[]> {
-    if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
-        try {
-            const { data, error } = await executeWithTimeout(
-                supabase.from('products').select('*') as unknown as Promise<any>,
-                1200
-            );
-            if (error) {
-                tripCircuit(error);
-            } else if (data && data.length > 0) {
-                return data.map((row: any) => ({
-                    id: String(row.id),
-                    name: String(row.name),
-                    description: String(row.description || ''),
-                    price: Number(row.price),
-                    image_url: String(row.image_url || ''),
-                    categoria_slug: String(row.categoria_slug),
-                    subcategoria_id: row.subcategoria_id ? Number(row.subcategoria_id) : undefined,
-                    type_color: row.type_color ? String(row.type_color) : undefined,
-                    genero: row.genero ? String(row.genero) : undefined,
-                    modelo: row.modelo ? String(row.modelo) : undefined,
-                    cinta: row.cinta ? String(row.cinta) : undefined,
-                }));
-            }
-        } catch (error) {
-            tripCircuit(error);
-        }
+/**
+ * Single-flight + TTL cached fetch of all catalog products.
+ * If 100 users hit the site simultaneously, only 1 DB query executes; all 100 get an instant response.
+ */
+async function getOrFetchCatalogProducts(): Promise<Product[]> {
+    loadProductsFromDisk(false);
+    const now = Date.now();
+
+    if (cachedRemoteProducts && (now - lastProductsCacheTime < PRODUCTS_CACHE_TTL_MS)) {
+        return cachedRemoteProducts;
     }
+
+    if (inflightProductsPromise) {
+        return inflightProductsPromise;
+    }
+
+    if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
+        inflightProductsPromise = (async () => {
+            try {
+                const { data, error } = await executeWithTimeout(
+                    supabase.from('products').select('*') as unknown as Promise<any>,
+                    1500
+                );
+                if (error) {
+                    tripCircuit(error);
+                } else if (data && data.length > 0) {
+                    const mapped = data.map(mapRowToProduct);
+                    cachedRemoteProducts = mapped;
+                    lastProductsCacheTime = Date.now();
+                    return mapped;
+                }
+            } catch (error) {
+                tripCircuit(error);
+            } finally {
+                inflightProductsPromise = null;
+            }
+            cachedRemoteProducts = MOCK_PRODUCTS;
+            lastProductsCacheTime = Date.now();
+            return MOCK_PRODUCTS;
+        })();
+
+        return inflightProductsPromise;
+    }
+
+    cachedRemoteProducts = MOCK_PRODUCTS;
+    lastProductsCacheTime = now;
     return MOCK_PRODUCTS;
 }
 
-export async function fetchProductById(id: string): Promise<Product | null> {
-    if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
-        try {
-            const { data, error } = await executeWithTimeout(
-                supabase.from('products').select('*').eq('id', id).single() as unknown as Promise<any>,
-                1200
-            );
+export async function fetchCategoryProducts(
+    categorySlug: string,
+    subcategoryId?: number,
+    options?: { page?: number; limit?: number; search?: string }
+): Promise<{
+    category: CategoryInfo | null;
+    products: Product[];
+    paginatedProducts: Product[];
+    totalCategoryProducts: number;
+    subcategoryCounts: Record<number, number>;
+    pagination: PaginationMeta;
+}> {
+    const category = CATEGORIES[categorySlug] || null;
+    const page = Math.max(1, Number(options?.page) || 1);
+    const limit = Math.min(100, Math.max(1, Number(options?.limit) || 12));
 
-            if (error) {
-                tripCircuit(error);
-            } else if (data) {
-                return {
-                    id: String(data.id),
-                    name: String(data.name),
-                    description: String(data.description || ''),
-                    price: Number(data.price),
-                    image_url: String(data.image_url || ''),
-                    categoria_slug: String(data.categoria_slug),
-                    subcategoria_id: data.subcategoria_id ? Number(data.subcategoria_id) : undefined,
-                    type_color: data.type_color ? String(data.type_color) : undefined,
-                    genero: data.genero ? String(data.genero) : undefined,
-                    modelo: data.modelo ? String(data.modelo) : undefined,
-                    cinta: data.cinta ? String(data.cinta) : undefined,
-                };
+    if (!category) {
+        return {
+            category: null,
+            products: [],
+            paginatedProducts: [],
+            totalCategoryProducts: 0,
+            subcategoryCounts: {},
+            pagination: {
+                page: 1,
+                limit,
+                totalItems: 0,
+                totalPages: 1,
+                hasNextPage: false,
+                hasPrevPage: false
             }
-        } catch (error) {
-            tripCircuit(error);
+        };
+    }
+
+    const catalog = await getOrFetchCatalogProducts();
+    const allInCategory = catalog.filter(p => p.categoria_slug === categorySlug);
+
+    // Precompute counts per subcategory in O(N)
+    const subcategoryCounts: Record<number, number> = {};
+    for (const p of allInCategory) {
+        if (p.subcategoria_id !== undefined) {
+            const subId = Number(p.subcategoria_id);
+            subcategoryCounts[subId] = (subcategoryCounts[subId] || 0) + 1;
         }
     }
-    return MOCK_PRODUCTS.find(p => p.id === id) || null;
+
+    let filtered = subcategoryId
+        ? allInCategory.filter(p => Number(p.subcategoria_id) === Number(subcategoryId))
+        : allInCategory;
+
+    if (options?.search && options.search.trim()) {
+        const q = options.search.trim().toLowerCase();
+        filtered = filtered.filter(
+            p =>
+                p.name.toLowerCase().includes(q) ||
+                (p.description && p.description.toLowerCase().includes(q))
+        );
+    }
+
+    const totalItems = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+    const safePage = Math.min(page, totalPages);
+    const startIdx = (safePage - 1) * limit;
+    const paginatedProducts = filtered.slice(startIdx, startIdx + limit);
+
+    return {
+        category,
+        products: filtered,
+        paginatedProducts,
+        totalCategoryProducts: allInCategory.length,
+        subcategoryCounts,
+        pagination: {
+            page: safePage,
+            limit,
+            totalItems,
+            totalPages,
+            hasNextPage: safePage < totalPages,
+            hasPrevPage: safePage > 1
+        }
+    };
+}
+
+export async function fetchAllProducts(): Promise<Product[]> {
+    return getOrFetchCatalogProducts();
+}
+
+export async function fetchPaginatedProducts(options?: {
+    page?: number;
+    limit?: number;
+    categoria_slug?: string;
+    subcategoria_id?: number;
+    search?: string;
+}): Promise<{ products: Product[]; pagination: PaginationMeta }> {
+    const all = await getOrFetchCatalogProducts();
+    let filtered = all;
+
+    if (options?.categoria_slug && options.categoria_slug !== 'all') {
+        filtered = filtered.filter(p => p.categoria_slug === options.categoria_slug);
+    }
+    if (options?.subcategoria_id !== undefined) {
+        filtered = filtered.filter(p => Number(p.subcategoria_id) === Number(options.subcategoria_id));
+    }
+    if (options?.search && options.search.trim()) {
+        const q = options.search.trim().toLowerCase();
+        filtered = filtered.filter(
+            p =>
+                p.name.toLowerCase().includes(q) ||
+                (p.description && p.description.toLowerCase().includes(q))
+        );
+    }
+
+    const limit = Math.min(200, Math.max(1, Number(options?.limit) || 24));
+    const totalItems = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+    const page = Math.min(Math.max(1, Number(options?.page) || 1), totalPages);
+    const start = (page - 1) * limit;
+
+    return {
+        products: filtered.slice(start, start + limit),
+        pagination: {
+            page,
+            limit,
+            totalItems,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1
+        }
+    };
+}
+
+export async function fetchProductById(id: string): Promise<Product | null> {
+    const catalog = await getOrFetchCatalogProducts();
+    return catalog.find(p => p.id === id) || null;
 }
 
 export async function createProduct(productData: Omit<Product, 'id'> & { id?: string }): Promise<Product> {
+    loadProductsFromDisk(false);
     const newProduct: Product = {
-        id: productData.id || String(Date.now()),
+        id: productData.id || `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         name: productData.name,
         description: productData.description || '',
         price: Number(productData.price) || 0,
@@ -864,13 +967,15 @@ export async function createProduct(productData: Omit<Product, 'id'> & { id?: st
         }
     }
 
-    // Always keep local in-memory catalog updated
+    // Always keep local in-memory catalog updated & invalidate cache
     MOCK_PRODUCTS.unshift(newProduct);
-    saveProductsToDisk();
+    invalidateProductsCache();
+    scheduleSaveProductsToDisk();
     return newProduct;
 }
 
 export async function updateProduct(id: string, updates: Partial<Product>): Promise<Product | null> {
+    loadProductsFromDisk(false);
     const existingIndex = MOCK_PRODUCTS.findIndex(p => p.id === id);
 
     if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
@@ -892,7 +997,8 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
             ...MOCK_PRODUCTS[existingIndex],
             ...updates
         };
-        saveProductsToDisk();
+        invalidateProductsCache();
+        scheduleSaveProductsToDisk();
         return MOCK_PRODUCTS[existingIndex];
     }
 
@@ -900,6 +1006,7 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {
+    loadProductsFromDisk(false);
     if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
         try {
             const { error } = await executeWithTimeout(
@@ -917,7 +1024,10 @@ export async function deleteProduct(id: string): Promise<boolean> {
     const initialLength = MOCK_PRODUCTS.length;
     MOCK_PRODUCTS = MOCK_PRODUCTS.filter(p => p.id !== id);
     const didDelete = MOCK_PRODUCTS.length < initialLength;
-    if (didDelete) saveProductsToDisk();
+    if (didDelete) {
+        invalidateProductsCache();
+        scheduleSaveProductsToDisk();
+    }
     return didDelete;
 }
 
@@ -1105,9 +1215,23 @@ let ORDERS: Order[] = [
     }
 ];
 
-// Server-side safe persistent file storage
+// Server-side safe persistent file storage with serialized async write queue & RAM caching for 100+ concurrent orders
 const ORDERS_FILE = '.orders_store.json';
 const PRODUCTS_FILE = '.products_store.json';
+
+let ordersLoadedOnce = false;
+let lastOrdersDiskCheck = 0;
+let lastOrdersMtimeMs = 0;
+let pendingOrdersWrite: Promise<void> | null = null;
+let ordersWriteQueued = false;
+
+let productsLoadedOnce = false;
+let lastProductsDiskCheck = 0;
+let lastProductsMtimeMs = 0;
+let pendingProductsWrite: Promise<void> | null = null;
+let productsWriteQueued = false;
+
+const STORE_DISK_TTL_MS = 5000;
 
 function getFsModule() {
     if (typeof window === 'undefined') {
@@ -1120,11 +1244,22 @@ function getFsModule() {
     return null;
 }
 
-function loadOrdersFromDisk() {
+function loadOrdersFromDisk(force = false) {
     const fs = getFsModule();
     if (!fs) return;
+    const now = Date.now();
+    if (!force && ordersLoadedOnce && (now - lastOrdersDiskCheck < STORE_DISK_TTL_MS)) {
+        return;
+    }
+    lastOrdersDiskCheck = now;
+
     try {
         if (fs.existsSync(ORDERS_FILE)) {
+            const stat = fs.statSync(ORDERS_FILE);
+            if (!force && ordersLoadedOnce && stat.mtimeMs === lastOrdersMtimeMs) {
+                return;
+            }
+            lastOrdersMtimeMs = stat.mtimeMs;
             const data = fs.readFileSync(ORDERS_FILE, 'utf-8');
             const parsed = JSON.parse(data);
             if (Array.isArray(parsed) && parsed.length > 0) {
@@ -1136,54 +1271,192 @@ function loadOrdersFromDisk() {
                 INVOICE_COUNTER = Math.max(INVOICE_COUNTER, maxNum);
             }
         }
-    } catch {}
+        ordersLoadedOnce = true;
+    } catch {
+        ordersLoadedOnce = true;
+    }
 }
 
-function saveOrdersToDisk() {
+function scheduleSaveOrdersToDisk() {
     const fs = getFsModule();
     if (!fs) return;
-    try {
-        fs.writeFileSync(ORDERS_FILE, JSON.stringify(ORDERS, null, 2), 'utf-8');
-    } catch {}
+    if (pendingOrdersWrite) {
+        ordersWriteQueued = true;
+        return;
+    }
+
+    const flush = async () => {
+        try {
+            const payload = JSON.stringify(ORDERS, null, 2);
+            const tmp = `${ORDERS_FILE}.tmp`;
+            await fs.promises.writeFile(tmp, payload, 'utf-8');
+            await fs.promises.rename(tmp, ORDERS_FILE);
+            try {
+                const stat = await fs.promises.stat(ORDERS_FILE);
+                lastOrdersMtimeMs = stat.mtimeMs;
+                lastOrdersDiskCheck = Date.now();
+            } catch {}
+        } catch {
+            try {
+                await fs.promises.writeFile(ORDERS_FILE, JSON.stringify(ORDERS, null, 2), 'utf-8');
+            } catch {}
+        } finally {
+            pendingOrdersWrite = null;
+            if (ordersWriteQueued) {
+                ordersWriteQueued = false;
+                scheduleSaveOrdersToDisk();
+            }
+        }
+    };
+
+    pendingOrdersWrite = flush();
 }
 
-function loadProductsFromDisk() {
+function loadProductsFromDisk(force = false) {
     const fs = getFsModule();
     if (!fs) return;
+    const now = Date.now();
+    if (!force && productsLoadedOnce && (now - lastProductsDiskCheck < STORE_DISK_TTL_MS)) {
+        return;
+    }
+    lastProductsDiskCheck = now;
+
     try {
         if (fs.existsSync(PRODUCTS_FILE)) {
+            const stat = fs.statSync(PRODUCTS_FILE);
+            if (!force && productsLoadedOnce && stat.mtimeMs === lastProductsMtimeMs) {
+                return;
+            }
+            lastProductsMtimeMs = stat.mtimeMs;
             const data = fs.readFileSync(PRODUCTS_FILE, 'utf-8');
             const parsed = JSON.parse(data);
             if (Array.isArray(parsed) && parsed.length > 0) {
                 MOCK_PRODUCTS = parsed;
             }
         }
-    } catch {}
+        productsLoadedOnce = true;
+    } catch {
+        productsLoadedOnce = true;
+    }
 }
 
-function saveProductsToDisk() {
+function scheduleSaveProductsToDisk() {
     const fs = getFsModule();
     if (!fs) return;
-    try {
-        fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(MOCK_PRODUCTS, null, 2), 'utf-8');
-    } catch {}
+    if (pendingProductsWrite) {
+        productsWriteQueued = true;
+        return;
+    }
+
+    const flush = async () => {
+        try {
+            const payload = JSON.stringify(MOCK_PRODUCTS, null, 2);
+            const tmp = `${PRODUCTS_FILE}.tmp`;
+            await fs.promises.writeFile(tmp, payload, 'utf-8');
+            await fs.promises.rename(tmp, PRODUCTS_FILE);
+            try {
+                const stat = await fs.promises.stat(PRODUCTS_FILE);
+                lastProductsMtimeMs = stat.mtimeMs;
+                lastProductsDiskCheck = Date.now();
+            } catch {}
+        } catch {
+            try {
+                await fs.promises.writeFile(PRODUCTS_FILE, JSON.stringify(MOCK_PRODUCTS, null, 2), 'utf-8');
+            } catch {}
+        } finally {
+            pendingProductsWrite = null;
+            if (productsWriteQueued) {
+                productsWriteQueued = false;
+                scheduleSaveProductsToDisk();
+            }
+        }
+    };
+
+    pendingProductsWrite = flush();
 }
 
 // Initial server-side load
-loadOrdersFromDisk();
-loadProductsFromDisk();
+loadOrdersFromDisk(true);
+loadProductsFromDisk(true);
 
 export async function fetchOrders(): Promise<Order[]> {
-    loadOrdersFromDisk();
+    loadOrdersFromDisk(false);
     return [...ORDERS];
 }
 
-export async function createOrder(orderData: Omit<Order, 'id' | 'numero_factura' | 'created_at'> & { id?: string; numero_factura?: string; created_at?: string }): Promise<Order> {
-    loadOrdersFromDisk();
+export async function fetchPaginatedOrders(options?: {
+    page?: number;
+    limit?: number;
+    status?: string;
+    search?: string;
+}): Promise<{ orders: Order[]; pagination: PaginationMeta }> {
+    loadOrdersFromDisk(false);
+    let filtered = [...ORDERS];
+
+    if (options?.status && options.status !== 'all') {
+        filtered = filtered.filter(o => o.estado_pago === options.status);
+    }
+    if (options?.search && options.search.trim()) {
+        const q = options.search.trim().toLowerCase();
+        filtered = filtered.filter(
+            o =>
+                o.numero_factura.toLowerCase().includes(q) ||
+                o.cliente_nombre.toLowerCase().includes(q) ||
+                o.cliente_apellido.toLowerCase().includes(q) ||
+                o.cliente_cedula.toLowerCase().includes(q) ||
+                o.referencia_pago.toLowerCase().includes(q)
+        );
+    }
+
+    const limit = Math.min(200, Math.max(1, Number(options?.limit) || 25));
+    const totalItems = filtered.length;
+    const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+    const page = Math.min(Math.max(1, Number(options?.page) || 1), totalPages);
+    const start = (page - 1) * limit;
+
+    return {
+        orders: filtered.slice(start, start + limit),
+        pagination: {
+            page,
+            limit,
+            totalItems,
+            totalPages,
+            hasNextPage: page < totalPages,
+            hasPrevPage: page > 1
+        }
+    };
+}
+
+export async function createOrder(
+    orderData: Omit<Order, 'id' | 'numero_factura' | 'created_at'> & { id?: string; numero_factura?: string; created_at?: string }
+): Promise<Order> {
+    loadOrdersFromDisk(false);
+
+    // Idempotency guard: if the exact same customer & reference submitted within the last 45s (e.g. double-click under load), return existing order
+    if (!orderData.es_manual && orderData.referencia_pago && orderData.cliente_cedula) {
+        const nowMs = Date.now();
+        const cleanRef = orderData.referencia_pago.trim().toLowerCase();
+        const cleanCed = orderData.cliente_cedula.trim().toLowerCase();
+        const duplicate = ORDERS.find(o => {
+            const ageMs = nowMs - new Date(o.created_at).getTime();
+            return (
+                ageMs >= 0 &&
+                ageMs < 45000 &&
+                o.referencia_pago?.trim().toLowerCase() === cleanRef &&
+                o.cliente_cedula?.trim().toLowerCase() === cleanCed &&
+                Number(o.monto_usd) === Number(orderData.monto_usd)
+            );
+        });
+        if (duplicate) {
+            return duplicate;
+        }
+    }
+
     INVOICE_COUNTER += 1;
+    const uniqueSuffix = Math.random().toString(36).slice(2, 6);
     const newOrder: Order = {
         ...orderData,
-        id: orderData.id || `ord-${Date.now()}`,
+        id: orderData.id || `ord-${Date.now()}-${uniqueSuffix}`,
         numero_factura: orderData.numero_factura || `BHM-${INVOICE_COUNTER}`,
         created_at: orderData.created_at || new Date().toISOString(),
         estado_pago: orderData.estado_pago || 'por_verificar',
@@ -1198,12 +1471,12 @@ export async function createOrder(orderData: Omit<Order, 'id' | 'numero_factura'
     };
 
     ORDERS.unshift(newOrder);
-    saveOrdersToDisk();
+    scheduleSaveOrdersToDisk();
     return newOrder;
 }
 
 export async function updateOrder(id: string, updates: Partial<Order>): Promise<Order | null> {
-    loadOrdersFromDisk();
+    loadOrdersFromDisk(false);
     const orderIndex = ORDERS.findIndex(o => o.id === id);
     if (orderIndex === -1) return null;
 
@@ -1212,7 +1485,7 @@ export async function updateOrder(id: string, updates: Partial<Order>): Promise<
         ...updates
     };
 
-    saveOrdersToDisk();
+    scheduleSaveOrdersToDisk();
     return ORDERS[orderIndex];
 }
 
@@ -1228,11 +1501,11 @@ export async function updateOrderStatus(
 }
 
 export async function deleteOrder(id: string): Promise<boolean> {
-    loadOrdersFromDisk();
+    loadOrdersFromDisk(false);
     const initialLen = ORDERS.length;
     ORDERS = ORDERS.filter(o => o.id !== id);
     const didDelete = ORDERS.length < initialLen;
-    if (didDelete) saveOrdersToDisk();
+    if (didDelete) scheduleSaveOrdersToDisk();
     return didDelete;
 }
 

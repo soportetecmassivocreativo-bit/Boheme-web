@@ -33,6 +33,7 @@ import {
     Truck,
     Eye,
     Menu,
+    ChevronLeft,
     ChevronRight,
     ChevronDown,
     ChevronUp,
@@ -129,6 +130,14 @@ export default function AdminPage() {
     const [filterStatus, setFilterStatus] = useState<'all' | 'por_verificar' | 'verificada' | 'rechazada'>('all');
     const [filterCategory, setFilterCategory] = useState<string>('all');
     const [orderSearch, setOrderSearch] = useState('');
+
+    // Pagination States (Facturado, Taller & Productos para soportar +100 pedidos/usuarios sin saturar)
+    const [facturadoPage, setFacturadoPage] = useState<number>(1);
+    const [facturadoPageSize, setFacturadoPageSize] = useState<number>(15);
+    const [tallerPage, setTallerPage] = useState<number>(1);
+    const [tallerPageSize, setTallerPageSize] = useState<number>(10);
+    const [productosPage, setProductosPage] = useState<number>(1);
+    const [productosPageSize, setProductosPageSize] = useState<number>(12);
 
     // BCV Rate
     const [bcvRate, setBcvRate] = useState<number>(887.30);
@@ -1560,6 +1569,28 @@ export default function AdminPage() {
         return matchesSubcategory && matchesSearch;
     });
 
+    // Pagination slices for Facturado, Taller y Pedidos, and Agregar Productos
+    const facturadoTotalPages = Math.max(1, Math.ceil(filteredOrders.length / facturadoPageSize));
+    const safeFacturadoPage = Math.min(facturadoPage, facturadoTotalPages);
+    const paginatedFacturadoOrders = filteredOrders.slice(
+        (safeFacturadoPage - 1) * facturadoPageSize,
+        safeFacturadoPage * facturadoPageSize
+    );
+
+    const tallerTotalPages = Math.max(1, Math.ceil(filteredTallerOrders.length / tallerPageSize));
+    const safeTallerPage = Math.min(tallerPage, tallerTotalPages);
+    const paginatedTallerOrders = filteredTallerOrders.slice(
+        (safeTallerPage - 1) * tallerPageSize,
+        safeTallerPage * tallerPageSize
+    );
+
+    const productosTotalPages = Math.max(1, Math.ceil(sectionProducts.length / productosPageSize));
+    const safeProductosPage = Math.min(productosPage, productosTotalPages);
+    const paginatedSectionProducts = sectionProducts.slice(
+        (safeProductosPage - 1) * productosPageSize,
+        safeProductosPage * productosPageSize
+    );
+
     // Theme Classes
     const bgMain = isDark ? 'dark admin-dark-mode bg-[#130d13] text-white' : 'bg-[#FFF9F5] text-gray-900';
     const bgSidebar = isDark ? 'bg-[#1b121b] border-[#362132] text-white' : 'bg-white border-gray-200';
@@ -2006,13 +2037,36 @@ export default function AdminPage() {
 
                         {/* Invoices List / Table */}
                         <div className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden`}>
-                            <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex items-center justify-between">
-                                <h3 className="font-black text-base text-[#5F2142] dark:text-[#FFC99C]">
-                                    Facturas Registradas ({filteredOrders.length})
-                                </h3>
-                                <span className="text-xs text-gray-500 font-medium">
-                                    Tasa aplicada: {bcvRate} Bs/$
-                                </span>
+                            <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 flex flex-wrap items-center justify-between gap-3">
+                                <div>
+                                    <h3 className="font-black text-base text-[#5F2142] dark:text-[#FFC99C]">
+                                        Facturas Registradas ({filteredOrders.length})
+                                    </h3>
+                                    <span className="text-[11px] text-gray-500 font-medium">
+                                        Página {safeFacturadoPage} de {facturadoTotalPages} • Tasa aplicada: {bcvRate} Bs/$
+                                    </span>
+                                </div>
+
+                                <div className="flex items-center gap-2 text-xs">
+                                    <span className="text-[11px] font-bold text-gray-400">Por página:</span>
+                                    {[10, 15, 30, 50].map(sz => (
+                                        <button
+                                            key={sz}
+                                            type="button"
+                                            onClick={() => {
+                                                setFacturadoPageSize(sz);
+                                                setFacturadoPage(1);
+                                            }}
+                                            className={`px-2.5 py-1 rounded-lg font-black text-xs border transition-all ${
+                                                facturadoPageSize === sz
+                                                    ? 'bg-[#5F2142] text-white border-[#5F2142]'
+                                                    : 'border-gray-200 dark:border-white/10 text-gray-600 hover:border-[#D86A33]'
+                                            }`}
+                                        >
+                                            {sz}
+                                        </button>
+                                    ))}
+                                </div>
                             </div>
 
                             {loadingOrders ? (
@@ -2036,7 +2090,7 @@ export default function AdminPage() {
                                             </tr>
                                         </thead>
                                         <tbody className="divide-y divide-gray-100 dark:divide-white/5">
-                                            {filteredOrders.map(order => {
+                                            {paginatedFacturadoOrders.map(order => {
                                                 const dateStr = new Date(order.created_at).toLocaleString('es-VE', {
                                                     dateStyle: 'short',
                                                     timeStyle: 'short'
@@ -2202,6 +2256,53 @@ export default function AdminPage() {
                                             })}
                                         </tbody>
                                     </table>
+                                </div>
+                            )}
+
+                            {/* Facturado Pagination Footer */}
+                            {filteredOrders.length > 0 && (
+                                <div className="px-6 py-4 border-t border-gray-100 dark:border-white/10 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs bg-gray-50/40 dark:bg-white/3">
+                                    <span className="font-bold text-gray-500">
+                                        Mostrando <strong className="text-[#5F2142] dark:text-white">{(safeFacturadoPage - 1) * facturadoPageSize + 1}–{Math.min(filteredOrders.length, safeFacturadoPage * facturadoPageSize)}</strong> de{' '}
+                                        <strong className="text-[#5F2142] dark:text-white">{filteredOrders.length}</strong> facturas
+                                    </span>
+
+                                    <div className="flex flex-wrap items-center gap-1.5">
+                                        <button
+                                            type="button"
+                                            disabled={safeFacturadoPage <= 1}
+                                            onClick={() => setFacturadoPage(p => Math.max(1, p - 1))}
+                                            className="px-3.5 py-1.5 rounded-full border border-gray-200 dark:border-white/10 font-black inline-flex items-center gap-1 disabled:opacity-40 hover:border-[#D86A33]"
+                                        >
+                                            <ChevronLeft size={13} />
+                                            <span>Anterior</span>
+                                        </button>
+
+                                        {Array.from({ length: facturadoTotalPages }, (_, idx) => idx + 1).slice(0, 7).map(num => (
+                                            <button
+                                                key={num}
+                                                type="button"
+                                                onClick={() => setFacturadoPage(num)}
+                                                className={`w-8 h-8 rounded-full font-black text-xs transition-all border ${
+                                                    num === safeFacturadoPage
+                                                        ? 'bg-[#D86A33] text-white border-[#D86A33]'
+                                                        : 'border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
+                                                }`}
+                                            >
+                                                {num}
+                                            </button>
+                                        ))}
+
+                                        <button
+                                            type="button"
+                                            disabled={safeFacturadoPage >= facturadoTotalPages}
+                                            onClick={() => setFacturadoPage(p => Math.min(facturadoTotalPages, p + 1))}
+                                            className="px-3.5 py-1.5 rounded-full border border-gray-200 dark:border-white/10 font-black inline-flex items-center gap-1 disabled:opacity-40 hover:border-[#D86A33]"
+                                        >
+                                            <span>Siguiente</span>
+                                            <ChevronRight size={13} />
+                                        </button>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -2488,7 +2589,26 @@ export default function AdminPage() {
                                         </span>
                                     </div>
 
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                        <span className="text-[11px] font-bold text-gray-400">Por página:</span>
+                                        {[10, 20, 50].map(sz => (
+                                            <button
+                                                key={sz}
+                                                type="button"
+                                                onClick={() => {
+                                                    setTallerPageSize(sz);
+                                                    setTallerPage(1);
+                                                }}
+                                                className={`px-2.5 py-1 rounded-lg font-black text-xs border transition-all ${
+                                                    tallerPageSize === sz
+                                                        ? 'bg-[#5F2142] text-white border-[#5F2142]'
+                                                        : 'border-gray-200 dark:border-white/10 text-gray-600 hover:border-[#D86A33]'
+                                                }`}
+                                            >
+                                                {sz}
+                                            </button>
+                                        ))}
+
                                         <button
                                             type="button"
                                             onClick={collapseAllWorkshopOrders}
@@ -2510,7 +2630,7 @@ export default function AdminPage() {
                                     </div>
                                 </div>
 
-                                {filteredTallerOrders.map((order) => {
+                                {paginatedTallerOrders.map((order) => {
                                     const isExpanded = Boolean(expandedOrderIds[order.id]);
                                     const workshopType = getOrderWorkshopType(order);
                                     const steps = getOrderWorkflowSteps(order);
@@ -2943,6 +3063,55 @@ export default function AdminPage() {
                                         </div>
                                     );
                                 })}
+
+                                {/* Pagination Footer Bar - Taller y Pedidos */}
+                                {tallerTotalPages > 1 && (
+                                    <div className={`p-4 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3`}>
+                                        <span className="text-xs font-bold text-gray-500">
+                                            Mostrando {(safeTallerPage - 1) * tallerPageSize + 1} – {Math.min(safeTallerPage * tallerPageSize, filteredTallerOrders.length)} de {filteredTallerOrders.length} pedidos en taller
+                                        </span>
+                                        <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                                            <button
+                                                type="button"
+                                                disabled={safeTallerPage <= 1}
+                                                onClick={() => setTallerPage(Math.max(1, safeTallerPage - 1))}
+                                                className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-black disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-white/10 transition flex items-center gap-1"
+                                            >
+                                                <ChevronLeft size={14} /> Anterior
+                                            </button>
+                                            {Array.from({ length: tallerTotalPages }, (_, i) => i + 1)
+                                                .filter(p => p === 1 || p === tallerTotalPages || Math.abs(p - safeTallerPage) <= 2)
+                                                .map((p, idx, arr) => {
+                                                    const prev = arr[idx - 1];
+                                                    const showDots = prev && p - prev > 1;
+                                                    return (
+                                                        <span key={p} className="inline-flex items-center gap-1">
+                                                            {showDots && <span className="px-1 text-gray-400 text-xs font-black">…</span>}
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setTallerPage(p)}
+                                                                className={`w-8 h-8 rounded-xl text-xs font-black transition ${
+                                                                    p === safeTallerPage
+                                                                        ? 'bg-[#5F2142] text-white shadow-xs'
+                                                                        : 'border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10'
+                                                                }`}
+                                                            >
+                                                                {p}
+                                                            </button>
+                                                        </span>
+                                                    );
+                                                })}
+                                            <button
+                                                type="button"
+                                                disabled={safeTallerPage >= tallerTotalPages}
+                                                onClick={() => setTallerPage(Math.min(tallerTotalPages, safeTallerPage + 1))}
+                                                className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-black disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-white/10 transition flex items-center gap-1"
+                                            >
+                                                Siguiente <ChevronRight size={14} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -2958,16 +3127,16 @@ export default function AdminPage() {
                         ? subcats.find(s => s.id === Number(activeSubcategory))
                         : undefined;
 
-                    // Group already-created products by their specified subcategory
+                    // Group paginated products by their specified subcategory
                     const subcatGroups = (activeSubcategory === 'all' ? subcats : subcats.filter(s => s.id === Number(activeSubcategory)))
                         .map(sub => ({
                             sub,
-                            items: sectionProducts.filter(p => Number(p.subcategoria_id) === sub.id)
+                            items: paginatedSectionProducts.filter(p => Number(p.subcategoria_id) === sub.id)
                         }))
                         .filter(g => activeSubcategory !== 'all' || g.items.length > 0);
 
                     const unassignedItems = activeSubcategory === 'all'
-                        ? sectionProducts.filter(p => !subcats.some(s => s.id === Number(p.subcategoria_id)))
+                        ? paginatedSectionProducts.filter(p => !subcats.some(s => s.id === Number(p.subcategoria_id)))
                         : [];
 
                     return (
@@ -3512,6 +3681,69 @@ export default function AdminPage() {
                                                     </tbody>
                                                 </table>
                                             </div>
+                                        </div>
+                                    )}
+
+                                    {/* Pagination Footer Bar - Agregar Productos */}
+                                    {sectionProducts.length > 0 && (
+                                        <div className={`p-4 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3`}>
+                                            <div className="flex items-center gap-3 flex-wrap">
+                                                <span className="text-xs font-bold text-gray-500">
+                                                    Mostrando {(safeProductosPage - 1) * productosPageSize + 1} – {Math.min(safeProductosPage * productosPageSize, sectionProducts.length)} de {sectionProducts.length} productos
+                                                </span>
+                                                <select
+                                                    value={productosPageSize}
+                                                    onChange={(e) => { setProductosPageSize(Number(e.target.value)); setProductosPage(1); }}
+                                                    className={`px-3 py-1.5 rounded-xl border text-xs font-black outline-none cursor-pointer ${inputStyle}`}
+                                                >
+                                                    <option value={8}>8 por página</option>
+                                                    <option value={12}>12 por página</option>
+                                                    <option value={24}>24 por página</option>
+                                                    <option value={50}>50 por página</option>
+                                                </select>
+                                            </div>
+                                            {productosTotalPages > 1 && (
+                                                <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                                                    <button
+                                                        type="button"
+                                                        disabled={safeProductosPage <= 1}
+                                                        onClick={() => setProductosPage(Math.max(1, safeProductosPage - 1))}
+                                                        className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-black disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-white/10 transition flex items-center gap-1"
+                                                    >
+                                                        <ChevronLeft size={14} /> Anterior
+                                                    </button>
+                                                    {Array.from({ length: productosTotalPages }, (_, i) => i + 1)
+                                                        .filter(p => p === 1 || p === productosTotalPages || Math.abs(p - safeProductosPage) <= 2)
+                                                        .map((p, idx, arr) => {
+                                                            const prev = arr[idx - 1];
+                                                            const showDots = prev && p - prev > 1;
+                                                            return (
+                                                                <span key={p} className="inline-flex items-center gap-1">
+                                                                    {showDots && <span className="px-1 text-gray-400 text-xs font-black">…</span>}
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => setProductosPage(p)}
+                                                                        className={`w-8 h-8 rounded-xl text-xs font-black transition ${
+                                                                            p === safeProductosPage
+                                                                                ? 'bg-[#5F2142] text-white shadow-xs'
+                                                                                : 'border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10'
+                                                                        }`}
+                                                                    >
+                                                                        {p}
+                                                                    </button>
+                                                                </span>
+                                                            );
+                                                        })}
+                                                    <button
+                                                        type="button"
+                                                        disabled={safeProductosPage >= productosTotalPages}
+                                                        onClick={() => setProductosPage(Math.min(productosTotalPages, safeProductosPage + 1))}
+                                                        className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-black disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-white/10 transition flex items-center gap-1"
+                                                    >
+                                                        Siguiente <ChevronRight size={14} />
+                                                    </button>
+                                                </div>
+                                            )}
                                         </div>
                                     )}
                                 </div>
