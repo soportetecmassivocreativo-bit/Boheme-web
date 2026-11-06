@@ -3380,7 +3380,9 @@ export default function AdminPage() {
                                 {SECTIONS.map((sec) => {
                                     const isSelected = activeSection === sec.slug;
                                     const count = products.filter(p => p.categoria_slug === sec.slug).length;
-                                    const secSubcatsCount = CATEGORIES[sec.slug]?.subcategories.length || 0;
+                                    const secSubcatsCount = (CATEGORIES[sec.slug]?.subcategories || []).filter(sc =>
+                                        products.some(p => p.categoria_slug === sec.slug && Number(p.subcategoria_id) === sc.id)
+                                    ).length;
                                     return (
                                         <button
                                             key={sec.slug}
@@ -3486,57 +3488,36 @@ export default function AdminPage() {
                                             </span>
                                         </button>
 
-                                        {subcats.map(sub => {
-                                            const isSubActive = activeSubcategory !== 'all' && Number(activeSubcategory) === sub.id;
-                                            const subCount = allSectionProducts.filter(p => Number(p.subcategoria_id) === sub.id).length;
-                                            const canDeleteCat =
-                                                sub.id > 200 ||
-                                                activeSection === 'accesorios-medicos' ||
-                                                activeSection === 'equipos-medicos' ||
-                                                activeSection === 'productos-personalizados';
-                                            return (
-                                                <div
-                                                    key={sub.id}
-                                                    onClick={() => {
-                                                        setActiveSubcategory(sub.id);
-                                                        setActiveEspecialFilter('all');
-                                                    }}
-                                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all inline-flex items-center gap-1.5 border cursor-pointer select-none ${
-                                                        isSubActive
-                                                            ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-xs scale-105'
-                                                            : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
-                                                    }`}
-                                                >
-                                                    <span>{sub.name}</span>
-                                                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                                                        isSubActive
-                                                            ? 'bg-white/25 text-white'
-                                                            : subCount > 0
-                                                                ? 'bg-[#5F2142]/10 text-[#5F2142] dark:bg-[#FFC99C]/15 dark:text-[#FFC99C]'
-                                                                : 'bg-gray-100 dark:bg-white/5 text-gray-400'
-                                                    }`}>
-                                                        {subCount}
-                                                    </span>
-                                                    {canDeleteCat && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleDeleteAccesorioCategory(sub.id, sub.name, activeSection);
-                                                            }}
-                                                            title={`Eliminar categoría ${sub.name}`}
-                                                            className={`ml-0.5 w-4 h-4 rounded-full inline-flex items-center justify-center text-xs font-black leading-none transition-colors ${
-                                                                isSubActive
-                                                                    ? 'bg-white/25 hover:bg-red-600 text-white'
-                                                                    : 'bg-red-50 hover:bg-red-500 text-red-600 hover:text-white dark:bg-red-950/50 dark:text-red-400'
-                                                            }`}
-                                                        >
-                                                            −
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
+                                        {subcats
+                                            .filter(sub => allSectionProducts.some(p => Number(p.subcategoria_id) === sub.id))
+                                            .map(sub => {
+                                                const isSubActive = activeSubcategory !== 'all' && Number(activeSubcategory) === sub.id;
+                                                const subCount = allSectionProducts.filter(p => Number(p.subcategoria_id) === sub.id).length;
+                                                return (
+                                                    <button
+                                                        key={sub.id}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setActiveSubcategory(sub.id);
+                                                            setActiveEspecialFilter('all');
+                                                        }}
+                                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all inline-flex items-center gap-1.5 border cursor-pointer select-none ${
+                                                            isSubActive
+                                                                ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-xs scale-105'
+                                                                : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
+                                                        }`}
+                                                    >
+                                                        <span>{sub.name}</span>
+                                                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                                                            isSubActive
+                                                                ? 'bg-white/25 text-white'
+                                                                : 'bg-[#5F2142]/10 text-[#5F2142] dark:bg-[#FFC99C]/15 dark:text-[#FFC99C]'
+                                                        }`}>
+                                                            {subCount}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
                                     </div>
                                 </div>
                             )}
@@ -6274,45 +6255,26 @@ export default function AdminPage() {
                                         >
                                             ✦ Todas ({allSectionProducts.length})
                                         </button>
-                                        {CATEGORIES[activeSection].subcategories.map(sub => {
-                                            const subCount = allSectionProducts.filter(p => Number(p.subcategoria_id) === sub.id).length;
-                                            const isSubActive = activeSubcategory !== 'all' && Number(activeSubcategory) === sub.id;
-                                            const canDeleteCat =
-                                                sub.id > 200 ||
-                                                activeSection === 'accesorios-medicos' ||
-                                                activeSection === 'equipos-medicos' ||
-                                                activeSection === 'productos-personalizados';
-                                            return (
-                                                <div
-                                                    key={sub.id}
-                                                    onClick={() => setActiveSubcategory(sub.id)}
-                                                    className={`px-3 py-1 rounded-xl text-[11px] font-black transition-all inline-flex items-center gap-1.5 cursor-pointer select-none ${
-                                                        isSubActive
-                                                            ? 'bg-[#D86A33] text-white shadow-2xs'
-                                                            : 'bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10'
-                                                    }`}
-                                                >
-                                                    <span>{sub.name} ({subCount})</span>
-                                                    {canDeleteCat && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleDeleteAccesorioCategory(sub.id, sub.name, activeSection);
-                                                            }}
-                                                            title={`Eliminar categoría ${sub.name}`}
-                                                            className={`w-4 h-4 rounded-full inline-flex items-center justify-center text-xs font-black leading-none transition-colors ${
-                                                                isSubActive
-                                                                    ? 'bg-white/25 hover:bg-red-600 text-white'
-                                                                    : 'bg-red-50 hover:bg-red-500 text-red-600 hover:text-white dark:bg-red-950/50 dark:text-red-400'
-                                                            }`}
-                                                        >
-                                                            −
-                                                        </button>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
+                                        {CATEGORIES[activeSection].subcategories
+                                            .filter(sub => allSectionProducts.some(p => Number(p.subcategoria_id) === sub.id))
+                                            .map(sub => {
+                                                const subCount = allSectionProducts.filter(p => Number(p.subcategoria_id) === sub.id).length;
+                                                const isSubActive = activeSubcategory !== 'all' && Number(activeSubcategory) === sub.id;
+                                                return (
+                                                    <button
+                                                        key={sub.id}
+                                                        type="button"
+                                                        onClick={() => setActiveSubcategory(sub.id)}
+                                                        className={`px-3 py-1 rounded-xl text-[11px] font-black transition-all cursor-pointer select-none ${
+                                                            isSubActive
+                                                                ? 'bg-[#D86A33] text-white shadow-2xs'
+                                                                : 'bg-gray-50 dark:bg-white/5 text-gray-700 dark:text-gray-300 border border-gray-200 dark:border-white/10'
+                                                        }`}
+                                                    >
+                                                        {sub.name} ({subCount})
+                                                    </button>
+                                                );
+                                            })}
                                     </div>
                                 )}
 
@@ -6882,40 +6844,19 @@ export default function AdminPage() {
                                         )}
                                         {CATEGORIES[formCategory].subcategories.map(s => {
                                             const isSelected = Number(formSubcategory) === s.id;
-                                            const canDeleteCat =
-                                                s.id > 200 ||
-                                                formCategory === 'accesorios-medicos' ||
-                                                formCategory === 'equipos-medicos' ||
-                                                formCategory === 'productos-personalizados';
                                             return (
-                                                <div
+                                                <button
                                                     key={s.id}
+                                                    type="button"
                                                     onClick={() => setFormSubcategory(s.id)}
-                                                    className={`px-2.5 py-1 rounded-xl text-[11px] font-black transition-all border inline-flex items-center gap-1.5 cursor-pointer select-none ${
+                                                    className={`px-2.5 py-1 rounded-xl text-[11px] font-black transition-all border cursor-pointer select-none ${
                                                         isSelected
                                                             ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-2xs'
                                                             : 'bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
                                                     }`}
                                                 >
-                                                    <span>{s.name}</span>
-                                                    {canDeleteCat && (
-                                                        <button
-                                                            type="button"
-                                                            onClick={(e) => {
-                                                                e.stopPropagation();
-                                                                handleDeleteAccesorioCategory(s.id, s.name, formCategory);
-                                                            }}
-                                                            title={`Eliminar categoría ${s.name}`}
-                                                            className={`w-4 h-4 rounded-full inline-flex items-center justify-center text-xs font-black leading-none transition-colors ${
-                                                                isSelected
-                                                                    ? 'bg-white/25 hover:bg-red-600 text-white'
-                                                                    : 'bg-red-50 hover:bg-red-500 text-red-600 hover:text-white dark:bg-red-950/50 dark:text-red-400'
-                                                            }`}
-                                                        >
-                                                            −
-                                                        </button>
-                                                    )}
-                                                </div>
+                                                    {s.name}
+                                                </button>
                                             );
                                         })}
                                     </div>
