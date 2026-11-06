@@ -590,7 +590,11 @@ export default function AdminPage() {
         const catInfo = CATEGORIES[activeSection];
         const defaultSubId = preselectedSubcategoryId !== undefined
             ? preselectedSubcategoryId
-            : (activeSubcategory !== 'all' ? activeSubcategory : catInfo?.subcategories[0]?.id);
+            : (activeSubcategory !== 'all'
+                ? activeSubcategory
+                : (activeSection === 'accesorios-medicos' || activeSection === 'equipos-medicos'
+                    ? undefined
+                    : catInfo?.subcategories[0]?.id));
         setFormSubcategory(defaultSubId);
         setFormSubcategoryEspecial(activeEspecialFilter !== 'all' ? activeEspecialFilter : 'Reversible');
         
@@ -722,7 +726,7 @@ export default function AdminPage() {
             price: Number(formPrice),
             stock: isUniqueStockItem ? 1 : (Number(formStock) >= 0 ? Number(formStock) : 20),
             categoria_slug: formCategory,
-            subcategoria_id: formSubcategory ? Number(formSubcategory) : undefined,
+            subcategoria_id: formSubcategory ? Number(formSubcategory) : null,
             subcategoria_especial: (formCategory === 'gorros' && Number(formSubcategory) === 72) ? formSubcategoryEspecial : undefined,
             // Store as array or JSON string if multiple
             image_url: formImages.length === 1 ? formImages[0] : JSON.stringify(formImages)
@@ -779,7 +783,7 @@ export default function AdminPage() {
         }
     };
 
-    const handleChangeProductSubcategory = async (product: Product, newSubcategoryId: number) => {
+    const handleChangeProductSubcategory = async (product: Product, newSubcategoryId: number | null) => {
         try {
             const res = await fetch(`/api/admin/products/${product.id}`, {
                 method: 'PUT',
@@ -787,9 +791,15 @@ export default function AdminPage() {
                 body: JSON.stringify({ subcategoria_id: newSubcategoryId })
             });
             if (res.ok) {
-                const subName = CATEGORIES[product.categoria_slug]?.subcategories.find(s => s.id === newSubcategoryId)?.name || 'General';
-                setProducts(prev => prev.map(p => p.id === product.id ? { ...p, subcategoria_id: newSubcategoryId } : p));
-                showToast(`✓ Categoría actualizada a: ${subName}`);
+                const subName = newSubcategoryId
+                    ? (CATEGORIES[product.categoria_slug]?.subcategories.find(s => s.id === newSubcategoryId)?.name || 'General')
+                    : null;
+                setProducts(prev => prev.map(p => p.id === product.id ? {
+                    ...p,
+                    subcategoria_id: newSubcategoryId || undefined,
+                    subcategoria_nombre: subName || undefined
+                } : p));
+                showToast(subName ? `✓ Categoría actualizada a: ${subName}` : '✓ Categoría removida del producto');
             } else {
                 alert('Error al actualizar la categoría del producto');
             }
@@ -3673,16 +3683,13 @@ export default function AdminPage() {
                                                                             <div>
                                                                                 <div className="font-black text-gray-900 dark:text-white text-xs sm:text-sm">{p.name}</div>
                                                                                 <div className="text-[11px] text-gray-500 line-clamp-1 max-w-md">{p.description}</div>
-                                                                                <div className="flex flex-wrap items-center gap-1.5 mt-1">
-                                                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#5F2142]/10 text-[#5F2142] dark:bg-[#FFC99C]/10 dark:text-[#FFC99C]">
-                                                                                        {CATEGORIES[p.categoria_slug]?.title}
-                                                                                    </span>
-                                                                                    {assignedSub && (
+                                                                                {assignedSub && (
+                                                                                    <div className="flex flex-wrap items-center gap-1.5 mt-1">
                                                                                         <span className="text-[10px] font-black px-2.5 py-0.5 rounded-lg bg-[#FFF4EB] dark:bg-[#D86A33]/20 border border-[#D86A33]/40 text-[#D86A33] shadow-2xs">
                                                                                             ✦ {assignedSub.name}
                                                                                         </span>
-                                                                                    )}
-                                                                                </div>
+                                                                                    </div>
+                                                                                )}
                                                                             </div>
                                                                         </div>
                                                                     </td>
@@ -3699,11 +3706,11 @@ export default function AdminPage() {
                                                                             <div>
                                                                                 <select
                                                                                     value={p.subcategoria_id || ''}
-                                                                                    onChange={(e) => handleChangeProductSubcategory(p, Number(e.target.value))}
+                                                                                    onChange={(e) => handleChangeProductSubcategory(p, e.target.value ? Number(e.target.value) : null)}
                                                                                     className={`mt-1 px-2.5 py-1 rounded-xl border text-[11px] font-bold outline-none cursor-pointer transition-all hover:border-[#D86A33] ${inputStyle}`}
                                                                                     title="Asignar o cambiar categoría"
                                                                                 >
-                                                                                    <option value="">-- Asignar categoría --</option>
+                                                                                    <option value="">-- Sin categoría --</option>
                                                                                     {pSubcats.map(sc => (
                                                                                         <option key={sc.id} value={sc.id}>
                                                                                             {sc.name}
@@ -6717,6 +6724,9 @@ export default function AdminPage() {
                                         onChange={(e) => setFormSubcategory(e.target.value ? Number(e.target.value) : undefined)}
                                         className={`w-full px-3 py-2.5 rounded-2xl border font-bold ${inputStyle}`}
                                     >
+                                        {formCategory === 'accesorios-medicos' && (
+                                            <option value="">-- Sin categoría asignada --</option>
+                                        )}
                                         {CATEGORIES[formCategory].subcategories.map(s => (
                                             <option key={s.id} value={s.id}>
                                                 {CATEGORIES[formCategory].title} › Categoría: {s.name}
@@ -6724,6 +6734,19 @@ export default function AdminPage() {
                                         ))}
                                     </select>
                                     <div className="flex flex-wrap gap-1.5 pt-0.5">
+                                        {formCategory === 'accesorios-medicos' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setFormSubcategory(undefined)}
+                                                className={`px-2.5 py-1 rounded-xl text-[11px] font-black transition-all border ${
+                                                    !formSubcategory
+                                                        ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-2xs'
+                                                        : 'bg-gray-50 dark:bg-white/5 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-[#5F2142]'
+                                                }`}
+                                            >
+                                                Sin categoría
+                                            </button>
+                                        )}
                                         {CATEGORIES[formCategory].subcategories.map(s => {
                                             const isSelected = Number(formSubcategory) === s.id;
                                             return (

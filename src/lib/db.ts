@@ -21,6 +21,7 @@ export interface Product {
     image_url: string;
     categoria_slug: string;
     subcategoria_id?: number;
+    subcategoria_nombre?: string;
     subcategoria_especial?: string; // Para Especiales: 'Reversible' | 'Cintillo' | 'Ponytail' | 'Coquette'
     type_color?: string;
     genero?: string;
@@ -174,6 +175,23 @@ export function getSubcategoryName(categoriaSlug: string, subcategoriaId?: numbe
         if (sub) return sub.name;
     }
     return cat.subcategories[0]?.name || 'General';
+}
+
+export function enrichProductWithCategoryName(p: Product): Product {
+    loadCategoriesFromDisk(false);
+    const slug = normalizeCategorySlug(p.categoria_slug);
+    const cat = CATEGORIES[slug];
+    if (!cat || p.subcategoria_id === undefined || p.subcategoria_id === null || Number(p.subcategoria_id) === 0) {
+        const { subcategoria_nombre: _removed, ...rest } = p;
+        return rest;
+    }
+    const mappedId = (slug === 'accesorios-medicos' && Number(p.subcategoria_id) === 11) ? 10 : Number(p.subcategoria_id);
+    const matched = cat.subcategories.find(s => s.id === mappedId);
+    if (matched) {
+        return { ...p, subcategoria_nombre: matched.name };
+    }
+    const { subcategoria_nombre: _removed, ...rest } = p;
+    return rest;
 }
 
 export function getSectionAndCategoryLabel(categoriaSlug: string, subcategoriaId?: number): {
@@ -989,9 +1007,9 @@ async function getOrFetchCatalogProducts(): Promise<Product[]> {
         return inflightProductsPromise;
     }
 
-    const activeLocalProducts = MOCK_PRODUCTS.filter(
-        p => !(isEphemeralStockItem(p) && p.stock !== undefined && Number(p.stock) <= 0)
-    );
+    const activeLocalProducts = MOCK_PRODUCTS
+        .filter(p => !(isEphemeralStockItem(p) && p.stock !== undefined && Number(p.stock) <= 0))
+        .map(enrichProductWithCategoryName);
     cachedRemoteProducts = activeLocalProducts;
     lastProductsCacheTime = now;
     return activeLocalProducts;
@@ -1205,10 +1223,11 @@ export async function createProduct(productData: Omit<Product, 'id'> & { id?: st
     }
 
     // Always keep local in-memory catalog updated & invalidate cache
-    MOCK_PRODUCTS.unshift(newProduct);
+    const enrichedNew = enrichProductWithCategoryName(newProduct);
+    MOCK_PRODUCTS.unshift(enrichedNew);
     invalidateProductsCache();
     scheduleSaveProductsToDisk();
-    return newProduct;
+    return enrichedNew;
 }
 
 export async function updateProduct(id: string, updates: Partial<Product>): Promise<Product | null> {
@@ -1234,11 +1253,16 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
             ...MOCK_PRODUCTS[existingIndex],
             ...updates
         };
+        if ('subcategoria_id' in updates && (!updates.subcategoria_id || Number(updates.subcategoria_id) <= 0)) {
+            delete updatedProduct.subcategoria_id;
+            delete updatedProduct.subcategoria_nombre;
+        }
         if (isEphemeralStockItem(updatedProduct) && updatedProduct.stock !== undefined && Number(updatedProduct.stock) <= 0) {
             await deleteProduct(id);
             return updatedProduct;
         }
-        MOCK_PRODUCTS[existingIndex] = updatedProduct;
+        const enrichedUpdated = enrichProductWithCategoryName(updatedProduct);
+        MOCK_PRODUCTS[existingIndex] = enrichedUpdated;
         invalidateProductsCache();
         scheduleSaveProductsToDisk();
         return MOCK_PRODUCTS[existingIndex];
