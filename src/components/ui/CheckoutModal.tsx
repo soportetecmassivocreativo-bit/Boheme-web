@@ -20,10 +20,36 @@ import {
     Phone,
     FileText,
     TrendingUp,
-    RefreshCw
+    RefreshCw,
+    UploadCloud,
+    Image as ImageIcon
 } from 'lucide-react';
 
 const WHATSAPP_NUMBER = "584121409976";
+
+const VENEZUELAN_BANKS = [
+    { code: '0102', name: 'Banco de Venezuela (0102)' },
+    { code: '0134', name: 'Banesco (0134)' },
+    { code: '0105', name: 'Banco Mercantil (0105)' },
+    { code: '0108', name: 'Banco Provincial BBVA (0108)' },
+    { code: '0114', name: 'Bancaribe (0114)' },
+    { code: '0115', name: 'Banco Exterior (0115)' },
+    { code: '0172', name: 'Bancamiga (0172)' },
+    { code: '0168', name: 'Bancrecer (0168)' },
+    { code: '0175', name: 'Banco Bicentenario (0175)' },
+    { code: '0163', name: 'Banco del Tesoro (0163)' },
+    { code: '0177', name: 'Banco de la Fuerza Armada FANB (0177)' },
+    { code: '0138', name: 'Banco Plaza (0138)' },
+    { code: '0128', name: 'Banco Caroní (0128)' },
+    { code: '0151', name: 'BFC Banco Fondo Común (0151)' },
+    { code: '0169', name: 'Mi Banco (0169)' },
+    { code: '0174', name: 'Banplus (0174)' },
+    { code: '0157', name: 'Delsur Banco Universal (0157)' },
+    { code: '0171', name: 'Banco Activo (0171)' },
+    { code: '0156', name: '100% Banco (0156)' },
+    { code: '0166', name: 'Banco Agrícola de Venezuela (0166)' },
+    { code: '0178', name: 'N58 Banco Digital (0178)' }
+];
 
 // Payment details specified by BOHEME
 const PAYMENT_INFO = {
@@ -100,10 +126,13 @@ export default function CheckoutModal() {
 
     // Form: Payment Data
     const [metodoPago, setMetodoPago] = useState<'pago_movil' | 'binance' | string>('pago_movil');
-    const [bancoEmisor, setBancoEmisor] = useState('');
+    const [bancoEmisor, setBancoEmisor] = useState('Banco de Venezuela (0102)');
     const [telefonoOEmailEmisor, setTelefonoOEmailEmisor] = useState('');
     const [referenciaPago, setReferenciaPago] = useState('');
     const [montoPagado, setMontoPagado] = useState('');
+    const [comprobantePago, setComprobantePago] = useState<string>('');
+    const [comprobanteFileName, setComprobanteFileName] = useState<string>('');
+    const [isUploadingComprobante, setIsUploadingComprobante] = useState(false);
 
     // Validation errors
     const [formError, setFormError] = useState<string | null>(null);
@@ -151,6 +180,71 @@ export default function CheckoutModal() {
         navigator.clipboard.writeText(text);
         setCopiedField(fieldId);
         setTimeout(() => setCopiedField(null), 2000);
+    };
+
+    const handleCopyAllPaymentData = () => {
+        if (metodoPago === 'pago_movil') {
+            const dataToCopy = `PAGO MÓVIL BOHEME
+Banco: ${siteSettings.pagoMovil.banco}
+Teléfono: ${siteSettings.pagoMovil.telefono}
+Cédula: ${siteSettings.pagoMovil.cedula}
+Monto: Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+            handleCopy(dataToCopy, 'all_payment_data');
+        } else if (metodoPago === 'binance') {
+            const dataToCopy = `BINANCE PAY BOHEME
+Correo / Pay ID: ${siteSettings.binance.email}
+Monto: $${totalUSD.toFixed(2)} USDT`;
+            handleCopy(dataToCopy, 'all_payment_data');
+        } else {
+            const extra = (siteSettings.cuentasAdicionales || []).find(c => c.id === metodoPago);
+            if (extra) {
+                const dataToCopy = `${extra.nombreMetodo.toUpperCase()}
+Banco/Plataforma: ${extra.bancoOPlataforma}
+Cuenta/Usuario: ${extra.numeroCuentaOCorreo}
+${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `Cédula/RIF: ${extra.cedulaORif}\n` : ''}Monto: ${extra.moneda === 'BS' ? `Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}` : `$${totalUSD.toFixed(2)} USD`}`;
+                handleCopy(dataToCopy, 'all_payment_data');
+            }
+        }
+    };
+
+    const handleComprobanteUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!file.type.startsWith('image/')) {
+            alert('Por favor selecciona una imagen válida de comprobante (JPG, PNG, etc.)');
+            return;
+        }
+
+        setIsUploadingComprobante(true);
+        setComprobanteFileName(file.name);
+
+        try {
+            const formData = new FormData();
+            formData.append('files', file);
+
+            const res = await fetch('/api/admin/upload', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.urls && data.urls[0]) {
+                    setComprobantePago(data.urls[0]);
+                    return;
+                }
+            }
+            throw new Error('Fallback local');
+        } catch {
+            const reader = new FileReader();
+            reader.onload = (event) => {
+                setComprobantePago(event.target?.result as string);
+            };
+            reader.readAsDataURL(file);
+        } finally {
+            setIsUploadingComprobante(false);
+        }
     };
 
     const validateStep1 = () => {
@@ -203,6 +297,10 @@ export default function CheckoutModal() {
         }
         if (!montoPagado.trim()) {
             setFormError('Por favor confirma el monto exacto transferido.');
+            return false;
+        }
+        if (!comprobantePago) {
+            setFormError('Es obligatorio adjuntar la captura del comprobante de pago para formalizar.');
             return false;
         }
         return true;
@@ -315,6 +413,13 @@ export default function CheckoutModal() {
             msg += `• *Monto Transferido:* ${montoPagado.trim()}\n`;
         }
         msg += `\n━━━━━━━━━━━━━━━━━━━━━━\n`;
+        if (comprobantePago) {
+            if (comprobantePago.startsWith('http://') || comprobantePago.startsWith('https://')) {
+                msg += `🧾 *Enlace del Comprobante cargado:* ${comprobantePago}\n`;
+            } else {
+                msg += `🧾 *Comprobante de pago:* Adjuntado y registrado en la plataforma.\n`;
+            }
+        }
         msg += `📎 *Adjunto a continuación la captura del comprobante de pago.* ¡Quedo atento a la confirmación!`;
 
         // 2. Register Order in Admin Billing Module (Facturado)
@@ -337,6 +442,7 @@ export default function CheckoutModal() {
                     banco_emisor: bancoEmisor.trim() || undefined,
                     telefono_o_email_emisor: telefonoOEmailEmisor.trim(),
                     referencia_pago: referenciaPago.trim(),
+                    comprobante_pago: comprobantePago || undefined,
                     monto_usd: totalUSD,
                     tasa_bcv: bcvRate,
                     monto_bs: totalBs,
@@ -868,9 +974,22 @@ export default function CheckoutModal() {
 
                             {/* Bank Details Box with 1-Click Copy */}
                             <div className="p-4 sm:p-5 rounded-2xl bg-white border border-gray-200 shadow-xs space-y-3">
-                                <div className="flex items-center justify-between text-xs font-black text-[#5F2142] uppercase tracking-wider pb-2 border-b border-gray-100">
-                                    <span>Datos para realizar tu pago:</span>
-                                    <span className="text-[11px] text-[#D86A33] font-bold">Toca para copiar</span>
+                                <div className="flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-gray-100">
+                                    <span className="text-xs font-black text-[#5F2142] uppercase tracking-wider">
+                                        Datos para realizar tu pago:
+                                    </span>
+                                    <button
+                                        type="button"
+                                        onClick={handleCopyAllPaymentData}
+                                        className={`px-3 py-1.5 rounded-xl text-xs font-black transition-all inline-flex items-center gap-1.5 ${
+                                            copiedField === 'all_payment_data'
+                                                ? 'bg-green-600 text-white shadow-xs'
+                                                : 'bg-[#5F2142] hover:bg-[#43142e] text-white shadow-xs'
+                                        }`}
+                                    >
+                                        {copiedField === 'all_payment_data' ? <Check size={13} /> : <Copy size={13} />}
+                                        <span>{copiedField === 'all_payment_data' ? '¡Todos los datos copiados!' : 'Copiar todos los datos con monto'}</span>
+                                    </button>
                                 </div>
 
                                 {metodoPago === 'pago_movil' ? (
@@ -897,15 +1016,24 @@ export default function CheckoutModal() {
                                             </button>
                                         </div>
 
-                                        {/* Banco */}
-                                        <div className="flex items-center justify-between p-2.5 rounded-xl bg-gray-50 text-xs">
+                                        {/* Banco (sin nombre de persona) */}
+                                        <div className="p-2.5 rounded-xl bg-gray-50 text-xs flex items-center justify-between">
                                             <div>
                                                 <span className="text-gray-400 font-medium block text-[10px] uppercase">Banco</span>
                                                 <span className="font-bold text-gray-900">{siteSettings.pagoMovil.banco}</span>
                                             </div>
-                                            <span className="px-2 py-0.5 rounded bg-gray-200 text-gray-700 text-[10px] font-bold">
-                                                {siteSettings.pagoMovil.titular || 'BOHEME'}
-                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => handleCopy(siteSettings.pagoMovil.banco, 'pm_banco')}
+                                                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                                                    copiedField === 'pm_banco'
+                                                        ? 'bg-green-600 text-white shadow-xs'
+                                                        : 'bg-white text-[#5F2142] border border-gray-300 hover:border-[#D86A33]'
+                                                }`}
+                                            >
+                                                {copiedField === 'pm_banco' ? <Check size={13} /> : <Copy size={13} />}
+                                                <span>{copiedField === 'pm_banco' ? '¡Copiado!' : 'Copiar Banco'}</span>
+                                            </button>
                                         </div>
 
                                         {/* Teléfono with Copy */}
@@ -1025,9 +1153,6 @@ export default function CheckoutModal() {
                                                     <span className="text-gray-400 font-medium block text-[10px] uppercase">Banco / Plataforma</span>
                                                     <span className="font-bold text-gray-900">{extra.bancoOPlataforma} {extra.tipoCuenta ? `(${extra.tipoCuenta})` : ''}</span>
                                                 </div>
-                                                <span className="px-2 py-0.5 rounded bg-gray-200 text-gray-700 text-[10px] font-bold">
-                                                    {extra.titular}
-                                                </span>
                                             </div>
 
                                             {extra.numeroCuentaOCorreo && (
@@ -1128,15 +1253,20 @@ export default function CheckoutModal() {
                                     {metodoPago === 'pago_movil' && (
                                         <div>
                                             <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1">
-                                                Banco de Origen (Emisor)
+                                                Banco de Origen (Emisor) *
                                             </label>
-                                            <input
-                                                type="text"
+                                            <select
+                                                required
                                                 value={bancoEmisor}
                                                 onChange={(e) => setBancoEmisor(e.target.value)}
-                                                placeholder="Ej: Banesco, Mercantil, BDV..."
                                                 className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm font-medium bg-white"
-                                            />
+                                            >
+                                                {VENEZUELAN_BANKS.map((b) => (
+                                                    <option key={b.code} value={b.name}>
+                                                        {b.name}
+                                                    </option>
+                                                ))}
+                                            </select>
                                         </div>
                                     )}
 
@@ -1156,7 +1286,7 @@ export default function CheckoutModal() {
 
                                     <div>
                                         <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1">
-                                            Monto exacto transferido *
+                                            Monto transferido * (Editable)
                                         </label>
                                         <input
                                             type="text"
@@ -1167,6 +1297,54 @@ export default function CheckoutModal() {
                                             className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm font-medium bg-white"
                                         />
                                     </div>
+                                </div>
+
+                                {/* Upload Comprobante / Capture (Obligatorio) */}
+                                <div className="p-3.5 rounded-2xl bg-white border-2 border-dashed border-[#D86A33]/60 space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <label className="block text-xs font-black text-[#5F2142] uppercase tracking-wider flex items-center gap-1.5">
+                                            <UploadCloud size={16} className="text-[#D86A33]" />
+                                            <span>Adjuntar Comprobante / Capture de Pago *</span>
+                                        </label>
+                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">
+                                            Obligatorio
+                                        </span>
+                                    </div>
+
+                                    <p className="text-[11px] text-gray-500 font-medium">
+                                        Carga una foto o captura de tu pago para validar y registrar la orden antes de abrir WhatsApp.
+                                    </p>
+
+                                    <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
+                                        <label className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#FFF4EB] border border-[#D86A33] text-[#D86A33] hover:bg-[#D86A33] hover:text-white transition-all text-xs font-black cursor-pointer flex items-center justify-center gap-2">
+                                            <ImageIcon size={15} />
+                                            <span>{isUploadingComprobante ? 'Procesando captura...' : comprobantePago ? 'Cambiar Captura' : 'Subir Comprobante (JPG, PNG)'}</span>
+                                            <input
+                                                type="file"
+                                                accept="image/*"
+                                                required={!comprobantePago}
+                                                onChange={handleComprobanteUpload}
+                                                className="hidden"
+                                            />
+                                        </label>
+
+                                        {comprobantePago && (
+                                            <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200 w-full sm:w-auto">
+                                                <Check size={14} className="text-emerald-600 shrink-0" />
+                                                <span className="truncate max-w-[200px]">{comprobanteFileName || 'Comprobante adjuntado con éxito'}</span>
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {comprobantePago && (
+                                        <div className="pt-2">
+                                            <img
+                                                src={comprobantePago}
+                                                alt="Comprobante cargado"
+                                                className="h-28 w-auto rounded-xl border border-gray-200 object-contain bg-gray-50 p-1"
+                                            />
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Capture Reminder Note */}
