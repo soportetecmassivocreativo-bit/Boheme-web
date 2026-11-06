@@ -137,6 +137,23 @@ export default function CartDrawer() {
                                                         {item.detalles_personalizados && !item.texto_personalizado && (
                                                             <div><strong>Notas:</strong> {item.detalles_personalizados}</div>
                                                         )}
+                                                        {item.imagenes_personalizadas && item.imagenes_personalizadas.length > 0 && (
+                                                            <div className="pt-1.5">
+                                                                <div className="font-bold text-[#5F2142] mb-1">
+                                                                    📷 Imágenes de referencia ({item.imagenes_personalizadas.length}):
+                                                                </div>
+                                                                <div className="flex flex-wrap gap-1.5">
+                                                                    {item.imagenes_personalizadas.map((imgSrc, idx) => (
+                                                                        <img
+                                                                            key={idx}
+                                                                            src={imgSrc}
+                                                                            alt={`Referencia ${idx + 1}`}
+                                                                            className="w-10 h-10 rounded-lg object-cover border border-[#FFC99C]"
+                                                                        />
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        )}
                                                     </div>
                                                 )}
 

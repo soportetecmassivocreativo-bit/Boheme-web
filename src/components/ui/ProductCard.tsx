@@ -20,21 +20,28 @@ export default function ProductCard({ product }: ProductCardProps) {
 
     const normalizedSlug = normalizeCategorySlug(product.categoria_slug);
     const isGorroProduct = normalizedSlug === 'gorros';
+    const subcatId = Number(product.subcategoria_id) || 70;
+    const isStockGorro = isGorroProduct && subcatId === 70;
+    const usesGorroForm = isGorroProduct && !isStockGorro;
 
     const firstImage = parseImages(product.image_url)[0];
     const sectionTitle = CATEGORIES[normalizedSlug]?.title || product.categoria_slug;
     const categoryName = getSubcategoryName(normalizedSlug, product.subcategoria_id);
 
     const isPersonalizable = Boolean(
-        product.categoria_slug === 'productos-personalizados' ||
-        product.subcategoria_id === 71 ||
-        product.subcategoria_id === 6 ||
-        product.name.toLowerCase().includes('personaliz') ||
-        (product.description && product.description.toLowerCase().includes('personaliz'))
+        !isStockGorro && (
+            product.categoria_slug === 'productos-personalizados' ||
+            subcatId === 71 ||
+            subcatId === 74 ||
+            (isGorroProduct && subcatId === 72) ||
+            subcatId === 6 ||
+            product.name.toLowerCase().includes('personaliz') ||
+            (product.description && product.description.toLowerCase().includes('personaliz'))
+        )
     );
 
     const handleActionClick = () => {
-        if (isGorroProduct) {
+        if (usesGorroForm) {
             setIsGorroModalOpen(true);
         } else if (isPersonalizable) {
             setIsPersonalizeOpen(true);
@@ -47,6 +54,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 quantity: quantity,
                 image_url: product.image_url,
                 categoria_slug: product.categoria_slug,
+                subcategoria_id: product.subcategoria_id,
                 type_color: product.type_color,
                 genero: product.genero,
                 modelo: product.modelo,
@@ -65,19 +73,21 @@ export default function ProductCard({ product }: ProductCardProps) {
                     <span className={`washi-tape text-[10px] font-black px-2.5 py-0.5 tracking-wider uppercase inline-block -rotate-3 ${
                         isPersonalizable ? 'text-[#D86A33] border border-[#D86A33]/40' : 'text-[#5F2142]'
                     }`}>
-                        {isPersonalizable
-                            ? '★ PERSONALIZABLE'
+                        {subcatId === 74
+                            ? '★ DISEÑA TU IDEA'
                             : product.subcategoria_especial
                                 ? `★ ${product.subcategoria_especial.toUpperCase()}`
-                                : '★ BOHEME'}
+                                : isPersonalizable
+                                    ? '★ PERSONALIZABLE'
+                                    : '★ BOHEME'}
                     </span>
                 </div>
 
                 {/* Image container */}
                 <div
-                    onClick={isGorroProduct ? () => setIsGorroModalOpen(true) : undefined}
+                    onClick={usesGorroForm ? () => setIsGorroModalOpen(true) : undefined}
                     className={`aspect-square bg-[#FFF9F5] relative overflow-hidden flex items-center justify-center border-b border-[#FFC99C]/30 m-2.5 rounded-2xl ${
-                        isGorroProduct ? 'cursor-pointer' : ''
+                        usesGorroForm ? 'cursor-pointer' : ''
                     }`}
                 >
                     {firstImage ? (
@@ -97,7 +107,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                     {/* Floating Quick Price Tag */}
                     <div className="absolute bottom-2.5 right-2.5 bg-white/95 backdrop-blur-sm border border-[#FFC99C]/80 px-3 py-1 rounded-full shadow-sm group-hover:scale-105 transition-transform">
                         <span className="text-sm font-black text-[#D86A33]">
-                            ${product.price.toFixed(2)}
+                            {subcatId === 74 ? `Desde $10.50` : `$${product.price.toFixed(2)}`}
                         </span>
                     </div>
                 </div>
@@ -119,9 +129,9 @@ export default function ProductCard({ product }: ProductCardProps) {
                             )}
                         </div>
                         <h3
-                            onClick={isGorroProduct ? () => setIsGorroModalOpen(true) : undefined}
+                            onClick={usesGorroForm ? () => setIsGorroModalOpen(true) : undefined}
                             className={`text-lg font-extrabold text-[#5F2142] mb-1.5 line-clamp-1 group-hover:text-[#D86A33] transition-colors ${
-                                isGorroProduct ? 'cursor-pointer' : ''
+                                usesGorroForm ? 'cursor-pointer' : ''
                             }`}
                         >
                             {product.name}
@@ -134,8 +144,8 @@ export default function ProductCard({ product }: ProductCardProps) {
                     <div className="pt-2 border-t border-gray-100/80">
                         {/* Actions */}
                         <div className="flex items-center gap-2.5">
-                            {/* Quantity Selector (only if not customized directly via modal) */}
-                            {!isPersonalizable && !isGorroProduct && (
+                            {/* Quantity Selector (shown for Stock gorros and non-customized items) */}
+                            {(!isPersonalizable && !usesGorroForm) && (
                                 <div className="flex items-center border border-[#FFC99C]/60 rounded-full bg-[#FFF9F5] p-0.5">
                                     <button
                                         onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
@@ -164,14 +174,20 @@ export default function ProductCard({ product }: ProductCardProps) {
                                         : 'bg-[#D86A33] hover:bg-[#5F2142] shadow-[#D86A33]/20'
                                 }`}
                             >
-                                {isGorroProduct ? (
+                                {usesGorroForm ? (
                                     <>
                                         {isPersonalizable ? (
                                             <Sparkles size={14} className="text-[#FFC99C]" />
                                         ) : (
                                             <Sliders size={14} />
                                         )}
-                                        <span>{isPersonalizable ? 'Personalizar Gorro' : 'Elegir Opciones'}</span>
+                                        <span>
+                                            {subcatId === 74
+                                                ? 'Diseñar mi Idea'
+                                                : isPersonalizable
+                                                    ? 'Personalizar Gorro'
+                                                    : 'Elegir Opciones'}
+                                        </span>
                                     </>
                                 ) : isPersonalizable ? (
                                     <>
@@ -181,7 +197,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                                 ) : (
                                     <>
                                         <ShoppingCart size={15} />
-                                        <span>Añadir</span>
+                                        <span>Añadir al Carrito</span>
                                     </>
                                 )}
                             </button>
@@ -190,8 +206,8 @@ export default function ProductCard({ product }: ProductCardProps) {
                 </div>
             </div>
 
-            {/* Gorro Quirúrgico Dynamic Selector Modal */}
-            {isGorroProduct && (
+            {/* Gorro Quirúrgico Dynamic Selector Modal (only for non-Stock gorros) */}
+            {usesGorroForm && (
                 <GorroConfigModal
                     product={product}
                     isOpen={isGorroModalOpen}

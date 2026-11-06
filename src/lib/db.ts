@@ -57,6 +57,44 @@ export const GORROS_ADICIONALES_OPTIONS = [
     { id: 'ruedo', label: 'Ruedo', price: 0.50, desc: 'Acabado reforzado en el borde' }
 ] as const;
 
+export const GORROS_DISENA_TU_IDEA_MODELS = [
+    {
+        id: 'Personalizado Clásico',
+        label: 'Personalizado Clásico',
+        price: 12.00,
+        allowsGenderAndStyle: true,
+        desc: 'Corte clásico personalizable para Dama o Caballero'
+    },
+    {
+        id: 'Reversible',
+        label: 'Especial Reversible',
+        price: 11.00,
+        allowsGenderAndStyle: true,
+        desc: 'Doble faz combinable (Dama o Caballero)'
+    },
+    {
+        id: 'Cintillo',
+        label: 'Especial Cintillo',
+        price: 10.50,
+        allowsGenderAndStyle: false,
+        desc: 'Exclusivo Dama • Con cintillo frontal anatómico'
+    },
+    {
+        id: 'Ponytail',
+        label: 'Especial Ponytail',
+        price: 11.50,
+        allowsGenderAndStyle: false,
+        desc: 'Exclusivo Dama • Con bolsa posterior para cabello largo'
+    },
+    {
+        id: 'Coquette',
+        label: 'Especial Coquette',
+        price: 12.00,
+        allowsGenderAndStyle: false,
+        desc: 'Exclusivo Dama • Edición Coquette con lazo satinado'
+    }
+] as const;
+
 export function normalizeCategorySlug(slug: string): string {
     if (slug === 'gorros-quirurgicos') return 'gorros';
     return slug;
@@ -72,7 +110,8 @@ export const CATEGORIES: Record<string, CategoryInfo> = {
             { id: 70, name: 'Stock', subcategories: [] },
             { id: 73, name: 'Básicos', subcategories: [] },
             { id: 71, name: 'Personalizados', subcategories: [] },
-            { id: 72, name: 'Especiales', subcategories: ['Reversible', 'Cintillo', 'Ponytail', 'Coquette'] }
+            { id: 72, name: 'Especiales', subcategories: ['Reversible', 'Cintillo', 'Ponytail', 'Coquette'] },
+            { id: 74, name: 'Diseña tu idea', subcategories: [] }
         ]
     },
     'lanyards': {
@@ -552,6 +591,15 @@ let MOCK_PRODUCTS: Product[] = [
         categoria_slug: 'gorros',
         subcategoria_id: 72,
         subcategoria_especial: 'Coquette'
+    },
+    {
+        id: '112',
+        name: 'Diseña tu Idea • Gorro Quirúrgico a tu Medida',
+        description: 'Elige entre modelo personalizado clásico o modelos especiales (Reversible, Cintillo, Ponytail, Coquette) con precio adaptado, adicionales, nombre, texto libre y hasta 5 fotos de referencia.',
+        price: 12,
+        image_url: '/cat_gorros.png',
+        categoria_slug: 'gorros',
+        subcategoria_id: 74
     },
 
     // ==========================================
@@ -1136,6 +1184,7 @@ export interface OrderItem {
     color_preferencia?: string;
     detalles_personalizados?: string;
     texto_personalizado?: string;
+    imagenes_personalizadas?: string[];
     // Taller / Production specific
     estado_taller?: string;
     notas_taller?: string;
@@ -1478,6 +1527,15 @@ function loadProductsFromDisk(force = false) {
                         categoria_slug: 'gorros',
                         subcategoria_id: 72,
                         subcategoria_especial: 'Coquette'
+                    },
+                    {
+                        id: '112',
+                        name: 'Diseña tu Idea • Gorro Quirúrgico a tu Medida',
+                        description: 'Elige entre modelo personalizado clásico o modelos especiales (Reversible, Cintillo, Ponytail, Coquette) con precio adaptado, adicionales, nombre, texto libre y hasta 5 fotos de referencia.',
+                        price: 12,
+                        image_url: '/cat_gorros.png',
+                        categoria_slug: 'gorros',
+                        subcategoria_id: 74
                     }
                 ];
 

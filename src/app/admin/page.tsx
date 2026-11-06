@@ -2950,7 +2950,7 @@ export default function AdminPage() {
                                                                             )}
 
                                                                             {/* PERSONALIZATION CALLOUT BOX (CRITICAL FOR WORKSHOP) */}
-                                                                            {(hasCustom || item.texto_personalizado) && (
+                                                                            {(hasCustom || item.texto_personalizado || (item.imagenes_personalizadas && item.imagenes_personalizadas.length > 0)) && (
                                                                                 <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1 text-xs">
                                                                                     {item.nombre_personalizado && (
                                                                                         <div className="flex items-baseline gap-1.5">
@@ -2984,6 +2984,31 @@ export default function AdminPage() {
                                                                                         <div className="flex items-baseline gap-1.5 text-[11px]">
                                                                                             <span className="font-bold text-gray-500 shrink-0">Observaciones:</span>
                                                                                             <span className="font-medium text-gray-700 dark:text-gray-300">{item.detalles_personalizados}</span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {item.imagenes_personalizadas && item.imagenes_personalizadas.length > 0 && (
+                                                                                        <div className="pt-1.5 border-t border-amber-500/20">
+                                                                                            <span className="block text-[10px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider mb-1.5">
+                                                                                                📷 Imágenes de Referencia del Cliente ({item.imagenes_personalizadas.length}):
+                                                                                            </span>
+                                                                                            <div className="flex flex-wrap gap-2">
+                                                                                                {item.imagenes_personalizadas.map((imgSrc, refIdx) => (
+                                                                                                    <a
+                                                                                                        key={refIdx}
+                                                                                                        href={imgSrc}
+                                                                                                        target="_blank"
+                                                                                                        rel="noopener noreferrer"
+                                                                                                        title="Clic para abrir imagen de referencia en tamaño completo"
+                                                                                                        className="block w-14 h-14 rounded-lg overflow-hidden border-2 border-amber-400 dark:border-amber-600 shadow-xs hover:scale-105 transition-transform bg-white"
+                                                                                                    >
+                                                                                                        <img
+                                                                                                            src={imgSrc}
+                                                                                                            alt={`Referencia ${refIdx + 1}`}
+                                                                                                            className="w-full h-full object-cover"
+                                                                                                        />
+                                                                                                    </a>
+                                                                                                ))}
+                                                                                            </div>
                                                                                         </div>
                                                                                     )}
                                                                                 </div>
@@ -6882,13 +6907,44 @@ export default function AdminPage() {
                                                 <span>{it.quantity}x {it.name}</span>
                                                 <span className="text-[#D86A33]">${(it.price * it.quantity).toFixed(2)}</span>
                                             </div>
-                                            {it.is_personalizado && (
-                                                <div className="mt-1 p-2 rounded-xl bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 text-[11px] text-gray-600 dark:text-gray-300 space-y-0.5">
-                                                    <div className="text-[#D86A33] font-bold">✦ Personalizado:</div>
-                                                    {it.nombre_personalizado && <div>• Nombre bordado: {it.nombre_personalizado}</div>}
+                                            {(it.is_personalizado || it.genero || it.modelo || it.subcategoria_especial || (it.adicionales && it.adicionales.length > 0) || (it.imagenes_personalizadas && it.imagenes_personalizadas.length > 0)) && (
+                                                <div className="mt-1 p-2 rounded-xl bg-white dark:bg-black/20 border border-gray-200 dark:border-white/10 text-[11px] text-gray-600 dark:text-gray-300 space-y-1">
+                                                    <div className="text-[#D86A33] font-bold">✦ Detalles y Personalización:</div>
+                                                    {it.genero && <div>• Género: {it.genero}</div>}
+                                                    {it.modelo && <div>• Estilo / Ajuste: {it.modelo}</div>}
+                                                    {it.subcategoria_especial && <div>• Modelo Especial: {it.subcategoria_especial}</div>}
+                                                    {it.adicionales && it.adicionales.length > 0 && (
+                                                        <div>• Adicionales (+${(it.adicionales.length * 0.5).toFixed(2)}): {it.adicionales.join(', ')}</div>
+                                                    )}
+                                                    {it.nombre_personalizado && <div>• Nombre: {it.nombre_personalizado}</div>}
+                                                    {it.texto_personalizado && <div>• Texto libre: {it.texto_personalizado}</div>}
                                                     {it.especialidad_personalizada && <div>• Especialidad: {it.especialidad_personalizada}</div>}
                                                     {it.color_preferencia && <div>• Color: {it.color_preferencia}</div>}
-                                                    {it.detalles_personalizados && <div>• Notas: {it.detalles_personalizados}</div>}
+                                                    {it.detalles_personalizados && !it.texto_personalizado && <div>• Notas: {it.detalles_personalizados}</div>}
+                                                    {it.imagenes_personalizadas && it.imagenes_personalizadas.length > 0 && (
+                                                        <div className="pt-1">
+                                                            <div className="font-bold text-gray-800 dark:text-white mb-1">
+                                                                📷 Imágenes de referencia ({it.imagenes_personalizadas.length}):
+                                                            </div>
+                                                            <div className="flex flex-wrap gap-1.5">
+                                                                {it.imagenes_personalizadas.map((imgSrc, refIdx) => (
+                                                                    <a
+                                                                        key={refIdx}
+                                                                        href={imgSrc}
+                                                                        target="_blank"
+                                                                        rel="noopener noreferrer"
+                                                                        className="block w-12 h-12 rounded-lg overflow-hidden border border-amber-400"
+                                                                    >
+                                                                        <img
+                                                                            src={imgSrc}
+                                                                            alt={`Referencia ${refIdx + 1}`}
+                                                                            className="w-full h-full object-cover"
+                                                                        />
+                                                                    </a>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                             )}
                                         </div>

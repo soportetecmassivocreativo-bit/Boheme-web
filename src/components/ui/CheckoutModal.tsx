@@ -266,6 +266,9 @@ export default function CheckoutModal() {
                 if (item.detalles_personalizados && !item.texto_personalizado && !item.genero) {
                     msg += `   ▫️ *Especificaciones:* ${item.detalles_personalizados}\n`;
                 }
+                if (item.imagenes_personalizadas && item.imagenes_personalizadas.length > 0) {
+                    msg += `   📷 *Imágenes de referencia adjuntas:* ${item.imagenes_personalizadas.length} foto(s)\n`;
+                }
             }
 
             if (item.type_color && !item.genero) msg += `   ▫️ *Color:* ${item.type_color}\n`;
@@ -358,7 +361,8 @@ export default function CheckoutModal() {
                         texto_personalizado: it.texto_personalizado,
                         especialidad_personalizada: it.especialidad_personalizada,
                         color_preferencia: it.color_preferencia,
-                        detalles_personalizados: it.detalles_personalizados
+                        detalles_personalizados: it.detalles_personalizados,
+                        imagenes_personalizadas: it.imagenes_personalizadas
                     }))
                 })
             });

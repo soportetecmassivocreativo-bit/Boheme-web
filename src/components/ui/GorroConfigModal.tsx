@@ -1,12 +1,11 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
     Product,
-    CATEGORIES,
     getSubcategoryName,
     GORROS_ADICIONALES_OPTIONS,
-    GORROS_ESPECIALES_SUBCATEGORIES,
+    GORROS_DISENA_TU_IDEA_MODELS,
     normalizeCategorySlug
 } from '@/lib/db';
 import { useCartStore } from '@/lib/store';
@@ -22,7 +21,9 @@ import {
     ShoppingBag,
     Zap,
     Scissors,
-    Heart
+    Image as ImageIcon,
+    UploadCloud,
+    RefreshCw
 } from 'lucide-react';
 
 interface GorroConfigModalProps {
@@ -43,6 +44,44 @@ const CABALLERO_ESTILOS = [
     { id: 'Corto', label: 'Corto', desc: 'Corte clásico quirúrgico despejado' }
 ] as const;
 
+const FEMALE_ONLY_ESPECIALES = ['cintillo', 'ponytail', 'coquette'];
+
+function compressImageFileToDataUrl(file: File, maxDim = 900, quality = 0.78): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = (ev) => {
+            const dataUrl = ev.target?.result as string;
+            const img = new window.Image();
+            img.onload = () => {
+                let { width, height } = img;
+                if (width > maxDim || height > maxDim) {
+                    if (width > height) {
+                        height = Math.round((height * maxDim) / width);
+                        width = maxDim;
+                    } else {
+                        width = Math.round((width * maxDim) / height);
+                        height = maxDim;
+                    }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                const ctx = canvas.getContext('2d');
+                if (!ctx) {
+                    resolve(dataUrl);
+                    return;
+                }
+                ctx.drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = () => resolve(dataUrl);
+            img.src = dataUrl;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
 export default function GorroConfigModal({
     product,
     isOpen,
@@ -58,12 +97,36 @@ export default function GorroConfigModal({
     const [isZoomed, setIsZoomed] = useState(false);
 
     // Determine category inside Gorros Quirúrgicos:
-    // 70 = Stock, 73 = Básicos, 71 = Personalizados, 72 = Especiales
+    // 70 = Stock (no modal), 73 = Básicos, 71 = Personalizados, 72 = Especiales, 74 = Diseña tu idea
     const subcatId = Number(product.subcategoria_id) || 70;
-    const isPersonalizadoCategory =
-        subcatId === 71 ||
-        product.name.toLowerCase().includes('personaliz');
+    const isDisenaTuIdea = subcatId === 74;
+    const isPersonalizadoCategory = subcatId === 71 || product.name.toLowerCase().includes('personaliz');
     const isEspecialCategory = subcatId === 72;
+
+    // Model selector for "Diseña tu idea" (adapts price and whether Gender/Style is shown)
+    const [disenaModelId, setDisenaModelId] = useState<string>(GORROS_DISENA_TU_IDEA_MODELS[0].id);
+
+    const activeDisenaModel = GORROS_DISENA_TU_IDEA_MODELS.find(m => m.id === disenaModelId) || GORROS_DISENA_TU_IDEA_MODELS[0];
+
+    // Check if this specific Gorro Especial is exclusively for women (Cintillo, Ponytail, Coquette)
+    const effectiveEspecialSubcat = isDisenaTuIdea
+        ? (activeDisenaModel.id !== 'Personalizado Clásico' ? activeDisenaModel.id : undefined)
+        : product.subcategoria_especial;
+
+    const isExclusivoDamaEspecial = Boolean(
+        (isEspecialCategory &&
+            effectiveEspecialSubcat &&
+            FEMALE_ONLY_ESPECIALES.includes(effectiveEspecialSubcat.toLowerCase())) ||
+        (isEspecialCategory &&
+            FEMALE_ONLY_ESPECIALES.some(k => product.name.toLowerCase().includes(k))) ||
+        (isDisenaTuIdea && !activeDisenaModel.allowsGenderAndStyle)
+    );
+
+    // Has personalization fields (Nombre, Texto libre & up to 5 reference images):
+    // True for Personalizados (71), Especiales (72: Cintillo, Ponytail, Coquette, Reversible), and Diseña tu idea (74)
+    const hasPersonalizationCapability = Boolean(
+        isPersonalizadoCategory || isEspecialCategory || isDisenaTuIdea
+    );
 
     const categoryName = getSubcategoryName(normalizeCategorySlug(product.categoria_slug), subcatId);
 
@@ -77,23 +140,23 @@ export default function GorroConfigModal({
         product.genero === 'Caballero' ? 'Corto' : 'Lazo'
     );
 
-    // Subcategoría especial (only if Especiales: Reversible, Cintillo, Ponytail, Coquette)
-    const [subcategoriaEspecial, setSubcategoriaEspecial] = useState<string>(
-        product.subcategoria_especial || 'Reversible'
-    );
-
     // 3. Adicionales ($0.50 c/u)
     const [selectedAdicionales, setSelectedAdicionales] = useState<string[]>([]);
 
-    // 4. Exclusivo para categoría Personalizados: "Nombre" y "Texto libre"
+    // 4. Nombre y Texto libre
     const [nombrePersonalizado, setNombrePersonalizado] = useState('');
     const [textoLibre, setTextoLibre] = useState('');
 
-    // 5. Cantidad
+    // 5. Hasta 5 imágenes de referencia del cliente
+    const [referenceImages, setReferenceImages] = useState<string[]>([]);
+    const [isUploadingRefs, setIsUploadingRefs] = useState(false);
+    const [isDraggingRefs, setIsDraggingRefs] = useState(false);
+    const refInputRef = useRef<HTMLInputElement>(null);
+
+    // 6. Cantidad
     const [quantity, setQuantity] = useState(initialQuantity);
     const [error, setError] = useState<string | null>(null);
 
-    // Sync default style when switching gender
     const handleSelectGenero = (newGenero: 'Dama' | 'Caballero') => {
         setGenero(newGenero);
         if (newGenero === 'Dama') {
@@ -112,11 +175,8 @@ export default function GorroConfigModal({
             setQuantity(initialQuantity);
             setError(null);
             setIsZoomed(false);
-            if (product.subcategoria_especial) {
-                setSubcategoriaEspecial(product.subcategoria_especial);
-            }
         }
-    }, [isOpen, initialQuantity, product.subcategoria_especial]);
+    }, [isOpen, initialQuantity]);
 
     if (!isOpen) return null;
 
@@ -126,9 +186,66 @@ export default function GorroConfigModal({
         );
     };
 
+    const handleReferenceFilesSelected = async (fileList: FileList | File[]) => {
+        const rawFiles = Array.from(fileList).filter(f => f.type.startsWith('image/'));
+        if (rawFiles.length === 0) return;
+
+        const remainingSlots = 5 - referenceImages.length;
+        if (remainingSlots <= 0) {
+            setError('Puedes adjuntar un máximo de 5 imágenes de referencia.');
+            return;
+        }
+
+        const filesToProcess = rawFiles.slice(0, remainingSlots);
+        setIsUploadingRefs(true);
+        setError(null);
+
+        try {
+            const formData = new FormData();
+            filesToProcess.forEach(f => formData.append('files', f));
+
+            const res = await fetch('/api/upload-reference', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                if (data.urls && Array.isArray(data.urls) && data.urls.length > 0) {
+                    setReferenceImages(prev => [...prev, ...data.urls].slice(0, 5));
+                    setIsUploadingRefs(false);
+                    return;
+                }
+            }
+            throw new Error('Fallback to local compression');
+        } catch {
+            try {
+                const compressedList = await Promise.all(
+                    filesToProcess.map(f => compressImageFileToDataUrl(f))
+                );
+                setReferenceImages(prev => [...prev, ...compressedList].slice(0, 5));
+            } catch {
+                setError('No se pudieron procesar las imágenes seleccionadas.');
+            }
+        } finally {
+            setIsUploadingRefs(false);
+        }
+    };
+
+    const removeReferenceImage = (idxToRemove: number) => {
+        setReferenceImages(prev => prev.filter((_, idx) => idx !== idxToRemove));
+    };
+
+    // Base price adapts dynamically if in "Diseña tu idea"
+    const effectiveBasePrice = isDisenaTuIdea ? activeDisenaModel.price : product.price;
     const adicionalesUnitCost = selectedAdicionales.length * 0.5;
-    const unitPrice = Number((product.price + adicionalesUnitCost).toFixed(2));
+    const unitPrice = Number((effectiveBasePrice + adicionalesUnitCost).toFixed(2));
     const totalPrice = Number((unitPrice * quantity).toFixed(2));
+
+    const effectiveGenero = isExclusivoDamaEspecial ? 'Dama' : genero;
+    const effectiveEstilo = isExclusivoDamaEspecial
+        ? `Modelo ${effectiveEspecialSubcat || 'Especial'}`
+        : estilo;
 
     const buildConfiguredCartItem = () => {
         const adicionalesSummary =
@@ -137,60 +254,63 @@ export default function GorroConfigModal({
                 : undefined;
 
         const configSummaryParts = [
-            `Género: ${genero}`,
-            `Estilo: ${estilo}`,
-            isEspecialCategory ? `Especial: ${subcategoriaEspecial}` : null,
+            isDisenaTuIdea ? `Diseño: ${activeDisenaModel.label}` : null,
+            isExclusivoDamaEspecial
+                ? `Exclusivo Dama (${effectiveEspecialSubcat || product.name})`
+                : `Género: ${effectiveGenero} • Estilo: ${effectiveEstilo}`,
+            !isExclusivoDamaEspecial && effectiveEspecialSubcat ? `Especial: ${effectiveEspecialSubcat}` : null,
             adicionalesSummary || null
         ].filter(Boolean);
 
         const detallesFinales = [
             configSummaryParts.join(' • '),
-            isPersonalizadoCategory && textoLibre.trim() ? `Texto libre: ${textoLibre.trim()}` : null
+            hasPersonalizationCapability && textoLibre.trim() ? `Texto libre: ${textoLibre.trim()}` : null
         ]
             .filter(Boolean)
             .join(' | ');
 
+        const itemDisplayName = isDisenaTuIdea
+            ? `Diseña tu Idea (${activeDisenaModel.label})`
+            : product.name;
+
         return {
             cart_item_id: `${product.id}-gorro-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             id: product.id,
-            name: product.name,
+            name: itemDisplayName,
             price: unitPrice,
-            precio_base: product.price,
+            precio_base: effectiveBasePrice,
             quantity,
             image_url: product.image_url,
             categoria_slug: product.categoria_slug,
             subcategoria_id: subcatId,
-            subcategoria_especial: isEspecialCategory ? subcategoriaEspecial : undefined,
-            genero,
-            modelo: estilo,
+            subcategoria_especial: effectiveEspecialSubcat,
+            genero: effectiveGenero,
+            modelo: effectiveEstilo,
             adicionales: selectedAdicionales,
             recargo_adicionales: adicionalesUnitCost,
-            type_color: `${genero} • ${estilo}${isEspecialCategory ? ` • ${subcategoriaEspecial}` : ''}`,
-            is_personalizado: isPersonalizadoCategory,
-            nombre_personalizado: isPersonalizadoCategory && nombrePersonalizado.trim() ? nombrePersonalizado.trim() : undefined,
-            texto_personalizado: isPersonalizadoCategory && textoLibre.trim() ? textoLibre.trim() : undefined,
-            detalles_personalizados: detallesFinales || undefined
+            type_color: isExclusivoDamaEspecial
+                ? `👩 Exclusivo Dama • ${effectiveEspecialSubcat || 'Especial'}`
+                : `${effectiveGenero} • ${effectiveEstilo}${effectiveEspecialSubcat ? ` • ${effectiveEspecialSubcat}` : ''}`,
+            is_personalizado: Boolean(
+                hasPersonalizationCapability &&
+                (isDisenaTuIdea || isPersonalizadoCategory || nombrePersonalizado.trim() || textoLibre.trim() || referenceImages.length > 0)
+            ),
+            nombre_personalizado: hasPersonalizationCapability && nombrePersonalizado.trim() ? nombrePersonalizado.trim() : undefined,
+            texto_personalizado: hasPersonalizationCapability && textoLibre.trim() ? textoLibre.trim() : undefined,
+            detalles_personalizados: detallesFinales || undefined,
+            imagenes_personalizadas: referenceImages.length > 0 ? referenceImages : undefined
         };
     };
 
-    const validateForm = (): boolean => {
-        setError(null);
-        if (isPersonalizadoCategory && !nombrePersonalizado.trim() && !textoLibre.trim()) {
-            setError('Por favor ingresa el Nombre o el Texto libre que deseas agregar a tu gorro personalizado.');
-            return false;
-        }
-        return true;
-    };
-
     const handleAddToCart = () => {
-        if (!validateForm()) return;
+        setError(null);
         addItem(buildConfiguredCartItem());
         onClose();
         toggleCart();
     };
 
     const handleBuyNow = () => {
-        if (!validateForm()) return;
+        setError(null);
         addItem(buildConfiguredCartItem());
         onClose();
         setCheckoutOpen(true);
@@ -220,8 +340,8 @@ export default function GorroConfigModal({
                 {/* ============================================================= */}
                 {/* LEFT COLUMN: PRODUCT GALLERY & LIVE VISUAL SUMMARY            */}
                 {/* ============================================================= */}
-                <div className="lg:w-[46%] bg-[#FFF9F5] p-5 sm:p-7 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#FFC99C]/40 relative">
-                    {/* Top Zoom Button (like reference image) */}
+                <div className="lg:w-[45%] bg-[#FFF9F5] p-5 sm:p-7 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#FFC99C]/40 relative">
+                    {/* Top Zoom Button */}
                     <div className="flex items-center justify-between mb-3">
                         <button
                             type="button"
@@ -233,8 +353,8 @@ export default function GorroConfigModal({
                         </button>
 
                         <span className="px-3 py-1 rounded-full bg-white border border-[#FFC99C] text-[11px] font-black uppercase tracking-wider text-[#5F2142] shadow-2xs">
-                            ✦ Categoría: {categoryName}
-                            {isEspecialCategory && subcategoriaEspecial ? ` • ${subcategoriaEspecial}` : ''}
+                            ✦ {categoryName}
+                            {effectiveEspecialSubcat ? ` • ${effectiveEspecialSubcat}` : ''}
                         </span>
                     </div>
 
@@ -254,14 +374,29 @@ export default function GorroConfigModal({
                         {/* Live Floating Configuration Summary Overlay */}
                         <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-md border border-[#FFC99C]/80 rounded-2xl p-3 shadow-lg space-y-1.5 pointer-events-none">
                             <div className="flex items-center justify-between gap-2 text-xs">
-                                <span className="font-black text-[#5F2142] flex items-center gap-1.5">
-                                    <span>{genero === 'Dama' ? '👩 Dama' : '👨 Caballero'}</span>
-                                    <span className="text-[#D86A33]">•</span>
-                                    <span className="text-[#D86A33]">{estilo}</span>
-                                </span>
+                                {isExclusivoDamaEspecial ? (
+                                    <span className="font-black text-[#5F2142] flex items-center gap-1.5">
+                                        <span>👩 Exclusivo Dama</span>
+                                        <span className="text-[#D86A33]">•</span>
+                                        <span className="text-[#D86A33]">{effectiveEspecialSubcat || 'Especial'}</span>
+                                    </span>
+                                ) : (
+                                    <span className="font-black text-[#5F2142] flex items-center gap-1.5">
+                                        <span>{genero === 'Dama' ? '👩 Dama' : '👨 Caballero'}</span>
+                                        <span className="text-[#D86A33]">•</span>
+                                        <span className="text-[#D86A33]">{estilo}</span>
+                                        {effectiveEspecialSubcat && (
+                                            <>
+                                                <span className="text-[#D86A33]">•</span>
+                                                <span className="text-[#5F2142]">{effectiveEspecialSubcat}</span>
+                                            </>
+                                        )}
+                                    </span>
+                                )}
+
                                 {selectedAdicionales.length > 0 && (
                                     <span className="px-2 py-0.5 rounded-full bg-[#D86A33]/15 text-[#D86A33] font-black text-[10px]">
-                                        +{selectedAdicionales.length} {selectedAdicionales.length === 1 ? 'adicional' : 'adicionales'} (+${adicionalesUnitCost.toFixed(2)})
+                                        +{selectedAdicionales.length} (+${adicionalesUnitCost.toFixed(2)})
                                     </span>
                                 )}
                             </div>
@@ -279,7 +414,7 @@ export default function GorroConfigModal({
                                 </div>
                             )}
 
-                            {isPersonalizadoCategory && (nombrePersonalizado.trim() || textoLibre.trim()) && (
+                            {hasPersonalizationCapability && (nombrePersonalizado.trim() || textoLibre.trim() || referenceImages.length > 0) && (
                                 <div className="pt-1.5 border-t border-[#FFC99C]/40 text-[11px] space-y-0.5">
                                     {nombrePersonalizado.trim() && (
                                         <div className="truncate font-black text-[#5F2142]">
@@ -291,12 +426,17 @@ export default function GorroConfigModal({
                                             📝 {textoLibre}
                                         </div>
                                     )}
+                                    {referenceImages.length > 0 && (
+                                        <div className="text-[10px] font-black text-emerald-700">
+                                            📷 {referenceImages.length} {referenceImages.length === 1 ? 'imagen de referencia adjunta' : 'imágenes de referencia adjuntas'}
+                                        </div>
+                                    )}
                                 </div>
                             )}
                         </div>
                     </div>
 
-                    {/* Thumbnails Strip (like reference image bottom left) */}
+                    {/* Thumbnails Strip */}
                     <div className="mt-4 flex items-center gap-2.5 overflow-x-auto pb-1">
                         {gallery.map((imgUrl, idx) => (
                             <button
@@ -318,14 +458,14 @@ export default function GorroConfigModal({
                 {/* ============================================================= */}
                 {/* RIGHT COLUMN: DYNAMIC SELECTOR FORM                           */}
                 {/* ============================================================= */}
-                <div className="lg:w-[54%] p-5 sm:p-8 overflow-y-auto space-y-5">
+                <div className="lg:w-[55%] p-5 sm:p-8 overflow-y-auto space-y-5">
                     {/* Brand & Product Header */}
                     <div>
                         <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">
                             BOHEME • Gorros Quirúrgicos
                         </p>
                         <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-tight">
-                            {product.name}
+                            {isDisenaTuIdea ? `Diseña tu Idea • ${activeDisenaModel.label}` : product.name}
                         </h2>
 
                         {/* Price & Category Badge */}
@@ -336,14 +476,14 @@ export default function GorroConfigModal({
                             <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#D86A33] text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
                                 ★ {categoryName}
                             </span>
-                            {isEspecialCategory && product.subcategoria_especial && (
+                            {effectiveEspecialSubcat && (
                                 <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#5F2142] text-[#FFC99C] text-[10px] font-black uppercase tracking-wider shadow-xs">
-                                    {product.subcategoria_especial}
+                                    {effectiveEspecialSubcat}
                                 </span>
                             )}
                             {adicionalesUnitCost > 0 && (
                                 <span className="text-xs font-bold text-[#D86A33] bg-[#FFF4EB] border border-[#FFC99C] px-2.5 py-1 rounded-xl">
-                                    Base ${product.price.toFixed(2)} + ${adicionalesUnitCost.toFixed(2)} adicionales
+                                    Base ${effectiveBasePrice.toFixed(2)} + ${adicionalesUnitCost.toFixed(2)} adicionales
                                 </span>
                             )}
                         </div>
@@ -366,81 +506,155 @@ export default function GorroConfigModal({
                         </div>
                     )}
 
-                    {/* 1. SELECTOR DE GÉNERO (Dama y Caballero) */}
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <label className="text-xs font-black uppercase tracking-wider text-gray-700">
-                                1. Género
-                            </label>
-                            <span className="text-[11px] font-bold text-[#5F2142]">
-                                {genero === 'Dama' ? '👩 Dama' : '👨 Caballero'}
+                    {/* ========================================================= */}
+                    {/* SELECTOR DE MODELO EN "DISEÑA TU IDEA" (PRECIO ADAPTADO)  */}
+                    {/* ========================================================= */}
+                    {isDisenaTuIdea && (
+                        <div className="p-4 rounded-3xl bg-[#FFF9F5] border-2 border-[#FFC99C] space-y-3">
+                            <div className="flex items-center justify-between">
+                                <label className="text-xs font-black uppercase tracking-wider text-[#5F2142]">
+                                    1. Elige el Modelo Base a Diseñar (Precio se adapta)
+                                </label>
+                                <span className="text-xs font-black text-[#D86A33]">
+                                    Base: ${activeDisenaModel.price.toFixed(2)} USD
+                                </span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {GORROS_DISENA_TU_IDEA_MODELS.map(mod => {
+                                    const selected = disenaModelId === mod.id;
+                                    return (
+                                        <button
+                                            key={mod.id}
+                                            type="button"
+                                            onClick={() => setDisenaModelId(mod.id)}
+                                            className={`p-3 rounded-2xl border text-left transition-all flex items-center justify-between gap-2 ${
+                                                selected
+                                                    ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-md scale-[1.01]'
+                                                    : 'bg-white text-gray-800 border-gray-200 hover:border-[#D86A33]'
+                                            }`}
+                                        >
+                                            <div>
+                                                <div className="text-xs font-black leading-tight">
+                                                    {mod.label}
+                                                </div>
+                                                <div className={`text-[10px] mt-0.5 ${selected ? 'text-[#FFC99C]' : 'text-gray-500'}`}>
+                                                    {mod.desc}
+                                                </div>
+                                            </div>
+                                            <span className={`px-2.5 py-1 rounded-full text-xs font-black shrink-0 ${
+                                                selected ? 'bg-[#D86A33] text-white' : 'bg-[#FFF4EB] text-[#D86A33]'
+                                            }`}>
+                                                ${mod.price.toFixed(2)}
+                                            </span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ========================================================= */}
+                    {/* GÉNERO Y ESTILO (Se oculta en Cintillo, Ponytail y Coquette) */}
+                    {/* ========================================================= */}
+                    {isExclusivoDamaEspecial ? (
+                        <div className="p-3.5 rounded-2xl bg-[#FFF9F5] border border-[#FFC99C] flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2">
+                                <span className="text-lg">👩</span>
+                                <div>
+                                    <div className="text-xs font-black text-[#5F2142] uppercase tracking-wider">
+                                        Modelo Exclusivo Dama • {effectiveEspecialSubcat || 'Especial'}
+                                    </div>
+                                    <div className="text-[11px] text-gray-500 font-medium">
+                                        Confección femenina con el corte propio del modelo {effectiveEspecialSubcat || 'Especial'}.
+                                    </div>
+                                </div>
+                            </div>
+                            <span className="px-2.5 py-1 rounded-full bg-[#5F2142] text-[#FFC99C] text-[10px] font-black uppercase shrink-0">
+                                Dama
                             </span>
                         </div>
+                    ) : (
+                        <>
+                            {/* 1. SELECTOR DE GÉNERO (Dama y Caballero) */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-black uppercase tracking-wider text-gray-700">
+                                        Género
+                                    </label>
+                                    <span className="text-[11px] font-bold text-[#5F2142]">
+                                        {genero === 'Dama' ? '👩 Dama' : '👨 Caballero'}
+                                    </span>
+                                </div>
 
-                        <div className="grid grid-cols-2 gap-3">
-                            {(['Dama', 'Caballero'] as const).map(gen => {
-                                const isSelected = genero === gen;
-                                return (
-                                    <button
-                                        key={gen}
-                                        type="button"
-                                        onClick={() => handleSelectGenero(gen)}
-                                        className={`py-3 px-4 rounded-full text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 border-2 ${
-                                            isSelected
-                                                ? 'bg-neutral-900 text-white border-neutral-900 shadow-md scale-[1.01]'
-                                                : 'bg-white text-gray-700 border-gray-300 hover:border-neutral-900'
-                                        }`}
-                                    >
-                                        <span>{gen === 'Dama' ? '👩' : '👨'}</span>
-                                        <span>{gen}</span>
-                                        {isSelected && <Check size={14} className="text-[#FFC99C]" />}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                    </div>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {(['Dama', 'Caballero'] as const).map(gen => {
+                                        const isSelected = genero === gen;
+                                        return (
+                                            <button
+                                                key={gen}
+                                                type="button"
+                                                onClick={() => handleSelectGenero(gen)}
+                                                className={`py-3 px-4 rounded-full text-xs sm:text-sm font-black transition-all flex items-center justify-center gap-2 border-2 ${
+                                                    isSelected
+                                                        ? 'bg-neutral-900 text-white border-neutral-900 shadow-md scale-[1.01]'
+                                                        : 'bg-white text-gray-700 border-gray-300 hover:border-neutral-900'
+                                                }`}
+                                            >
+                                                <span>{gen === 'Dama' ? '👩' : '👨'}</span>
+                                                <span>{gen}</span>
+                                                {isSelected && <Check size={14} className="text-[#FFC99C]" />}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                            </div>
 
-                    {/* 2. SELECTOR DINÁMICO DE ESTILO SEGÚN EL GÉNERO */}
-                    <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                            <label className="text-xs font-black uppercase tracking-wider text-gray-700">
-                                2. Estilo para {genero}
-                            </label>
-                            <span className="text-[11px] font-bold text-[#D86A33]">
-                                {genero === 'Dama' ? 'Opciones: Lazo, Elástica o Tiras Abiertas' : 'Opciones: Largo o Corto'}
-                            </span>
-                        </div>
+                            {/* 2. SELECTOR DINÁMICO DE ESTILO SEGÚN EL GÉNERO */}
+                            <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-black uppercase tracking-wider text-gray-700">
+                                        Estilo para {genero}
+                                    </label>
+                                    <span className="text-[11px] font-bold text-[#D86A33]">
+                                        {genero === 'Dama' ? 'Lazo, Elástica o Tiras Abiertas' : 'Largo o Corto'}
+                                    </span>
+                                </div>
 
-                        <div className="flex flex-wrap gap-2.5">
-                            {activeEstilos.map(opt => {
-                                const isSelected = estilo === opt.id;
-                                return (
-                                    <button
-                                        key={opt.id}
-                                        type="button"
-                                        onClick={() => setEstilo(opt.id)}
-                                        className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-black transition-all border ${
-                                            isSelected
-                                                ? 'bg-neutral-900 text-white border-neutral-900 shadow-md scale-105'
-                                                : 'bg-white text-gray-800 border-gray-300 hover:border-neutral-900'
-                                        }`}
-                                    >
-                                        {opt.label}
-                                    </button>
-                                );
-                            })}
-                        </div>
-                        <p className="text-[11px] text-gray-500 font-medium">
-                            {activeEstilos.find(e => e.id === estilo)?.desc}
-                        </p>
-                    </div>
+                                <div className="flex flex-wrap gap-2.5">
+                                    {activeEstilos.map(opt => {
+                                        const isSelected = estilo === opt.id;
+                                        return (
+                                            <button
+                                                key={opt.id}
+                                                type="button"
+                                                onClick={() => setEstilo(opt.id)}
+                                                className={`px-5 py-2.5 rounded-full text-xs sm:text-sm font-black transition-all border ${
+                                                    isSelected
+                                                        ? 'bg-neutral-900 text-white border-neutral-900 shadow-md scale-105'
+                                                        : 'bg-white text-gray-800 border-gray-300 hover:border-neutral-900'
+                                                }`}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        );
+                                    })}
+                                </div>
+                                <p className="text-[11px] text-gray-500 font-medium">
+                                    {activeEstilos.find(e => e.id === estilo)?.desc}
+                                </p>
+                            </div>
+                        </>
+                    )}
 
-                    {/* 3. ADICIONALES DESDE $0.50 POR ADICIONAL (Para todas las categorías) */}
+                    {/* ========================================================= */}
+                    {/* ADICIONALES DESDE $0.50 POR ADICIONAL                     */}
+                    {/* ========================================================= */}
                     <div className="space-y-2.5 pt-1">
                         <div className="flex items-center justify-between">
                             <label className="text-xs font-black uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
                                 <Scissors size={14} className="text-[#D86A33]" />
-                                <span>3. Adicionales ($0.50 USD c/u)</span>
+                                <span>Adicionales ($0.50 USD c/u)</span>
                             </label>
                             <span className="text-[11px] font-black text-[#D86A33]">
                                 {selectedAdicionales.length === 0
@@ -498,19 +712,22 @@ export default function GorroConfigModal({
                         </div>
                     </div>
 
-                    {/* 4. APARTADO EXCLUSIVO ÚNICAMENTE PARA LA CATEGORÍA DE PERSONALIZADOS */}
-                    {isPersonalizadoCategory && (
-                        <div className="p-4 rounded-3xl bg-gradient-to-br from-[#FFF9F5] to-[#FFF4EB] border-2 border-[#D86A33]/40 space-y-3.5 shadow-xs">
+                    {/* ========================================================= */}
+                    {/* NOMBRE, TEXTO LIBRE Y HASTA 5 IMÁGENES DE REFERENCIA      */}
+                    {/* (En Personalizados, Especiales y Diseña tu idea)          */}
+                    {/* ========================================================= */}
+                    {hasPersonalizationCapability && (
+                        <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-[#FFF9F5] to-[#FFF4EB] border-2 border-[#D86A33]/40 space-y-4 shadow-xs">
                             <div className="flex items-center gap-2">
                                 <span className="w-7 h-7 rounded-full bg-[#D86A33] text-white flex items-center justify-center shadow-xs">
                                     <Sparkles size={14} />
                                 </span>
                                 <div>
                                     <h4 className="text-xs sm:text-sm font-black text-[#5F2142] uppercase tracking-wider">
-                                        Datos de tu Personalizado
+                                        Personalización de tu Gorro
                                     </h4>
                                     <p className="text-[11px] text-gray-500 font-medium">
-                                        Exclusivo para gorros quirúrgicos personalizados
+                                        Indica el nombre, texto libre y adjunta hasta 5 imágenes de referencia
                                     </p>
                                 </div>
                             </div>
@@ -518,7 +735,7 @@ export default function GorroConfigModal({
                             {/* Campo Nombre */}
                             <div>
                                 <label className="block text-xs font-black text-[#5F2142] uppercase tracking-wider mb-1">
-                                    Nombre *
+                                    Nombre
                                 </label>
                                 <input
                                     type="text"
@@ -538,14 +755,109 @@ export default function GorroConfigModal({
                                     rows={3}
                                     value={textoLibre}
                                     onChange={(e) => setTextoLibre(e.target.value)}
-                                    placeholder="Escribe aquí cualquier frase, especialidad, colores, figuras o detalles que desees agregar a tu gorro personalizado..."
+                                    placeholder="Escribe aquí cualquier frase, especialidad, colores, figuras o detalles que desees agregar a tu gorro..."
                                     className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#FFC99C] focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-xs sm:text-sm font-medium text-gray-900"
                                 />
+                            </div>
+
+                            {/* HASTA 5 IMÁGENES DE REFERENCIA AL FINAL DEL FORMULARIO */}
+                            <div className="pt-2 border-t border-[#FFC99C]/60 space-y-2.5">
+                                <div className="flex items-center justify-between">
+                                    <label className="text-xs font-black text-[#5F2142] uppercase tracking-wider flex items-center gap-1.5">
+                                        <ImageIcon size={14} className="text-[#D86A33]" />
+                                        <span>Imágenes de Referencia ({referenceImages.length} de 5)</span>
+                                    </label>
+                                    <span className="text-[10px] font-bold text-[#D86A33]">
+                                        Hasta 5 fotos de tu idea
+                                    </span>
+                                </div>
+
+                                <input
+                                    ref={refInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    multiple
+                                    className="hidden"
+                                    onChange={(e) => {
+                                        if (e.target.files && e.target.files.length > 0) {
+                                            handleReferenceFilesSelected(e.target.files);
+                                        }
+                                        e.target.value = '';
+                                    }}
+                                />
+
+                                {referenceImages.length < 5 && (
+                                    <div
+                                        onDragOver={(e) => {
+                                            e.preventDefault();
+                                            setIsDraggingRefs(true);
+                                        }}
+                                        onDragLeave={(e) => {
+                                            e.preventDefault();
+                                            setIsDraggingRefs(false);
+                                        }}
+                                        onDrop={(e) => {
+                                            e.preventDefault();
+                                            setIsDraggingRefs(false);
+                                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                                handleReferenceFilesSelected(e.dataTransfer.files);
+                                            }
+                                        }}
+                                        onClick={() => refInputRef.current?.click()}
+                                        className={`p-3.5 rounded-2xl border-2 border-dashed text-center cursor-pointer transition-all ${
+                                            isDraggingRefs
+                                                ? 'border-[#D86A33] bg-[#D86A33]/10'
+                                                : 'border-[#D86A33]/50 bg-white/80 hover:bg-white hover:border-[#D86A33]'
+                                        }`}
+                                    >
+                                        {isUploadingRefs ? (
+                                            <div className="flex items-center justify-center gap-2 py-1 text-xs font-black text-[#5F2142]">
+                                                <RefreshCw size={15} className="animate-spin text-[#D86A33]" />
+                                                <span>Cargando imágenes de referencia...</span>
+                                            </div>
+                                        ) : (
+                                            <div className="flex flex-col items-center gap-1">
+                                                <UploadCloud size={20} className="text-[#D86A33]" />
+                                                <span className="text-xs font-black text-[#5F2142]">
+                                                    + Subir o arrastrar imágenes de referencia ({5 - referenceImages.length} disponibles)
+                                                </span>
+                                                <span className="text-[10px] text-gray-500">
+                                                    Muestra logos, colores, dibujos o ejemplos de cómo deseas tu gorro
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
+
+                                {referenceImages.length > 0 && (
+                                    <div className="grid grid-cols-5 gap-2 pt-1">
+                                        {referenceImages.map((imgSrc, idx) => (
+                                            <div
+                                                key={idx}
+                                                className="relative aspect-square rounded-xl overflow-hidden border-2 border-[#D86A33] bg-white shadow-2xs group"
+                                            >
+                                                <img
+                                                    src={imgSrc}
+                                                    alt={`Referencia ${idx + 1}`}
+                                                    className="w-full h-full object-cover"
+                                                />
+                                                <button
+                                                    type="button"
+                                                    onClick={() => removeReferenceImage(idx)}
+                                                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xs hover:bg-red-700"
+                                                    title="Quitar imagen"
+                                                >
+                                                    <X size={11} />
+                                                </button>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
 
-                    {/* 5. CANTIDAD (Estilo píldora redondeada como en la imagen) */}
+                    {/* CANTIDAD */}
                     <div className="space-y-1.5 pt-1">
                         <label className="block text-xs font-bold text-gray-600">
                             Cantidad
@@ -584,7 +896,7 @@ export default function GorroConfigModal({
                         </div>
                     </div>
 
-                    {/* 6. BOTONES DE ACCIÓN (Agregar al carrito + Comprar ahora, como en la imagen) */}
+                    {/* BOTONES DE ACCIÓN (Agregar al carrito + Comprar ahora) */}
                     <div className="space-y-2.5 pt-2">
                         <button
                             type="button"
