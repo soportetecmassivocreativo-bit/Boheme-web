@@ -594,7 +594,7 @@ let MOCK_PRODUCTS: Product[] = [
     },
     {
         id: '112',
-        name: 'Diseña tu Idea • Gorro Quirúrgico a tu Medida',
+        name: 'Diseña tu idea',
         description: 'Elige entre modelo personalizado clásico o modelos especiales (Reversible, Cintillo, Ponytail, Coquette) con precio adaptado, adicionales, nombre, texto libre y hasta 5 fotos de referencia.',
         price: 12,
         image_url: '/cat_gorros.png',
@@ -1530,7 +1530,7 @@ function loadProductsFromDisk(force = false) {
                     },
                     {
                         id: '112',
-                        name: 'Diseña tu Idea • Gorro Quirúrgico a tu Medida',
+                        name: 'Diseña tu idea',
                         description: 'Elige entre modelo personalizado clásico o modelos especiales (Reversible, Cintillo, Ponytail, Coquette) con precio adaptado, adicionales, nombre, texto libre y hasta 5 fotos de referencia.',
                         price: 12,
                         image_url: '/cat_gorros.png',
@@ -1545,6 +1545,9 @@ function loadProductsFromDisk(force = false) {
                     const existingIdx = merged.findIndex(p => p.id === defProd.id);
                     if (existingIdx === -1) {
                         merged.push(defProd);
+                        changed = true;
+                    } else if (defProd.id === '112' && merged[existingIdx].name !== 'Diseña tu idea') {
+                        merged[existingIdx] = { ...merged[existingIdx], name: 'Diseña tu idea' };
                         changed = true;
                     } else if (defProd.subcategoria_especial && !merged[existingIdx].subcategoria_especial) {
                         merged[existingIdx] = { ...merged[existingIdx], ...defProd };

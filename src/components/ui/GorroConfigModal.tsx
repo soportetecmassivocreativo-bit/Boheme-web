@@ -270,7 +270,7 @@ export default function GorroConfigModal({
             .join(' | ');
 
         const itemDisplayName = isDisenaTuIdea
-            ? `Diseña tu Idea (${activeDisenaModel.label})`
+            ? `Diseña tu idea (${activeDisenaModel.label})`
             : product.name;
 
         return {
@@ -293,12 +293,12 @@ export default function GorroConfigModal({
                 : `${effectiveGenero} • ${effectiveEstilo}${effectiveEspecialSubcat ? ` • ${effectiveEspecialSubcat}` : ''}`,
             is_personalizado: Boolean(
                 hasPersonalizationCapability &&
-                (isDisenaTuIdea || isPersonalizadoCategory || nombrePersonalizado.trim() || textoLibre.trim() || referenceImages.length > 0)
+                (isDisenaTuIdea || isPersonalizadoCategory || nombrePersonalizado.trim() || textoLibre.trim() || (isDisenaTuIdea && referenceImages.length > 0))
             ),
             nombre_personalizado: hasPersonalizationCapability && nombrePersonalizado.trim() ? nombrePersonalizado.trim() : undefined,
             texto_personalizado: hasPersonalizationCapability && textoLibre.trim() ? textoLibre.trim() : undefined,
             detalles_personalizados: detallesFinales || undefined,
-            imagenes_personalizadas: referenceImages.length > 0 ? referenceImages : undefined
+            imagenes_personalizadas: isDisenaTuIdea && referenceImages.length > 0 ? referenceImages : undefined
         };
     };
 
@@ -414,7 +414,7 @@ export default function GorroConfigModal({
                                 </div>
                             )}
 
-                            {hasPersonalizationCapability && (nombrePersonalizado.trim() || textoLibre.trim() || referenceImages.length > 0) && (
+                            {hasPersonalizationCapability && (nombrePersonalizado.trim() || textoLibre.trim() || (isDisenaTuIdea && referenceImages.length > 0)) && (
                                 <div className="pt-1.5 border-t border-[#FFC99C]/40 text-[11px] space-y-0.5">
                                     {nombrePersonalizado.trim() && (
                                         <div className="truncate font-black text-[#5F2142]">
@@ -426,7 +426,7 @@ export default function GorroConfigModal({
                                             📝 {textoLibre}
                                         </div>
                                     )}
-                                    {referenceImages.length > 0 && (
+                                    {isDisenaTuIdea && referenceImages.length > 0 && (
                                         <div className="text-[10px] font-black text-emerald-700">
                                             📷 {referenceImages.length} {referenceImages.length === 1 ? 'imagen de referencia adjunta' : 'imágenes de referencia adjuntas'}
                                         </div>
@@ -465,7 +465,7 @@ export default function GorroConfigModal({
                             BOHEME • Gorros Quirúrgicos
                         </p>
                         <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-tight">
-                            {isDisenaTuIdea ? `Diseña tu Idea • ${activeDisenaModel.label}` : product.name}
+                            {isDisenaTuIdea ? 'Diseña tu idea' : product.name}
                         </h2>
 
                         {/* Price & Category Badge */}
@@ -713,8 +713,7 @@ export default function GorroConfigModal({
                     </div>
 
                     {/* ========================================================= */}
-                    {/* NOMBRE, TEXTO LIBRE Y HASTA 5 IMÁGENES DE REFERENCIA      */}
-                    {/* (En Personalizados, Especiales y Diseña tu idea)          */}
+                    {/* NOMBRE, TEXTO LIBRE Y (SOLO EN DISEÑA TU IDEA) IMÁGENES   */}
                     {/* ========================================================= */}
                     {hasPersonalizationCapability && (
                         <div className="p-4 sm:p-5 rounded-3xl bg-gradient-to-br from-[#FFF9F5] to-[#FFF4EB] border-2 border-[#D86A33]/40 space-y-4 shadow-xs">
@@ -727,7 +726,9 @@ export default function GorroConfigModal({
                                         Personalización de tu Gorro
                                     </h4>
                                     <p className="text-[11px] text-gray-500 font-medium">
-                                        Indica el nombre, texto libre y adjunta hasta 5 imágenes de referencia
+                                        {isDisenaTuIdea
+                                            ? 'Indica el nombre, texto libre y adjunta hasta 5 imágenes de referencia'
+                                            : 'Indica el nombre y texto libre para tu personalizado'}
                                     </p>
                                 </div>
                             </div>
@@ -760,100 +761,102 @@ export default function GorroConfigModal({
                                 />
                             </div>
 
-                            {/* HASTA 5 IMÁGENES DE REFERENCIA AL FINAL DEL FORMULARIO */}
-                            <div className="pt-2 border-t border-[#FFC99C]/60 space-y-2.5">
-                                <div className="flex items-center justify-between">
-                                    <label className="text-xs font-black text-[#5F2142] uppercase tracking-wider flex items-center gap-1.5">
-                                        <ImageIcon size={14} className="text-[#D86A33]" />
-                                        <span>Imágenes de Referencia ({referenceImages.length} de 5)</span>
-                                    </label>
-                                    <span className="text-[10px] font-bold text-[#D86A33]">
-                                        Hasta 5 fotos de tu idea
-                                    </span>
-                                </div>
+                            {/* HASTA 5 IMÁGENES DE REFERENCIA ÚNICAMENTE EN "DISEÑA TU IDEA" */}
+                            {isDisenaTuIdea && (
+                                <div className="pt-2 border-t border-[#FFC99C]/60 space-y-2.5">
+                                    <div className="flex items-center justify-between">
+                                        <label className="text-xs font-black text-[#5F2142] uppercase tracking-wider flex items-center gap-1.5">
+                                            <ImageIcon size={14} className="text-[#D86A33]" />
+                                            <span>Imágenes de Referencia ({referenceImages.length} de 5)</span>
+                                        </label>
+                                        <span className="text-[10px] font-bold text-[#D86A33]">
+                                            Hasta 5 fotos de tu idea
+                                        </span>
+                                    </div>
 
-                                <input
-                                    ref={refInputRef}
-                                    type="file"
-                                    accept="image/*"
-                                    multiple
-                                    className="hidden"
-                                    onChange={(e) => {
-                                        if (e.target.files && e.target.files.length > 0) {
-                                            handleReferenceFilesSelected(e.target.files);
-                                        }
-                                        e.target.value = '';
-                                    }}
-                                />
-
-                                {referenceImages.length < 5 && (
-                                    <div
-                                        onDragOver={(e) => {
-                                            e.preventDefault();
-                                            setIsDraggingRefs(true);
-                                        }}
-                                        onDragLeave={(e) => {
-                                            e.preventDefault();
-                                            setIsDraggingRefs(false);
-                                        }}
-                                        onDrop={(e) => {
-                                            e.preventDefault();
-                                            setIsDraggingRefs(false);
-                                            if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
-                                                handleReferenceFilesSelected(e.dataTransfer.files);
+                                    <input
+                                        ref={refInputRef}
+                                        type="file"
+                                        accept="image/*"
+                                        multiple
+                                        className="hidden"
+                                        onChange={(e) => {
+                                            if (e.target.files && e.target.files.length > 0) {
+                                                handleReferenceFilesSelected(e.target.files);
                                             }
+                                            e.target.value = '';
                                         }}
-                                        onClick={() => refInputRef.current?.click()}
-                                        className={`p-3.5 rounded-2xl border-2 border-dashed text-center cursor-pointer transition-all ${
-                                            isDraggingRefs
-                                                ? 'border-[#D86A33] bg-[#D86A33]/10'
-                                                : 'border-[#D86A33]/50 bg-white/80 hover:bg-white hover:border-[#D86A33]'
-                                        }`}
-                                    >
-                                        {isUploadingRefs ? (
-                                            <div className="flex items-center justify-center gap-2 py-1 text-xs font-black text-[#5F2142]">
-                                                <RefreshCw size={15} className="animate-spin text-[#D86A33]" />
-                                                <span>Cargando imágenes de referencia...</span>
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center gap-1">
-                                                <UploadCloud size={20} className="text-[#D86A33]" />
-                                                <span className="text-xs font-black text-[#5F2142]">
-                                                    + Subir o arrastrar imágenes de referencia ({5 - referenceImages.length} disponibles)
-                                                </span>
-                                                <span className="text-[10px] text-gray-500">
-                                                    Muestra logos, colores, dibujos o ejemplos de cómo deseas tu gorro
-                                                </span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
+                                    />
 
-                                {referenceImages.length > 0 && (
-                                    <div className="grid grid-cols-5 gap-2 pt-1">
-                                        {referenceImages.map((imgSrc, idx) => (
-                                            <div
-                                                key={idx}
-                                                className="relative aspect-square rounded-xl overflow-hidden border-2 border-[#D86A33] bg-white shadow-2xs group"
-                                            >
-                                                <img
-                                                    src={imgSrc}
-                                                    alt={`Referencia ${idx + 1}`}
-                                                    className="w-full h-full object-cover"
-                                                />
-                                                <button
-                                                    type="button"
-                                                    onClick={() => removeReferenceImage(idx)}
-                                                    className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xs hover:bg-red-700"
-                                                    title="Quitar imagen"
+                                    {referenceImages.length < 5 && (
+                                        <div
+                                            onDragOver={(e) => {
+                                                e.preventDefault();
+                                                setIsDraggingRefs(true);
+                                            }}
+                                            onDragLeave={(e) => {
+                                                e.preventDefault();
+                                                setIsDraggingRefs(false);
+                                            }}
+                                            onDrop={(e) => {
+                                                e.preventDefault();
+                                                setIsDraggingRefs(false);
+                                                if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+                                                    handleReferenceFilesSelected(e.dataTransfer.files);
+                                                }
+                                            }}
+                                            onClick={() => refInputRef.current?.click()}
+                                            className={`p-3.5 rounded-2xl border-2 border-dashed text-center cursor-pointer transition-all ${
+                                                isDraggingRefs
+                                                    ? 'border-[#D86A33] bg-[#D86A33]/10'
+                                                    : 'border-[#D86A33]/50 bg-white/80 hover:bg-white hover:border-[#D86A33]'
+                                            }`}
+                                        >
+                                            {isUploadingRefs ? (
+                                                <div className="flex items-center justify-center gap-2 py-1 text-xs font-black text-[#5F2142]">
+                                                    <RefreshCw size={15} className="animate-spin text-[#D86A33]" />
+                                                    <span>Cargando imágenes de referencia...</span>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col items-center gap-1">
+                                                    <UploadCloud size={20} className="text-[#D86A33]" />
+                                                    <span className="text-xs font-black text-[#5F2142]">
+                                                        + Subir o arrastrar imágenes de referencia ({5 - referenceImages.length} disponibles)
+                                                    </span>
+                                                    <span className="text-[10px] text-gray-500">
+                                                        Muestra logos, colores, dibujos o ejemplos de cómo deseas tu gorro
+                                                    </span>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {referenceImages.length > 0 && (
+                                        <div className="grid grid-cols-5 gap-2 pt-1">
+                                            {referenceImages.map((imgSrc, idx) => (
+                                                <div
+                                                    key={idx}
+                                                    className="relative aspect-square rounded-xl overflow-hidden border-2 border-[#D86A33] bg-white shadow-2xs group"
                                                 >
-                                                    <X size={11} />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                )}
-                            </div>
+                                                    <img
+                                                        src={imgSrc}
+                                                        alt={`Referencia ${idx + 1}`}
+                                                        className="w-full h-full object-cover"
+                                                    />
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => removeReferenceImage(idx)}
+                                                        className="absolute top-1 right-1 w-5 h-5 rounded-full bg-red-600 text-white flex items-center justify-center shadow-xs hover:bg-red-700"
+                                                        title="Quitar imagen"
+                                                    >
+                                                        <X size={11} />
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                         </div>
                     )}
 

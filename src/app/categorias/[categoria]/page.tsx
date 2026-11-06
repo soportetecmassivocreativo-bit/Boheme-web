@@ -114,7 +114,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                         <span>{category.title}</span>
                         {selectedSubcategoryObj && (
                             <span className="text-xl md:text-2xl font-black px-4 py-1 rounded-full bg-[#D86A33] text-white shadow-sm">
-                                Categoría: {selectedSubcategoryObj.name}
+                                {selectedSubcategoryObj.id === 74 ? selectedSubcategoryObj.name : `Categoría: ${selectedSubcategoryObj.name}`}
                                 {especial ? ` › ${especial}` : ''}
                             </span>
                         )}
@@ -142,15 +142,11 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                             }`}
                         >
                             <span>✦ Todas las Categorías</span>
-                            <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${!subcategoriaId ? 'bg-[#D86A33] text-white' : 'bg-[#FFF9F5] text-[#D86A33]'}`}>
-                                {totalCategoryProducts}
-                            </span>
                         </Link>
 
                         {/* Dynamic Subcategory Filter Links */}
                         {category.subcategories.map((sub) => {
                             const isActive = subcategoriaId === sub.id;
-                            const count = subcategoryCounts[sub.id] || 0;
                             const subParams = new URLSearchParams();
                             subParams.set('subcategoria', String(sub.id));
                             if (itemsPerPage !== 8) subParams.set('por_pagina', String(itemsPerPage));
@@ -166,9 +162,6 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                                     }`}
                                 >
                                     <span>{sub.name}</span>
-                                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${isActive ? 'bg-white/25 text-white' : 'bg-[#FFF9F5] text-[#5F2142]'}`}>
-                                        {count}
-                                    </span>
                                 </Link>
                             );
                         })}
@@ -228,7 +221,11 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                                         </span>
                                         <span className="text-[#D86A33] font-black">›</span>
                                         <h2 className="text-xl sm:text-2xl font-black text-[#5F2142]">
-                                            Categoría: <span className="text-[#D86A33]">{sub.name}</span>
+                                            {sub.id === 74 ? (
+                                                <span className="text-[#D86A33]">{sub.name}</span>
+                                            ) : (
+                                                <>Categoría: <span className="text-[#D86A33]">{sub.name}</span></>
+                                            )}
                                         </h2>
                                     </div>
                                     <span className="text-xs font-black text-[#5F2142] bg-[#FFF9F5] border border-[#FFC99C] px-3 py-1 rounded-full self-start sm:self-auto">
