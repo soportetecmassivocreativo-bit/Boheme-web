@@ -1,11 +1,23 @@
 'use client';
 
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/lib/store';
-import { X, Minus, Plus, Trash2, ArrowRight, ShoppingBag, Sparkles } from 'lucide-react';
+import { X, Minus, Plus, Trash2, ArrowRight, ShoppingCart, Sparkles, ChevronDown } from 'lucide-react';
 import { parseImages } from '@/lib/utils';
 import CheckoutModal from './CheckoutModal';
 
+const CATALOG_SECTIONS = [
+    { slug: 'gorros', label: 'Gorros Quirúrgicos', href: '/categorias/gorros', icon: '🧢' },
+    { slug: 'lanyards', label: 'Lanyards', href: '/categorias/lanyards', icon: '🪪' },
+    { slug: 'accesorios-medicos', label: 'Accesorios', href: '/categorias/accesorios-medicos', icon: '🩺' },
+    { slug: 'equipos-medicos', label: 'Equipos Médicos', href: '/categorias/equipos-medicos', icon: '🩻' },
+    { slug: 'productos-personalizados', label: 'Productos Personalizados', href: '/categorias/productos-personalizados', icon: '✨' },
+];
+
 export default function CartDrawer() {
+    const router = useRouter();
+    const [showSectionSelector, setShowSectionSelector] = useState(false);
     const { 
         items, 
         isOpen, 
@@ -24,6 +36,12 @@ export default function CartDrawer() {
         setCheckoutOpen(true); // Open checkout modal
     };
 
+    const handleSelectCatalogSection = (href: string) => {
+        setShowSectionSelector(false);
+        toggleCart();
+        router.push(href);
+    };
+
     return (
         <>
             {isOpen && (
@@ -36,8 +54,8 @@ export default function CartDrawer() {
                     <div className="fixed top-0 right-0 h-full w-full max-w-md bg-white text-gray-900 border-l border-gray-100 shadow-2xl z-50 flex flex-col transform transition-transform duration-300">
                         {/* Drawer Header */}
                         <div className="flex items-center justify-between p-6 border-b border-gray-100">
-                            <div className="flex items-center gap-2">
-                                <ShoppingBag size={22} className="text-[#D86A33]" />
+                            <div className="flex items-center gap-2.5">
+                                <ShoppingCart size={24} strokeWidth={2.3} className="text-[#D86A33]" />
                                 <h2 className="text-2xl font-black text-[#5F2142] tracking-tight">Tu Carrito</h2>
                                 <span className="text-xs px-2 py-0.5 rounded-full bg-[#FFF4EB] text-[#D86A33] font-bold">
                                     {items.reduce((acc, it) => acc + it.quantity, 0)}
@@ -55,19 +73,46 @@ export default function CartDrawer() {
                         <div className="flex-1 overflow-y-auto p-6 space-y-5">
                             {items.length === 0 ? (
                                 <div className="flex flex-col items-center justify-center h-full text-gray-500 space-y-4 text-center">
-                                    <div className="w-16 h-16 rounded-full bg-[#FFF9F5] border-2 border-dashed border-[#FFC99C] flex items-center justify-center text-3xl">
-                                        🛍️
+                                    <div className="w-16 h-16 rounded-full bg-[#FFF9F5] border-2 border-dashed border-[#FFC99C] flex items-center justify-center text-[#D86A33]">
+                                        <ShoppingCart size={30} strokeWidth={2.2} />
                                     </div>
                                     <p className="font-bold text-gray-700 text-base">Tu carrito está vacío.</p>
                                     <p className="text-xs text-gray-400 max-w-xs">
                                         Explora nuestra colección y añade gorros o accesorios a tu pedido.
                                     </p>
-                                    <button
-                                        onClick={toggleCart}
-                                        className="mt-2 py-2.5 px-6 bg-[#D86A33] text-white rounded-full font-black text-xs hover:bg-[#c25925] transition-all shadow-md shadow-[#D86A33]/20"
-                                    >
-                                        Explorar Catálogo
-                                    </button>
+
+                                    <div className="w-full max-w-xs pt-1 space-y-2.5">
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowSectionSelector(prev => !prev)}
+                                            className="w-full py-2.5 px-6 bg-[#D86A33] text-white rounded-full font-black text-xs hover:bg-[#c25925] transition-all shadow-md shadow-[#D86A33]/20 inline-flex items-center justify-center gap-2 cursor-pointer"
+                                        >
+                                            <span>Explorar Catálogo</span>
+                                            <ChevronDown size={15} className={`transition-transform duration-200 ${showSectionSelector ? 'rotate-180' : ''}`} />
+                                        </button>
+
+                                        {showSectionSelector && (
+                                            <div className="bg-[#FFF9F5] border border-[#FFC99C]/70 rounded-2xl p-2.5 shadow-lg space-y-1.5 text-left animate-fadeIn">
+                                                <div className="px-2 py-1 text-[10px] font-black uppercase tracking-wider text-[#5F2142]/70">
+                                                    Selecciona una sección:
+                                                </div>
+                                                {CATALOG_SECTIONS.map((sec) => (
+                                                    <button
+                                                        key={sec.slug}
+                                                        type="button"
+                                                        onClick={() => handleSelectCatalogSection(sec.href)}
+                                                        className="w-full px-3.5 py-2.5 rounded-xl bg-white hover:bg-[#5F2142] text-[#5F2142] hover:text-white border border-[#FFC99C]/50 hover:border-[#5F2142] text-xs font-black transition-all flex items-center justify-between group cursor-pointer"
+                                                    >
+                                                        <span className="flex items-center gap-2">
+                                                            <span>{sec.icon}</span>
+                                                            <span>{sec.label}</span>
+                                                        </span>
+                                                        <ArrowRight size={14} className="text-[#D86A33] group-hover:text-[#FFC99C] transition-transform group-hover:translate-x-0.5" />
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
                                 </div>
                             ) : (
                                 items.map(item => {
