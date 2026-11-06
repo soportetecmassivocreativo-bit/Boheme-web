@@ -1,5 +1,6 @@
 import Navbar from '@/components/ui/Navbar';
 import ProductCard from '@/components/ui/ProductCard';
+import CatalogSearchBar from '@/components/ui/CatalogSearchBar';
 import Footer from '@/components/ui/Footer';
 import { fetchCategoryProducts, CATEGORIES, normalizeCategorySlug, GORROS_ESPECIALES_SUBCATEGORIES } from '@/lib/db';
 import { notFound } from 'next/navigation';
@@ -14,6 +15,7 @@ interface PageProps {
     searchParams: Promise<{
         subcategoria?: string;
         especial?: string;
+        buscar?: string;
         pagina?: string;
         por_pagina?: string;
     }>;
@@ -36,7 +38,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function CategoriaPage({ params, searchParams }: PageProps) {
     const { categoria } = await params;
-    const { subcategoria, especial, pagina, por_pagina } = await searchParams;
+    const { subcategoria, especial, buscar, pagina, por_pagina } = await searchParams;
 
     const normalizedCategoria = normalizeCategorySlug(categoria);
     const category = CATEGORIES[normalizedCategoria];
@@ -57,7 +59,8 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
     } = await fetchCategoryProducts(normalizedCategoria, subcategoriaId, {
         page: requestedPage,
         limit: itemsPerPage,
-        especial: especial
+        especial: especial,
+        search: buscar
     });
 
     const selectedSubcategoryObj = subcategoriaId
@@ -77,11 +80,12 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
         p => !category.subcategories.some(s => s.id === p.subcategoria_id)
     );
 
-    // Helper to build pagination URLs preserving active subcategory and page size
+    // Helper to build pagination URLs preserving active subcategory, search query and page size
     const buildPageUrl = (targetPage: number, customLimit?: number) => {
         const paramsObj = new URLSearchParams();
         if (subcategoriaId) paramsObj.set('subcategoria', String(subcategoriaId));
         if (especial) paramsObj.set('especial', especial);
+        if (buscar && buscar.trim()) paramsObj.set('buscar', buscar.trim());
         if (targetPage > 1) paramsObj.set('pagina', String(targetPage));
         const limitToUse = customLimit ?? itemsPerPage;
         if (limitToUse !== 8) paramsObj.set('por_pagina', String(limitToUse));
@@ -128,13 +132,24 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
 
             {/* Main Content Area */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full flex-1">
+                {/* Search Bar by Description & Name in all Ecommerce Sections */}
+                <CatalogSearchBar categoryTitle={category.title} initialQuery={buscar || ''} />
+
                 {/* Subcategories Filter Bar (Not shown as filter bar if user wants all accessories together, or kept clean) */}
                 {normalizedCategoria !== 'accesorios-medicos' && (
                     <div className="mb-4 overflow-x-auto pb-3 scrollbar-thin">
                         <div className="flex space-x-2.5 items-center">
                             {/* "Todas las Categorías" Filter Link */}
                             <Link
-                                href={`/categorias/${categoria}${itemsPerPage !== 8 ? `?por_pagina=${itemsPerPage}` : ''}`}
+                                href={`/categorias/${categoria}${
+                                    (() => {
+                                        const p = new URLSearchParams();
+                                        if (buscar && buscar.trim()) p.set('buscar', buscar.trim());
+                                        if (itemsPerPage !== 8) p.set('por_pagina', String(itemsPerPage));
+                                        const qs = p.toString();
+                                        return qs ? `?${qs}` : '';
+                                    })()
+                                }`}
                                 onClick={undefined}
                                 className={`px-5 py-2.5 rounded-full text-xs font-black whitespace-nowrap transition-all duration-200 border uppercase tracking-wider flex items-center gap-1.5 ${
                                     !subcategoriaId
@@ -150,6 +165,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                                 const isActive = subcategoriaId === sub.id;
                                 const subParams = new URLSearchParams();
                                 subParams.set('subcategoria', String(sub.id));
+                                if (buscar && buscar.trim()) subParams.set('buscar', buscar.trim());
                                 if (itemsPerPage !== 8) subParams.set('por_pagina', String(itemsPerPage));
 
                                 return (

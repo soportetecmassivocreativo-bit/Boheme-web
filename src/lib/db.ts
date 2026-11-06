@@ -989,12 +989,18 @@ export async function fetchCategoryProducts(
     }
 
     if (options?.search && options.search.trim()) {
-        const q = options.search.trim().toLowerCase();
-        filtered = filtered.filter(
-            p =>
-                p.name.toLowerCase().includes(q) ||
-                (p.description && p.description.toLowerCase().includes(q))
-        );
+        const normalizeText = (txt: string) =>
+            txt
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+        const q = normalizeText(options.search.trim());
+        filtered = filtered.filter(p => {
+            const nameNorm = normalizeText(p.name || '');
+            const descNorm = normalizeText(p.description || '');
+            const subcatNorm = normalizeText(getSubcategoryName(normalizedSlug, p.subcategoria_id) || '');
+            return nameNorm.includes(q) || descNorm.includes(q) || subcatNorm.includes(q);
+        });
     }
 
     const totalItems = filtered.length;
@@ -1042,12 +1048,18 @@ export async function fetchPaginatedProducts(options?: {
         filtered = filtered.filter(p => Number(p.subcategoria_id) === Number(options.subcategoria_id));
     }
     if (options?.search && options.search.trim()) {
-        const q = options.search.trim().toLowerCase();
-        filtered = filtered.filter(
-            p =>
-                p.name.toLowerCase().includes(q) ||
-                (p.description && p.description.toLowerCase().includes(q))
-        );
+        const normalizeText = (txt: string) =>
+            txt
+                .toLowerCase()
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '');
+        const q = normalizeText(options.search.trim());
+        filtered = filtered.filter(p => {
+            const nameNorm = normalizeText(p.name || '');
+            const descNorm = normalizeText(p.description || '');
+            const subcatNorm = normalizeText(getSubcategoryName(normalizedSlug, p.subcategoria_id) || '');
+            return nameNorm.includes(q) || descNorm.includes(q) || subcatNorm.includes(q);
+        });
     }
 
     const limit = Math.min(200, Math.max(1, Number(options?.limit) || 24));
