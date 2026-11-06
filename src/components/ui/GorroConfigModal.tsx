@@ -328,14 +328,19 @@ export default function GorroConfigModal({
                             {product.name}
                         </h2>
 
-                        {/* Price & NEW Starburst Badge */}
-                        <div className="mt-3 flex flex-wrap items-center gap-3">
+                        {/* Price & Category Badge */}
+                        <div className="mt-3 flex flex-wrap items-center gap-2.5">
                             <span className="text-2xl sm:text-3xl font-black text-[#5F2142]">
                                 ${unitPrice.toFixed(2)}
                             </span>
                             <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#D86A33] text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
                                 ★ {categoryName}
                             </span>
+                            {isEspecialCategory && product.subcategoria_especial && (
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#5F2142] text-[#FFC99C] text-[10px] font-black uppercase tracking-wider shadow-xs">
+                                    {product.subcategoria_especial}
+                                </span>
+                            )}
                             {adicionalesUnitCost > 0 && (
                                 <span className="text-xs font-bold text-[#D86A33] bg-[#FFF4EB] border border-[#FFC99C] px-2.5 py-1 rounded-xl">
                                     Base ${product.price.toFixed(2)} + ${adicionalesUnitCost.toFixed(2)} adicionales
@@ -358,39 +363,6 @@ export default function GorroConfigModal({
                         <div className="p-3.5 rounded-2xl bg-red-50 border border-red-200 text-red-700 text-xs font-bold flex items-center gap-2">
                             <span>⚠️</span>
                             <span>{error}</span>
-                        </div>
-                    )}
-
-                    {/* SUBCATEGORÍA DE ESPECIALES (Solo si es categoría Especiales = 72) */}
-                    {isEspecialCategory && (
-                        <div className="space-y-2 pt-1">
-                            <div className="flex items-center justify-between">
-                                <label className="text-xs font-black uppercase tracking-wider text-gray-700">
-                                    Subcategoría Especial
-                                </label>
-                                <span className="text-[11px] font-bold text-[#D86A33]">
-                                    Seleccionado: {subcategoriaEspecial}
-                                </span>
-                            </div>
-                            <div className="flex flex-wrap gap-2">
-                                {GORROS_ESPECIALES_SUBCATEGORIES.map(subEsp => {
-                                    const active = subcategoriaEspecial === subEsp;
-                                    return (
-                                        <button
-                                            key={subEsp}
-                                            type="button"
-                                            onClick={() => setSubcategoriaEspecial(subEsp)}
-                                            className={`px-4 py-2 rounded-full text-xs font-black transition-all border ${
-                                                active
-                                                    ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-md scale-105'
-                                                    : 'bg-white text-gray-700 border-gray-300 hover:border-[#5F2142]'
-                                            }`}
-                                        >
-                                            {subEsp}
-                                        </button>
-                                    );
-                                })}
-                            </div>
                         </div>
                     )}
 

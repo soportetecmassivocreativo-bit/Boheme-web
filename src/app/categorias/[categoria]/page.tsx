@@ -175,55 +175,6 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                     </div>
                 </div>
 
-                {/* Subcategorías de la categoría seleccionada (ej. Especiales › Reversible, Cintillo, Ponytail, Coquette) */}
-                {selectedSubcategoryObj?.subcategories && selectedSubcategoryObj.subcategories.length > 0 && (
-                    <div className="mb-6 p-3.5 rounded-2xl bg-[#FFF9F5] border border-[#FFC99C]/60 flex flex-wrap items-center gap-2">
-                        <span className="text-[11px] font-black uppercase tracking-wider text-[#5F2142] flex items-center gap-1.5 mr-1">
-                            <Sparkles size={13} className="text-[#D86A33]" />
-                            <span>Subcategorías de {selectedSubcategoryObj.name}:</span>
-                        </span>
-
-                        <Link
-                            href={`/categorias/${categoria}?subcategoria=${selectedSubcategoryObj.id}${itemsPerPage !== 8 ? `&por_pagina=${itemsPerPage}` : ''}`}
-                            className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all border ${
-                                !especial
-                                    ? 'bg-[#5F2142] text-[#FFC99C] border-[#5F2142] shadow-xs'
-                                    : 'bg-white text-[#5F2142] border-[#FFC99C]/60 hover:border-[#D86A33]'
-                            }`}
-                        >
-                            Todas ({subcategoryCounts[selectedSubcategoryObj.id] || 0})
-                        </Link>
-
-                        {selectedSubcategoryObj.subcategories.map((subEsp) => {
-                            const isEspActive = especial?.toLowerCase() === subEsp.toLowerCase();
-                            const espCount = especialCounts[subEsp] || 0;
-                            const espParams = new URLSearchParams();
-                            espParams.set('subcategoria', String(selectedSubcategoryObj.id));
-                            espParams.set('especial', subEsp);
-                            if (itemsPerPage !== 8) espParams.set('por_pagina', String(itemsPerPage));
-
-                            return (
-                                <Link
-                                    key={subEsp}
-                                    href={`/categorias/${categoria}?${espParams.toString()}`}
-                                    className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all border flex items-center gap-1.5 ${
-                                        isEspActive
-                                            ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-xs scale-105'
-                                            : 'bg-white text-[#5F2142] border-[#FFC99C]/60 hover:border-[#D86A33] hover:text-[#D86A33]'
-                                    }`}
-                                >
-                                    <span>{subEsp}</span>
-                                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                                        isEspActive ? 'bg-white/25 text-white' : 'bg-[#FFF9F5] text-[#5F2142]'
-                                    }`}>
-                                        {espCount}
-                                    </span>
-                                </Link>
-                            );
-                        })}
-                    </div>
-                )}
-
                 {/* Top Pagination & Items Per Page Summary Bar */}
                 {pagination.totalItems > 0 && (
                     <div className="mb-8 p-4 rounded-2xl bg-[#FFF9F5] border border-[#FFC99C]/50 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
