@@ -132,8 +132,7 @@ export const CATEGORIES: Record<string, CategoryInfo> = {
         subcategories: [
             { id: 8, name: 'Cintas metricas' },
             { id: 9, name: 'Adipometro' },
-            { id: 10, name: 'Calculadora portatil' },
-            { id: 11, name: 'Calculadora llavero' },
+            { id: 10, name: 'Calculadoras' },
             { id: 12, name: 'Tabla portadocumentos' },
             { id: 13, name: 'Caliper' },
             { id: 14, name: 'Diapason' },
@@ -208,10 +207,12 @@ export const CATEGORIES: Record<string, CategoryInfo> = {
 };
 
 export function getSubcategoryName(categoriaSlug: string, subcategoriaId?: number): string {
+    loadCategoriesFromDisk(false);
     const cat = CATEGORIES[categoriaSlug];
     if (!cat) return 'General';
     if (subcategoriaId !== undefined) {
-        const sub = cat.subcategories.find(s => s.id === Number(subcategoriaId));
+        const mappedId = (categoriaSlug === 'accesorios-medicos' && Number(subcategoriaId) === 11) ? 10 : Number(subcategoriaId);
+        const sub = cat.subcategories.find(s => s.id === mappedId);
         if (sub) return sub.name;
     }
     return cat.subcategories[0]?.name || 'General';
@@ -276,7 +277,7 @@ let MOCK_PRODUCTS: Product[] = [
         price: 3,
         image_url: '/cat_accesorios.png',
         categoria_slug: 'accesorios-medicos',
-        subcategoria_id: 11
+        subcategoria_id: 10
     },
     {
         id: '6',
@@ -937,6 +938,7 @@ export async function fetchCategoryProducts(
     especialCounts: Record<string, number>;
     pagination: PaginationMeta;
 }> {
+    loadCategoriesFromDisk(false);
     const normalizedSlug = normalizeCategorySlug(categorySlug);
     const category = CATEGORIES[normalizedSlug] || null;
     const page = Math.max(1, Number(options?.page) || 1);
@@ -1366,6 +1368,7 @@ let ORDERS: Order[] = [
 // Server-side safe persistent file storage with serialized async write queue & RAM caching for 100+ concurrent orders
 const ORDERS_FILE = '.orders_store.json';
 const PRODUCTS_FILE = '.products_store.json';
+const CATEGORIES_FILE = '.categories_store.json';
 
 let ordersLoadedOnce = false;
 let lastOrdersDiskCheck = 0;
@@ -1378,6 +1381,12 @@ let lastProductsDiskCheck = 0;
 let lastProductsMtimeMs = 0;
 let pendingProductsWrite: Promise<void> | null = null;
 let productsWriteQueued = false;
+
+let categoriesLoadedOnce = false;
+let lastCategoriesDiskCheck = 0;
+let lastCategoriesMtimeMs = 0;
+let pendingCategoriesWrite: Promise<void> | null = null;
+let categoriesWriteQueued = false;
 
 const STORE_DISK_TTL_MS = 5000;
 
@@ -1558,8 +1567,13 @@ function loadProductsFromDisk(force = false) {
                     }
                 ];
 
-                let merged: Product[] = [...parsed];
-                let changed = false;
+                let merged: Product[] = parsed.map((p: Product) => {
+                    if (p.categoria_slug === 'accesorios-medicos' && Number(p.subcategoria_id) === 11) {
+                        return { ...p, subcategoria_id: 10 };
+                    }
+                    return p;
+                });
+                let changed = parsed.some((p: Product) => p.categoria_slug === 'accesorios-medicos' && Number(p.subcategoria_id) === 11);
                 for (const defProd of defaultGorrosSpecials) {
                     const existingIdx = merged.findIndex(p => p.id === defProd.id);
                     if (existingIdx === -1) {
@@ -1586,6 +1600,131 @@ function loadProductsFromDisk(force = false) {
     } catch {
         productsLoadedOnce = true;
     }
+}
+
+export function loadCategoriesFromDisk(force = false) {
+    const fs = getFsModule();
+    if (!fs) return;
+    const now = Date.now();
+    if (!force && categoriesLoadedOnce && (now - lastCategoriesDiskCheck < STORE_DISK_TTL_MS)) {
+        return;
+    }
+    lastCategoriesDiskCheck = now;
+
+    try {
+        if (fs.existsSync(CATEGORIES_FILE)) {
+            const stat = fs.statSync(CATEGORIES_FILE);
+            if (!force && categoriesLoadedOnce && stat.mtimeMs === lastCategoriesMtimeMs) {
+                return;
+            }
+            lastCategoriesMtimeMs = stat.mtimeMs;
+            const data = fs.readFileSync(CATEGORIES_FILE, 'utf-8');
+            const parsed: Record<string, Subcategory[]> = JSON.parse(data);
+            if (parsed && typeof parsed === 'object') {
+                for (const [slug, storedSubcats] of Object.entries(parsed)) {
+                    if (CATEGORIES[slug] && Array.isArray(storedSubcats) && storedSubcats.length > 0) {
+                        let cleaned = storedSubcats;
+                        if (slug === 'accesorios-medicos') {
+                            cleaned = storedSubcats
+                                .filter(s => s.id !== 11)
+                                .map(s => (s.id === 10 ? { ...s, name: 'Calculadoras' } : s));
+                        }
+                        CATEGORIES[slug].subcategories = cleaned;
+                    }
+                }
+            }
+        }
+        categoriesLoadedOnce = true;
+    } catch {
+        categoriesLoadedOnce = true;
+    }
+}
+
+function scheduleSaveCategoriesToDisk() {
+    const fs = getFsModule();
+    if (!fs) return;
+    if (pendingCategoriesWrite) {
+        categoriesWriteQueued = true;
+        return;
+    }
+
+    const flush = async () => {
+        try {
+            const snapshot: Record<string, Subcategory[]> = {};
+            for (const [slug, cat] of Object.entries(CATEGORIES)) {
+                snapshot[slug] = cat.subcategories;
+            }
+            const payload = JSON.stringify(snapshot, null, 2);
+            const tmp = `${CATEGORIES_FILE}.tmp`;
+            await fs.promises.writeFile(tmp, payload, 'utf-8');
+            await fs.promises.rename(tmp, CATEGORIES_FILE);
+            try {
+                const stat = await fs.promises.stat(CATEGORIES_FILE);
+                lastCategoriesMtimeMs = stat.mtimeMs;
+                lastCategoriesDiskCheck = Date.now();
+            } catch {}
+        } catch {
+            try {
+                const snapshot: Record<string, Subcategory[]> = {};
+                for (const [slug, cat] of Object.entries(CATEGORIES)) {
+                    snapshot[slug] = cat.subcategories;
+                }
+                await fs.promises.writeFile(CATEGORIES_FILE, JSON.stringify(snapshot, null, 2), 'utf-8');
+            } catch {}
+        } finally {
+            pendingCategoriesWrite = null;
+            if (categoriesWriteQueued) {
+                categoriesWriteQueued = false;
+                scheduleSaveCategoriesToDisk();
+            }
+        }
+    };
+
+    pendingCategoriesWrite = flush();
+}
+
+export async function addCustomSubcategory(sectionSlug: string, name: string): Promise<Subcategory | null> {
+    loadCategoriesFromDisk(true);
+    const normalized = normalizeCategorySlug(sectionSlug);
+    const cat = CATEGORIES[normalized];
+    if (!cat) return null;
+
+    const cleanName = name.trim();
+    if (!cleanName) return null;
+
+    const existing = cat.subcategories.find(s => s.name.toLowerCase() === cleanName.toLowerCase());
+    if (existing) return existing;
+
+    let maxId = 200;
+    for (const c of Object.values(CATEGORIES)) {
+        for (const s of c.subcategories) {
+            if (s.id > maxId) maxId = s.id;
+        }
+    }
+
+    const newSub: Subcategory = {
+        id: maxId + 1,
+        name: cleanName
+    };
+
+    cat.subcategories.push(newSub);
+    scheduleSaveCategoriesToDisk();
+    return newSub;
+}
+
+export async function deleteCustomSubcategory(sectionSlug: string, subcategoryId: number): Promise<boolean> {
+    loadCategoriesFromDisk(true);
+    const normalized = normalizeCategorySlug(sectionSlug);
+    const cat = CATEGORIES[normalized];
+    if (!cat) return false;
+
+    const initialLen = cat.subcategories.length;
+    cat.subcategories = cat.subcategories.filter(s => s.id !== Number(subcategoryId));
+    if (cat.subcategories.length < initialLen) {
+        scheduleSaveCategoriesToDisk();
+        return true;
+    }
+    return false;
 }
 
 function scheduleSaveProductsToDisk() {
@@ -1626,6 +1765,7 @@ function scheduleSaveProductsToDisk() {
 // Initial server-side load
 loadOrdersFromDisk(true);
 loadProductsFromDisk(true);
+loadCategoriesFromDisk(true);
 
 export async function fetchOrders(): Promise<Order[]> {
     loadOrdersFromDisk(false);

@@ -290,6 +290,12 @@ export default function AdminPage() {
     const [extraAccMoneda, setExtraAccMoneda] = useState<'BS' | 'USD'>('BS');
     const [extraAccInstrucciones, setExtraAccInstrucciones] = useState('');
 
+    // Dynamic Categories State (allows creating new categories in Accesorios médicos from Admin)
+    const [categoriesVersion, setCategoriesVersion] = useState(0);
+    const [newAccesorioCatName, setNewAccesorioCatName] = useState('');
+    const [isCreatingAccesorioCat, setIsCreatingAccesorioCat] = useState(false);
+    const [showCreateCatInput, setShowCreateCatInput] = useState(false);
+
     // Site & Payment Settings (Manipulación de Cuentas, Correlativo, PDFs y Tienda sin código)
     const [settings, setSettings] = useState<SiteSettings>({
         pagoMovil: {
@@ -418,6 +424,20 @@ export default function AdminPage() {
             setLoadingProducts(false);
         }
 
+        // Load Dynamic Categories
+        try {
+            const resC = await fetch('/api/admin/categories');
+            const dataC = await resC.json();
+            if (dataC && dataC.categories) {
+                for (const [slug, catObj] of Object.entries(dataC.categories as Record<string, any>)) {
+                    if (CATEGORIES[slug] && Array.isArray(catObj.subcategories)) {
+                        CATEGORIES[slug].subcategories = catObj.subcategories;
+                    }
+                }
+                setCategoriesVersion(v => v + 1);
+            }
+        } catch {}
+
         // Load Orders
         try {
             setLoadingOrders(true);
@@ -519,6 +539,47 @@ export default function AdminPage() {
     // ==========================================
     // PRODUCT ACTIONS (Máximo 10 imágenes)
     // ==========================================
+    const handleCreateAccesorioCategory = async (e?: React.FormEvent, selectInForm = false) => {
+        if (e) e.preventDefault();
+        const cleanName = newAccesorioCatName.trim();
+        if (!cleanName) {
+            alert('Por favor ingresa el nombre de la nueva categoría de Accesorios médicos.');
+            return;
+        }
+        setIsCreatingAccesorioCat(true);
+        try {
+            const res = await fetch('/api/admin/categories', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sectionSlug: 'accesorios-medicos',
+                    name: cleanName
+                })
+            });
+            const data = await res.json();
+            if (res.ok && data.subcategory) {
+                if (Array.isArray(data.subcategories)) {
+                    CATEGORIES['accesorios-medicos'].subcategories = data.subcategories;
+                }
+                setCategoriesVersion(v => v + 1);
+                setNewAccesorioCatName('');
+                setShowCreateCatInput(false);
+                if (selectInForm) {
+                    setFormSubcategory(data.subcategory.id);
+                } else {
+                    setActiveSubcategory(data.subcategory.id);
+                }
+                showToast(`✓ Categoría "${data.subcategory.name}" creada en Accesorios médicos`);
+            } else {
+                alert(data.error || 'No se pudo crear la categoría.');
+            }
+        } catch {
+            alert('Error de conexión al crear la categoría.');
+        } finally {
+            setIsCreatingAccesorioCat(false);
+        }
+    };
+
     const openCreateProductModal = (preselectedSubcategoryId?: number) => {
         setEditingProduct(null);
         setFormName('');
@@ -3268,10 +3329,56 @@ export default function AdminPage() {
                                                 Categorías de {currentCatInfo?.title}:
                                             </span>
                                         </div>
-                                        <span className="text-[11px] text-gray-400 font-medium">
-                                            Filtra los productos creados o selecciona una categoría para crear uno nuevo
-                                        </span>
+                                        <div className="flex flex-wrap items-center gap-2">
+                                            <span className="text-[11px] text-gray-400 font-medium">
+                                                Filtra los productos creados o selecciona una categoría para crear uno nuevo
+                                            </span>
+                                            {activeSection === 'accesorios-medicos' && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setShowCreateCatInput(prev => !prev)}
+                                                    className="px-3 py-1.5 rounded-xl bg-[#5F2142] hover:bg-[#43142e] text-white text-[11px] font-black inline-flex items-center gap-1 shadow-xs transition-all cursor-pointer"
+                                                >
+                                                    <Plus size={13} />
+                                                    <span>+ Crear Categoría</span>
+                                                </button>
+                                            )}
+                                        </div>
                                     </div>
+
+                                    {activeSection === 'accesorios-medicos' && showCreateCatInput && (
+                                        <form
+                                            onSubmit={(e) => handleCreateAccesorioCategory(e, false)}
+                                            className={`p-3 rounded-2xl ${bgSubCard} border ${borderDefault} flex flex-col sm:flex-row items-stretch sm:items-center gap-2`}
+                                        >
+                                            <input
+                                                type="text"
+                                                value={newAccesorioCatName}
+                                                onChange={(e) => setNewAccesorioCatName(e.target.value)}
+                                                placeholder="Nombre de la nueva categoría en Accesorios médicos..."
+                                                className={`flex-1 px-3.5 py-2 rounded-xl border text-xs font-bold outline-none ${inputStyle}`}
+                                            />
+                                            <div className="flex items-center gap-2">
+                                                <button
+                                                    type="submit"
+                                                    disabled={isCreatingAccesorioCat}
+                                                    className="px-4 py-2 rounded-xl bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black shadow-xs cursor-pointer"
+                                                >
+                                                    {isCreatingAccesorioCat ? 'Creando...' : 'Guardar Categoría'}
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setShowCreateCatInput(false);
+                                                        setNewAccesorioCatName('');
+                                                    }}
+                                                    className="px-3 py-2 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-bold text-gray-500"
+                                                >
+                                                    Cancelar
+                                                </button>
+                                            </div>
+                                        </form>
+                                    )}
 
                                     <div className="flex flex-wrap items-center gap-2">
                                         <button
@@ -6270,9 +6377,41 @@ export default function AdminPage() {
                             {/* Dynamic Category / Subcategory of the Section */}
                             {CATEGORIES[formCategory] && CATEGORIES[formCategory].subcategories.length > 0 && (
                                 <div className="space-y-2">
-                                    <label className="block font-black text-gray-700 dark:text-gray-300 uppercase">
-                                        Categoría de {CATEGORIES[formCategory]?.title} *
-                                    </label>
+                                    <div className="flex items-center justify-between gap-2">
+                                        <label className="block font-black text-gray-700 dark:text-gray-300 uppercase">
+                                            Categoría de {CATEGORIES[formCategory]?.title} *
+                                        </label>
+                                        {formCategory === 'accesorios-medicos' && (
+                                            <button
+                                                type="button"
+                                                onClick={() => setShowCreateCatInput(prev => !prev)}
+                                                className="px-2.5 py-1 rounded-lg bg-[#5F2142] hover:bg-[#43142e] text-white text-[10px] font-black inline-flex items-center gap-1"
+                                            >
+                                                <Plus size={11} />
+                                                <span>+ Crear Categoría</span>
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {formCategory === 'accesorios-medicos' && showCreateCatInput && (
+                                        <div className={`p-2.5 rounded-2xl ${bgSubCard} border ${borderDefault} flex items-center gap-2`}>
+                                            <input
+                                                type="text"
+                                                value={newAccesorioCatName}
+                                                onChange={(e) => setNewAccesorioCatName(e.target.value)}
+                                                placeholder="Nueva categoría en Accesorios..."
+                                                className={`flex-1 px-3 py-1.5 rounded-xl border text-xs font-bold outline-none ${inputStyle}`}
+                                            />
+                                            <button
+                                                type="button"
+                                                disabled={isCreatingAccesorioCat}
+                                                onClick={() => handleCreateAccesorioCategory(undefined, true)}
+                                                className="px-3.5 py-1.5 rounded-xl bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black"
+                                            >
+                                                {isCreatingAccesorioCat ? 'Creando...' : 'Crear'}
+                                            </button>
+                                        </div>
+                                    )}
                                     <select
                                         value={formSubcategory || ''}
                                         onChange={(e) => setFormSubcategory(e.target.value ? Number(e.target.value) : undefined)}
