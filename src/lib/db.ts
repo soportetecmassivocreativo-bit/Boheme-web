@@ -1811,9 +1811,6 @@ export function loadCategoriesFromDisk(force = false) {
                             cleaned = storedSubcats
                                 .filter(s => s.id === 10 || s.id > 200)
                                 .map(s => (s.id === 10 ? { ...s, name: 'Calculadoras' } : s));
-                            if (!cleaned.some(s => s.id === 10)) {
-                                cleaned.unshift({ id: 10, name: 'Calculadoras' });
-                            }
                             if (cleaned.length !== storedSubcats.length) needsResave = true;
                         } else if (slug === 'equipos-medicos' || slug === 'productos-personalizados') {
                             cleaned = storedSubcats.filter(s => s.id > 200);
@@ -1885,6 +1882,7 @@ export async function addCustomSubcategory(sectionSlug: string, name: string): P
 
 export async function deleteCustomSubcategory(sectionSlug: string, subcategoryId: number): Promise<boolean> {
     loadCategoriesFromDisk(true);
+    loadProductsFromDisk(true);
     const normalized = normalizeCategorySlug(sectionSlug);
     const cat = CATEGORIES[normalized];
     if (!cat) return false;
@@ -1892,6 +1890,17 @@ export async function deleteCustomSubcategory(sectionSlug: string, subcategoryId
     const initialLen = cat.subcategories.length;
     cat.subcategories = cat.subcategories.filter(s => s.id !== Number(subcategoryId));
     if (cat.subcategories.length < initialLen) {
+        let productsUpdated = false;
+        for (const p of MOCK_PRODUCTS) {
+            if (normalizeCategorySlug(p.categoria_slug) === normalized && Number(p.subcategoria_id) === Number(subcategoryId)) {
+                delete p.subcategoria_id;
+                delete p.subcategoria_nombre;
+                productsUpdated = true;
+            }
+        }
+        if (productsUpdated) {
+            scheduleSaveProductsToDisk();
+        }
         scheduleSaveCategoriesToDisk();
         invalidateProductsCache();
         return true;
