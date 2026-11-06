@@ -70,8 +70,12 @@ export default function CheckoutModal() {
     const router = useRouter();
     const { items, isCheckoutOpen, setCheckoutOpen, clearCart } = useCartStore();
 
-    // Steps: 1 = Datos & Envío, 2 = Pago & Comprobante, 3 = Éxito
-    const [step, setStep] = useState<1 | 2 | 3>(1);
+    // Steps: 1 = Datos & Entrega, 2 = Términos & Condiciones, 3 = Pago & Comprobante, 4 = Éxito
+    const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
+
+    // Terms validation checkbox & confirmation modal
+    const [aceptaTerminos, setAceptaTerminos] = useState(false);
+    const [showTerminosConfirmModal, setShowTerminosConfirmModal] = useState(false);
 
     // BCV Rate state
     const [bcvRate, setBcvRate] = useState<number>(887.30);
@@ -309,15 +313,30 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
     const handleNextToPayment = (e: React.FormEvent) => {
         e.preventDefault();
         if (validateStep1()) {
-            // Auto fill initial suggested amount for the selected method
-            if (metodoPago === 'pago_movil') {
-                setMontoPagado(`Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
-            } else {
-                setMontoPagado(`$${totalUSD.toFixed(2)} USDT`);
-            }
             setStep(2);
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
+    };
+
+    const handleAceptarTerminosClick = () => {
+        setFormError(null);
+        if (!aceptaTerminos) {
+            setFormError('Debes marcar la casilla aceptando los términos y condiciones para continuar.');
+            return;
+        }
+        setShowTerminosConfirmModal(true);
+    };
+
+    const handleConfirmarLecturaTerminos = () => {
+        setShowTerminosConfirmModal(false);
+        // Auto fill initial suggested amount for the selected method
+        if (metodoPago === 'pago_movil') {
+            setMontoPagado(`Bs. ${totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
+        } else {
+            setMontoPagado(`$${totalUSD.toFixed(2)} USDT`);
+        }
+        setStep(3);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     };
 
     const handleCerrarPedido = async (e: React.FormEvent) => {
@@ -483,7 +502,7 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
 
         // 4. Show success screen, refresh catalog stock and clear cart
         setIsSubmitting(false);
-        setStep(3);
+        setStep(4);
         clearCart();
         router.refresh();
     };
@@ -491,6 +510,8 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
     const handleClose = () => {
         setCheckoutOpen(false);
         setStep(1);
+        setAceptaTerminos(false);
+        setShowTerminosConfirmModal(false);
     };
 
     return (
@@ -522,23 +543,35 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
                 </div>
 
                 {/* Step Indicator */}
-                {step !== 3 && (
+                {step !== 4 && (
                     <div className="py-3 px-1 border-b border-gray-100 shrink-0 bg-[#FFF9F5]/40 -mx-5 sm:-mx-8 px-5 sm:px-8">
-                        <div className="flex items-center justify-between max-w-md mx-auto text-xs">
+                        <div className="flex items-center justify-between max-w-xl mx-auto text-[11px] sm:text-xs">
                             <div className={`flex items-center gap-1.5 font-black ${step === 1 ? 'text-[#D86A33]' : 'text-gray-400'}`}>
                                 <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] ${step === 1 ? 'bg-[#D86A33] text-white shadow-xs' : 'bg-gray-200 text-gray-600'}`}>
                                     1
                                 </span>
-                                <span>Datos & Entrega</span>
+                                <span className="hidden sm:inline">Datos & Entrega</span>
+                                <span className="sm:hidden">Datos</span>
                             </div>
 
-                            <span className="h-0.5 w-12 bg-gray-200" />
+                            <span className="h-0.5 w-6 sm:w-10 bg-gray-200" />
 
                             <div className={`flex items-center gap-1.5 font-black ${step === 2 ? 'text-[#D86A33]' : 'text-gray-400'}`}>
                                 <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] ${step === 2 ? 'bg-[#D86A33] text-white shadow-xs' : 'bg-gray-200 text-gray-600'}`}>
                                     2
                                 </span>
-                                <span>Pago & Comprobante</span>
+                                <span className="hidden sm:inline">Términos & Condiciones</span>
+                                <span className="sm:hidden">Términos</span>
+                            </div>
+
+                            <span className="h-0.5 w-6 sm:w-10 bg-gray-200" />
+
+                            <div className={`flex items-center gap-1.5 font-black ${step === 3 ? 'text-[#D86A33]' : 'text-gray-400'}`}>
+                                <span className={`w-6 h-6 rounded-full flex items-center justify-center text-[11px] ${step === 3 ? 'bg-[#D86A33] text-white shadow-xs' : 'bg-gray-200 text-gray-600'}`}>
+                                    3
+                                </span>
+                                <span className="hidden sm:inline">Pago & Comprobante</span>
+                                <span className="sm:hidden">Pago</span>
                             </div>
                         </div>
                     </div>
@@ -831,8 +864,81 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
                         </form>
                     )}
 
-                    {/* ================= STEP 2: PAGO Y COMPROBANTE CON TASA BCV ================= */}
+                    {/* ================= STEP 2: TÉRMINOS & CONDICIONES ================= */}
                     {step === 2 && (
+                        <div className="space-y-5 animate-fadeIn">
+                            <div className="p-4 sm:p-5 rounded-2xl bg-[#FFF9F5] border border-[#FFC99C]/60 space-y-4">
+                                <div className="border-b border-[#FFC99C]/50 pb-3">
+                                    <h3 className="text-base sm:text-lg font-black text-[#5F2142] flex items-center gap-2">
+                                        <span>📋</span>
+                                        <span>Términos y Condiciones de Compra - BOHEME</span>
+                                    </h3>
+                                    <p className="text-xs text-gray-500 font-medium mt-1">
+                                        Antes de procesar tu pago y confirmar tu pedido, por favor lee detenidamente las siguientes condiciones:
+                                    </p>
+                                </div>
+
+                                <div className="text-xs text-gray-700 space-y-3.5 leading-relaxed">
+                                    <div className="p-3 rounded-xl bg-white border border-gray-100">
+                                        <strong className="text-[#5F2142] block mb-0.5 font-black">1. Confirmación y Procesamiento:</strong>
+                                        Tu pedido ingresa a nuestra cola de producción e inicia su tiempo de confección únicamente a partir del momento en que se confirme el pago. Las solicitudes previas o carritos guardados no reservan cupo.
+                                    </div>
+
+                                    <div className="p-3 rounded-xl bg-white border border-gray-100">
+                                        <strong className="text-[#5F2142] block mb-0.5 font-black">2. Tiempos de Confección:</strong>
+                                        Los productos personalizados son elaborados con dedicación y detalle. El tiempo estimado de producción y despacho es de 7 a 10 días hábiles contados a partir del reporte del pago. (No incluye fines de semana ni feriados).
+                                    </div>
+
+                                    <div className="p-3 rounded-xl bg-white border border-gray-100">
+                                        <strong className="text-[#5F2142] block mb-0.5 font-black">3. Pedidos Urgentes:</strong>
+                                        Los tiempos de confección son obligatorios para garantizar la calidad de cada pieza, por lo que No aceptamos pedidos urgentes ni de emergencia (Sin excepción).
+                                    </div>
+
+                                    <div className="p-3 rounded-xl bg-white border border-gray-100">
+                                        <strong className="text-[#5F2142] block mb-0.5 font-black">4. Política de Envíos:</strong>
+                                        Todos los envíos nacionales se realizan bajo la modalidad Cobro a Destino a través de la empresa de encomiendas de tu preferencia (MRW, Zoom, Tealca, Domesa). El costo del envío corre por cuenta del cliente al recibir o retirar su paquete. 
+                                        Así mismo, los días de envíos establecidos son Lunes y Jueves (en caso de ser feriado se modifica la fecha).
+                                    </div>
+
+                                    <div className="p-3 rounded-xl bg-white border border-gray-100">
+                                        <strong className="text-[#5F2142] block mb-0.5 font-black">5. Garantía, Cambios y Devoluciones:</strong>
+                                        Cuentas con un máximo de 48 horas contadas a partir de la recepción o entrega de tu producto para reportar cualquier falla o inconveniente. Pasado este lapso, no se aceptarán cambios ni devoluciones. 
+                                        Si es un envío nacional con falla comprobable dentro del lapso de 48 horas, el cliente deberá cotizar y asumir el costo del envío de regreso al taller para su evaluación y respectivo cambio.
+                                    </div>
+
+                                    <div className="p-3 rounded-xl bg-white border border-gray-100 space-y-1.5">
+                                        <strong className="text-[#5F2142] block font-black">6. Demoras Operativas/Logísticas (Fuerza Mayor):</strong>
+                                        <p>
+                                            <strong>• Agencias de Envíos:</strong> Una vez entregado el paquete a la empresa de encomiendas, BOHEME no se hace responsable por retrasos, pérdidas o inconvenientes operativos imputables propios a dichas agencias.
+                                        </p>
+                                        <p>
+                                            <strong>• Situación País / Fluctuaciones:</strong> Debido a las circunstancias actuales (incluyendo imprevistos en el servicio eléctrico que afecten la producción), podrían presentarse retrasos ajenos a nuestra voluntad, los cuales serán informados oportunamente.
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="pt-3 border-t border-[#FFC99C]/50">
+                                    <label className="flex items-start gap-3 p-3 rounded-xl bg-white border-2 border-[#D86A33]/40 hover:border-[#D86A33] cursor-pointer transition-all select-none">
+                                        <input
+                                            type="checkbox"
+                                            checked={aceptaTerminos}
+                                            onChange={(e) => {
+                                                setAceptaTerminos(e.target.checked);
+                                                setFormError(null);
+                                            }}
+                                            className="mt-0.5 w-4 h-4 text-[#D86A33] rounded focus:ring-[#D86A33] cursor-pointer"
+                                        />
+                                        <span className="text-xs font-bold text-gray-800 leading-snug">
+                                            He leído y acepto todos los términos de BOHEME, comprendiendo los plazos de confección establecidos, las condiciones de envío, los lineamientos de garantía y las cláusulas logísticas.
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* ================= STEP 3: PAGO Y COMPROBANTE CON TASA BCV ================= */}
+                    {step === 3 && (
                         <form id="step2-form" onSubmit={handleCerrarPedido} className="space-y-6">
                             {/* Total To Pay Banner with BCV Conversion */}
                             <div className="bg-[#FFF4EB] p-4 sm:p-5 rounded-2xl border-2 border-dashed border-[#D86A33] space-y-2">
@@ -1360,8 +1466,8 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
                         </form>
                     )}
 
-                    {/* ================= STEP 3: PEDIDO ENVIADO CON ÉXITO ================= */}
-                    {step === 3 && (
+                    {/* ================= STEP 4: PEDIDO ENVIADO CON ÉXITO ================= */}
+                    {step === 4 && (
                         <div className="text-center py-6 sm:py-10 space-y-4">
                             <div className="w-16 h-16 rounded-full bg-green-100 text-green-600 flex items-center justify-center mx-auto text-2xl shadow-sm">
                                 ✓
@@ -1396,21 +1502,30 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
                 </div>
 
                 {/* Footer Controls */}
-                {step !== 3 && (
+                {step !== 4 && (
                     <div className="pt-4 border-t border-gray-100 flex items-center justify-between gap-3 shrink-0">
                         {step === 1 ? (
                             <button
                                 type="button"
                                 onClick={handleClose}
-                                className="px-5 py-2.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-100 text-xs font-bold transition-colors"
+                                className="px-5 py-2.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-100 text-xs font-bold transition-colors cursor-pointer"
                             >
                                 Regresar al carrito
+                            </button>
+                        ) : step === 2 ? (
+                            <button
+                                type="button"
+                                onClick={() => setStep(1)}
+                                className="px-5 py-2.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-100 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
+                            >
+                                <ArrowLeft size={14} />
+                                <span>Atrás</span>
                             </button>
                         ) : (
                             <button
                                 type="button"
-                                onClick={() => setStep(1)}
-                                className="px-5 py-2.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-100 text-xs font-bold transition-colors flex items-center gap-1.5"
+                                onClick={() => setStep(2)}
+                                className="px-5 py-2.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-100 text-xs font-bold transition-colors flex items-center gap-1.5 cursor-pointer"
                             >
                                 <ArrowLeft size={14} />
                                 <span>Atrás</span>
@@ -1421,9 +1536,18 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
                             <button
                                 type="submit"
                                 form="step1-form"
-                                className="px-6 py-3 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs sm:text-sm font-black transition-all hover:scale-105 shadow-md shadow-[#D86A33]/25 flex items-center gap-2"
+                                className="px-6 py-3 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs sm:text-sm font-black transition-all hover:scale-105 shadow-md shadow-[#D86A33]/25 flex items-center gap-2 cursor-pointer"
                             >
-                                <span>Continuar al Pago</span>
+                                <span>Continuar a Términos</span>
+                                <ArrowRight size={15} />
+                            </button>
+                        ) : step === 2 ? (
+                            <button
+                                type="button"
+                                onClick={handleAceptarTerminosClick}
+                                className="px-7 py-3 rounded-full bg-[#5F2142] hover:bg-[#43142e] text-white text-xs sm:text-sm font-black transition-all hover:scale-105 shadow-md shadow-[#5F2142]/25 flex items-center gap-2 cursor-pointer"
+                            >
+                                <span>Aceptar y Proceder al Pago</span>
                                 <ArrowRight size={15} />
                             </button>
                         ) : (
@@ -1431,7 +1555,7 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
                                 type="submit"
                                 form="step2-form"
                                 disabled={isSubmitting}
-                                className="px-7 py-3 rounded-full bg-[#25D366] hover:bg-[#20ba59] text-white text-xs sm:text-sm font-black transition-all hover:scale-105 shadow-lg shadow-[#25D366]/30 flex items-center gap-2 disabled:opacity-50"
+                                className="px-7 py-3 rounded-full bg-[#25D366] hover:bg-[#20ba59] text-white text-xs sm:text-sm font-black transition-all hover:scale-105 shadow-lg shadow-[#25D366]/30 flex items-center gap-2 disabled:opacity-50 cursor-pointer"
                             >
                                 <span>{isSubmitting ? 'Registrando Pedido...' : 'Cerrar Pedido y Enviar a WhatsApp'}</span>
                                 <span>💬</span>
@@ -1440,6 +1564,39 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
                     </div>
                 )}
             </div>
+
+            {/* Validation Modal for Confirmation of Terms */}
+            {showTerminosConfirmModal && (
+                <div className="fixed inset-0 z-60 bg-black/60 backdrop-blur-xs flex items-center justify-center p-4 animate-fadeIn">
+                    <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl border border-gray-100 text-center space-y-4">
+                        <div className="w-14 h-14 rounded-full bg-[#FFF4EB] border-2 border-[#D86A33] text-[#D86A33] flex items-center justify-center text-2xl mx-auto shadow-sm">
+                            📋
+                        </div>
+                        <h4 className="text-lg font-black text-[#5F2142]">
+                            ¿Confirmas que leíste y aceptas las condiciones?
+                        </h4>
+                        <p className="text-xs text-gray-600 leading-relaxed font-normal">
+                            Para avanzar al pago, por favor valida que has leído atentamente los plazos de confección (7 a 10 días hábiles), condiciones de envío Cobro a Destino y políticas de garantía de BOHEME.
+                        </p>
+                        <div className="flex items-center justify-center gap-3 pt-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowTerminosConfirmModal(false)}
+                                className="px-4 py-2.5 rounded-full border border-gray-200 text-gray-600 hover:bg-gray-100 text-xs font-bold transition-all cursor-pointer"
+                            >
+                                Revisar de nuevo
+                            </button>
+                            <button
+                                type="button"
+                                onClick={handleConfirmarLecturaTerminos}
+                                className="px-6 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black shadow-md shadow-[#D86A33]/25 transition-all hover:scale-105 cursor-pointer"
+                            >
+                                Sí, he leído y acepto
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
