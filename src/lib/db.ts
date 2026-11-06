@@ -100,6 +100,12 @@ export function normalizeCategorySlug(slug: string): string {
     return slug;
 }
 
+export function isEphemeralStockItem(p: { categoria_slug?: string; subcategoria_id?: number }): boolean {
+    const slug = normalizeCategorySlug(p.categoria_slug || '');
+    const subId = Number(p.subcategoria_id);
+    return (slug === 'gorros' && subId === 70) || (slug === 'lanyards' && subId === 5);
+}
+
 // Category Configuration mapped exactly to production slug URLs
 export const CATEGORIES: Record<string, CategoryInfo> = {
     'gorros': {
@@ -983,9 +989,12 @@ async function getOrFetchCatalogProducts(): Promise<Product[]> {
         return inflightProductsPromise;
     }
 
-    cachedRemoteProducts = MOCK_PRODUCTS;
+    const activeLocalProducts = MOCK_PRODUCTS.filter(
+        p => !(isEphemeralStockItem(p) && p.stock !== undefined && Number(p.stock) <= 0)
+    );
+    cachedRemoteProducts = activeLocalProducts;
     lastProductsCacheTime = now;
-    return MOCK_PRODUCTS;
+    return activeLocalProducts;
 }
 
 export async function fetchCategoryProducts(
@@ -1221,10 +1230,15 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
     }
 
     if (existingIndex !== -1) {
-        MOCK_PRODUCTS[existingIndex] = {
+        const updatedProduct: Product = {
             ...MOCK_PRODUCTS[existingIndex],
             ...updates
         };
+        if (isEphemeralStockItem(updatedProduct) && updatedProduct.stock !== undefined && Number(updatedProduct.stock) <= 0) {
+            await deleteProduct(id);
+            return updatedProduct;
+        }
+        MOCK_PRODUCTS[existingIndex] = updatedProduct;
         invalidateProductsCache();
         scheduleSaveProductsToDisk();
         return MOCK_PRODUCTS[existingIndex];
@@ -1697,6 +1711,12 @@ function loadProductsFromDisk(force = false) {
                         changed = true;
                     }
                 }
+                // Remove any Stock Gorro (70) or Stock Lanyard (5) whose stock is 0 or less
+                const beforeFilterLen = merged.length;
+                merged = merged.filter(p => !(isEphemeralStockItem(p) && p.stock !== undefined && Number(p.stock) <= 0));
+                if (merged.length !== beforeFilterLen) {
+                    changed = true;
+                }
                 MOCK_PRODUCTS = merged;
                 if (changed) {
                     scheduleSaveProductsToDisk();
@@ -1978,6 +1998,36 @@ export async function createOrder(
 
     ORDERS.unshift(newOrder);
     scheduleSaveOrdersToDisk();
+
+    // Deduct stock for purchased items; if a Stock Gorro (70) or Stock Lanyard (5) runs out of stock, delete it automatically
+    if (Array.isArray(newOrder.items) && newOrder.items.length > 0) {
+        loadProductsFromDisk(false);
+        for (const item of newOrder.items) {
+            if (!item.id) continue;
+            const currentProd = MOCK_PRODUCTS.find(p => p.id === item.id);
+            if (!currentProd) continue;
+
+            const isStockGorOrLan = isEphemeralStockItem(currentProd);
+            const isTrackedStock =
+                isStockGorOrLan ||
+                currentProd.categoria_slug === 'accesorios-medicos' ||
+                currentProd.categoria_slug === 'equipos-medicos' ||
+                (normalizeCategorySlug(currentProd.categoria_slug) === 'lanyards' && Number(currentProd.subcategoria_id) === 7);
+
+            if (isTrackedStock) {
+                const currentStock = currentProd.stock !== undefined ? Number(currentProd.stock) : 20;
+                const soldQty = Math.max(1, Number(item.quantity) || 1);
+                const remainingStock = Math.max(0, currentStock - soldQty);
+
+                if (isStockGorOrLan && remainingStock <= 0) {
+                    await deleteProduct(currentProd.id);
+                } else {
+                    await updateProduct(currentProd.id, { stock: remainingStock });
+                }
+            }
+        }
+    }
+
     return newOrder;
 }
 

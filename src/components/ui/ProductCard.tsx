@@ -25,6 +25,8 @@ export default function ProductCard({ product }: ProductCardProps) {
     const isAccesoriosOrEquipos = normalizedSlug === 'accesorios-medicos' || normalizedSlug === 'equipos-medicos';
     const subcatId = Number(product.subcategoria_id) || (isGorroProduct ? 70 : isLanyardProduct ? 5 : 0);
     const isStockGorro = isGorroProduct && subcatId === 70;
+    const isStockLanyard = isLanyardProduct && subcatId === 5;
+    const isStockGorroOrLanyard = isStockGorro || isStockLanyard;
     const isLanyardWithForm = isLanyardProduct && (subcatId === 6 || subcatId === 75);
     const usesGorroForm = (isGorroProduct && !isStockGorro) || isLanyardWithForm;
 
@@ -61,7 +63,9 @@ export default function ProductCard({ product }: ProductCardProps) {
     };
 
     const handleQuantityIncrement = () => {
-        const next = quantity + 1;
+        const next = isStockGorroOrLanyard
+            ? Math.min(Math.max(1, availableStock), quantity + 1)
+            : quantity + 1;
         setQuantity(next);
         setQuantityInput(String(next));
     };
@@ -72,7 +76,11 @@ export default function ProductCard({ product }: ProductCardProps) {
         if (digitsOnly !== '') {
             const parsed = parseInt(digitsOnly, 10);
             if (!isNaN(parsed) && parsed >= 1) {
-                setQuantity(parsed);
+                const clamped = isStockGorroOrLanyard ? Math.min(Math.max(1, availableStock), parsed) : parsed;
+                setQuantity(clamped);
+                if (isStockGorroOrLanyard && parsed > availableStock) {
+                    setQuantityInput(String(clamped));
+                }
             }
         }
     };
@@ -83,13 +91,15 @@ export default function ProductCard({ product }: ProductCardProps) {
             setQuantity(1);
             setQuantityInput('1');
         } else {
-            setQuantity(parsed);
-            setQuantityInput(String(parsed));
+            const clamped = isStockGorroOrLanyard ? Math.min(Math.max(1, availableStock), parsed) : parsed;
+            setQuantity(clamped);
+            setQuantityInput(String(clamped));
         }
     };
 
     const handleActionClick = () => {
-        const finalQty = Math.max(1, parseInt(quantityInput, 10) || quantity || 1);
+        const rawQty = Math.max(1, parseInt(quantityInput, 10) || quantity || 1);
+        const finalQty = isStockGorroOrLanyard ? Math.min(Math.max(1, availableStock), rawQty) : rawQty;
         if (usesGorroForm) {
             setIsGorroModalOpen(true);
         } else if (isPersonalizable) {
@@ -111,7 +121,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                 cinta: product.cinta,
                 is_personalizado: false,
                 es_por_encargo: requiresEncargo,
-                stock_disponible: isAccesoriosOrEquipos ? availableStock : undefined
+                stock_disponible: (isAccesoriosOrEquipos || isStockGorroOrLanyard) ? availableStock : undefined
             });
             toggleCart();
         }
@@ -194,20 +204,20 @@ export default function ProductCard({ product }: ProductCardProps) {
                             {product.description}
                         </p>
 
-                        {/* Stock visibility for Accesorios & Equipos Médicos */}
-                        {isAccesoriosOrEquipos && (
+                        {/* Stock visibility for Accesorios, Equipos Médicos, Gorros en Stock & Lanyards en Stock */}
+                        {(isAccesoriosOrEquipos || isStockGorroOrLanyard) && (
                             <div className="mb-3 flex flex-wrap items-center gap-1.5">
                                 {availableStock > 0 ? (
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-50 border border-emerald-200 text-emerald-700">
                                         <PackageCheck size={12} />
                                         <span>Stock disponible: {availableStock} {availableStock === 1 ? 'ud.' : 'uds.'}</span>
                                     </span>
-                                ) : (
+                                ) : isAccesoriosOrEquipos ? (
                                     <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-black bg-amber-50 border border-amber-300 text-amber-800">
                                         <Clock size={12} />
                                         <span>Stock: 0 uds. • Disponible por encargo</span>
                                     </span>
-                                )}
+                                ) : null}
                             </div>
                         )}
                     </div>

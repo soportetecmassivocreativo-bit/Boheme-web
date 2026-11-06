@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { useCartStore } from '@/lib/store';
 import { 
     X, 
@@ -40,6 +41,7 @@ const PAYMENT_INFO = {
 };
 
 export default function CheckoutModal() {
+    const router = useRouter();
     const { items, isCheckoutOpen, setCheckoutOpen, clearCart } = useCartStore();
 
     // Steps: 1 = Datos & Envío, 2 = Pago & Comprobante, 3 = Éxito
@@ -380,10 +382,11 @@ export default function CheckoutModal() {
         const targetWhatsapp = siteSettings.tienda.telefonoWhatsapp || WHATSAPP_NUMBER;
         window.open(`https://wa.me/${targetWhatsapp}?text=${encodedMessage}`, '_blank');
 
-        // 4. Show success screen and clear cart
+        // 4. Show success screen, refresh catalog stock and clear cart
         setIsSubmitting(false);
         setStep(3);
         clearCart();
+        router.refresh();
     };
 
     const handleClose = () => {
