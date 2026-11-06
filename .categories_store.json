@@ -72,46 +72,5 @@
     }
   ],
   "equipos-medicos": [],
-  "productos-personalizados": [
-    {
-      "id": 57,
-      "name": "Franelas con estampado DTF"
-    },
-    {
-      "id": 58,
-      "name": "Llaveros acrílicos"
-    },
-    {
-      "id": 59,
-      "name": "Peluches"
-    },
-    {
-      "id": 60,
-      "name": "Cojines"
-    },
-    {
-      "id": 61,
-      "name": "Cartucheras"
-    },
-    {
-      "id": 62,
-      "name": "Delantales"
-    },
-    {
-      "id": 63,
-      "name": "Pañoletas"
-    },
-    {
-      "id": 64,
-      "name": "Totebag"
-    },
-    {
-      "id": 65,
-      "name": "Fotos polaroid"
-    },
-    {
-      "id": 66,
-      "name": "Minilibretas"
-    }
-  ]
+  "productos-personalizados": []
 }

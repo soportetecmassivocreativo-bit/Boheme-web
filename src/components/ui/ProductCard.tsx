@@ -22,6 +22,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     const normalizedSlug = normalizeCategorySlug(product.categoria_slug);
     const isGorroProduct = normalizedSlug === 'gorros';
     const isLanyardProduct = normalizedSlug === 'lanyards';
+    const isPersonalizadoProduct = normalizedSlug === 'productos-personalizados';
     const isAccesoriosOrEquipos = normalizedSlug === 'accesorios-medicos' || normalizedSlug === 'equipos-medicos';
     const subcatId = Number(product.subcategoria_id) || (isGorroProduct ? 70 : isLanyardProduct ? 5 : 0);
     const isStockGorro = isGorroProduct && subcatId === 70;
@@ -30,7 +31,7 @@ export default function ProductCard({ product }: ProductCardProps) {
     const isPortacarnet = isLanyardProduct && subcatId === 7;
     const isEncargoEligible = isAccesoriosOrEquipos || isPortacarnet;
     const isLanyardWithForm = isLanyardProduct && (subcatId === 6 || subcatId === 75);
-    const usesGorroForm = (isGorroProduct && !isStockGorro) || isLanyardWithForm;
+    const usesGorroForm = (isGorroProduct && !isStockGorro) || isLanyardWithForm || isPersonalizadoProduct;
 
     const availableStock = product.stock !== undefined ? Math.max(0, Number(product.stock)) : 20;
     const isPorEncargo = isEncargoEligible && (availableStock <= 0 || quantity > availableStock);
@@ -283,11 +284,13 @@ export default function ProductCard({ product }: ProductCardProps) {
                                         <span>
                                             {subcatId === 74 || subcatId === 75
                                                 ? 'Diseñar mi Idea'
-                                                : isLanyardProduct
-                                                    ? 'Personalizar Lanyard'
-                                                    : isPersonalizable
-                                                        ? 'Personalizar Gorro'
-                                                        : 'Elegir Opciones'}
+                                                : isPersonalizadoProduct
+                                                    ? 'Personalizar'
+                                                    : isLanyardProduct
+                                                        ? 'Personalizar Lanyard'
+                                                        : isPersonalizable
+                                                            ? 'Personalizar Gorro'
+                                                            : 'Elegir Opciones'}
                                         </span>
                                     </>
                                 ) : isPersonalizable ? (

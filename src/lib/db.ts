@@ -150,18 +150,7 @@ export const CATEGORIES: Record<string, CategoryInfo> = {
         id: 'productos-personalizados',
         title: 'Productos personalizados',
         description: 'Explora nuestra colección de productos personalizados diseñados para brindarte confort y estilo en tu labor diaria.',
-        subcategories: [
-            { id: 57, name: 'Franelas con estampado DTF' },
-            { id: 58, name: 'Llaveros acrílicos' },
-            { id: 59, name: 'Peluches' },
-            { id: 60, name: 'Cojines' },
-            { id: 61, name: 'Cartucheras' },
-            { id: 62, name: 'Delantales' },
-            { id: 63, name: 'Pañoletas' },
-            { id: 64, name: 'Totebag' },
-            { id: 65, name: 'Fotos polaroid' },
-            { id: 66, name: 'Minilibretas' }
-        ]
+        subcategories: []
     }
 };
 
@@ -835,61 +824,87 @@ let MOCK_PRODUCTS: Product[] = [
     },
 
     // ==========================================
-    // PRODUCTOS PERSONALIZADOS (Subcategories: 57 - Franelas, 58 - Llaveros, 60 - Cojines, 61 - Cartucheras, 64 - Totebag, 66 - Minilibretas)
+    // PRODUCTOS PERSONALIZADOS
     // ==========================================
     {
         id: '401',
-        name: 'Franela Médica Algodón DTF Premium',
-        description: '100% Algodón peinado suave con estampado DTF de alta definición. Personalizable con nombre, carrera o frases médicas.',
+        name: 'Franelas con estampado DTF',
+        description: '100% Algodón peinado suave con estampado DTF de alta definición. Personalizable con nombre, carrera, fotos o frases médicas.',
         price: 15,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'productos-personalizados',
-        subcategoria_id: 57
+        categoria_slug: 'productos-personalizados'
     },
     {
         id: '402',
-        name: 'Totebag Canvas Boheme Personalizada',
+        name: 'Totebag',
         description: 'Bolsa ecológica de tela canvas reforzada, espaciosa para libros, uniforme, estetoscopio y pertenencias de guardia.',
         price: 10,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'productos-personalizados',
-        subcategoria_id: 64
+        categoria_slug: 'productos-personalizados'
     },
     {
         id: '403',
-        name: 'Cartuchera Médica Organizadora Multibolsillos',
-        description: 'Estuche compacto con compartimentos elásticos para bolígrafos, linterna pupilar, tijera de trauma y termómetro.',
+        name: 'Cartucheras',
+        description: 'Estuche compacto personalizado con compartimentos para bolígrafos, linterna pupilar, tijera de trauma y termómetro.',
         price: 8,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'productos-personalizados',
-        subcategoria_id: 61
+        categoria_slug: 'productos-personalizados'
     },
     {
         id: '404',
-        name: 'Llavero Acrílico con Inicial & Profesión',
-        description: 'Llavero personalizado cortado en acrílico cristal con acabado brillante e ilustración médica a elección.',
+        name: 'Llaveros acrílicos',
+        description: 'Llavero personalizado cortado en acrílico cristal con acabado brillante, nombre e ilustración a elección.',
         price: 3.5,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'productos-personalizados',
-        subcategoria_id: 58
+        categoria_slug: 'productos-personalizados'
     },
     {
         id: '405',
-        name: 'Minilibreta Médica con Tablas Clínicas',
+        name: 'Minilibretas',
         description: 'Cuaderno de bolsillo con espiral, tapas duras personalizadas e información de referencia rápida para guardias.',
         price: 4,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'productos-personalizados',
-        subcategoria_id: 66
+        categoria_slug: 'productos-personalizados'
     },
     {
         id: '406',
-        name: 'Cojín Decorativo Temático Salud',
-        description: 'Cojín mullido estampado con motivos alusivos a medicina y enfermería. Ideal para descanso o consultorio.',
+        name: 'Cojines',
+        description: 'Cojín mullido personalizado con motivos, nombres o fotos a elección. Ideal para descanso o consultorio.',
         price: 12,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'productos-personalizados',
-        subcategoria_id: 60
+        categoria_slug: 'productos-personalizados'
+    },
+    {
+        id: '407',
+        name: 'Peluches',
+        description: 'Tiernos peluches personalizados con bata o uniforme médico, nombre bordado o estampado a elección.',
+        price: 14,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'productos-personalizados'
+    },
+    {
+        id: '408',
+        name: 'Delantales',
+        description: 'Delantal clínico y profesional resistente, personalizado con tu nombre, logo, texto libre o diseño especial.',
+        price: 15,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'productos-personalizados'
+    },
+    {
+        id: '409',
+        name: 'Pañoletas',
+        description: 'Pañoleta multifuncional de tela suave con estampado personalizado, ideal para complementar tu estilo diario.',
+        price: 6,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'productos-personalizados'
+    },
+    {
+        id: '410',
+        name: 'Fotos polaroid',
+        description: 'Set de fotografías estilo Polaroid personalizadas con tus mejores momentos, frases o dedicatorias.',
+        price: 5,
+        image_url: '/cat_accesorios.png',
+        categoria_slug: 'productos-personalizados'
     }
 ];
 
@@ -1691,8 +1706,40 @@ function loadProductsFromDisk(force = false) {
                         categoria_slug: 'lanyards',
                         subcategoria_id: 75
                     },
-                    ...MOCK_PRODUCTS.filter(mp => mp.categoria_slug === 'accesorios-medicos' || mp.categoria_slug === 'equipos-medicos')
+                    ...MOCK_PRODUCTS.filter(
+                        mp =>
+                            mp.categoria_slug === 'accesorios-medicos' ||
+                            mp.categoria_slug === 'equipos-medicos' ||
+                            mp.categoria_slug === 'productos-personalizados'
+                    )
                 ];
+
+                const personalizedNamesMap: Record<string, { name: string; description: string }> = {
+                    '401': {
+                        name: 'Franelas con estampado DTF',
+                        description: '100% Algodón peinado suave con estampado DTF de alta definición. Personalizable con nombre, carrera, fotos o frases médicas.'
+                    },
+                    '402': {
+                        name: 'Totebag',
+                        description: 'Bolsa ecológica de tela canvas reforzada, espaciosa para libros, uniforme, estetoscopio y pertenencias de guardia.'
+                    },
+                    '403': {
+                        name: 'Cartucheras',
+                        description: 'Estuche compacto personalizado con compartimentos para bolígrafos, linterna pupilar, tijera de trauma y termómetro.'
+                    },
+                    '404': {
+                        name: 'Llaveros acrílicos',
+                        description: 'Llavero personalizado cortado en acrílico cristal con acabado brillante, nombre e ilustración a elección.'
+                    },
+                    '405': {
+                        name: 'Minilibretas',
+                        description: 'Cuaderno de bolsillo con espiral, tapas duras personalizadas e información de referencia rápida para guardias.'
+                    },
+                    '406': {
+                        name: 'Cojines',
+                        description: 'Cojín mullido personalizado con motivos, nombres o fotos a elección. Ideal para descanso o consultorio.'
+                    }
+                };
 
                 let merged: Product[] = parsed.map((p: Product) => {
                     if (p.categoria_slug === 'accesorios-medicos') {
@@ -1710,13 +1757,23 @@ function loadProductsFromDisk(force = false) {
                             return { ...p, subcategoria_id: undefined };
                         }
                     }
+                    if (p.categoria_slug === 'productos-personalizados') {
+                        const subId = Number(p.subcategoria_id);
+                        const mappedInfo = personalizedNamesMap[p.id];
+                        const nextProd = mappedInfo ? { ...p, name: mappedInfo.name, description: mappedInfo.description } : { ...p };
+                        if (subId >= 57 && subId <= 66) {
+                            delete nextProd.subcategoria_id;
+                        }
+                        return nextProd;
+                    }
                     return p;
                 });
                 let changed = parsed.some((p: Product) => {
                     const subId = Number(p.subcategoria_id);
                     return (
                         (p.categoria_slug === 'accesorios-medicos' && subId >= 8 && subId <= 37 && subId !== 10) ||
-                        (p.categoria_slug === 'equipos-medicos' && subId >= 38 && subId <= 56)
+                        (p.categoria_slug === 'equipos-medicos' && subId >= 38 && subId <= 56) ||
+                        (p.categoria_slug === 'productos-personalizados' && ((subId >= 57 && subId <= 66) || (personalizedNamesMap[p.id] && p.name !== personalizedNamesMap[p.id].name)))
                     );
                 });
                 for (const defProd of defaultGorrosSpecials) {
@@ -1784,7 +1841,7 @@ export function loadCategoriesFromDisk(force = false) {
                                 cleaned.unshift({ id: 10, name: 'Calculadoras' });
                             }
                             if (cleaned.length !== storedSubcats.length) needsResave = true;
-                        } else if (slug === 'equipos-medicos') {
+                        } else if (slug === 'equipos-medicos' || slug === 'productos-personalizados') {
                             cleaned = storedSubcats.filter(s => s.id > 200);
                             if (cleaned.length !== storedSubcats.length) needsResave = true;
                         }

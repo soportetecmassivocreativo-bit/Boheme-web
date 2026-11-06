@@ -98,10 +98,13 @@ export default function GorroConfigModal({
 
     const normalizedCategorySlug = normalizeCategorySlug(product.categoria_slug);
     const isLanyard = normalizedCategorySlug === 'lanyards';
-    const subcatId = Number(product.subcategoria_id) || (isLanyard ? 5 : 70);
+    const isProductoPersonalizado = normalizedCategorySlug === 'productos-personalizados';
+    const isGenderless = isLanyard || isProductoPersonalizado;
+    const subcatId = Number(product.subcategoria_id) || (isLanyard ? 5 : isProductoPersonalizado ? 0 : 70);
     const isDisenaTuIdea = subcatId === 74 || subcatId === 75;
-    const isPersonalizadoCategory = subcatId === 71 || subcatId === 6 || product.name.toLowerCase().includes('personaliz');
-    const isEspecialCategory = !isLanyard && subcatId === 72;
+    const allowsReferenceImages = isDisenaTuIdea || isProductoPersonalizado;
+    const isPersonalizadoCategory = isProductoPersonalizado || subcatId === 71 || subcatId === 6 || product.name.toLowerCase().includes('personaliz');
+    const isEspecialCategory = !isGenderless && subcatId === 72;
 
     // Model selector for "Diseña tu idea" in Gorros (adapts price and whether Gender/Style is shown)
     const [disenaModelId, setDisenaModelId] = useState<string>(GORROS_DISENA_TU_IDEA_MODELS[0].id);
@@ -109,14 +112,14 @@ export default function GorroConfigModal({
     const activeDisenaModel = GORROS_DISENA_TU_IDEA_MODELS.find(m => m.id === disenaModelId) || GORROS_DISENA_TU_IDEA_MODELS[0];
 
     // Check if this specific Gorro Especial is exclusively for women (Cintillo, Ponytail, Coquette)
-    const effectiveEspecialSubcat = isLanyard
+    const effectiveEspecialSubcat = isGenderless
         ? undefined
         : isDisenaTuIdea
             ? (activeDisenaModel.id !== 'Personalizado Clásico' ? activeDisenaModel.id : undefined)
             : product.subcategoria_especial;
 
     const isExclusivoDamaEspecial = Boolean(
-        !isLanyard && (
+        !isGenderless && (
             (isEspecialCategory &&
                 effectiveEspecialSubcat &&
                 FEMALE_ONLY_ESPECIALES.includes(effectiveEspecialSubcat.toLowerCase())) ||
@@ -126,12 +129,14 @@ export default function GorroConfigModal({
         )
     );
 
-    // Has personalization fields (Nombre, Texto libre & in Diseña tu idea up to 5 reference images):
+    // Has personalization fields (Nombre, Texto libre & in Diseña tu idea / Productos personalizados up to 5 reference images):
     const hasPersonalizationCapability = Boolean(
-        isLanyard || isPersonalizadoCategory || isEspecialCategory || isDisenaTuIdea
+        isGenderless || isPersonalizadoCategory || isEspecialCategory || isDisenaTuIdea
     );
 
-    const categoryName = getSubcategoryName(normalizedCategorySlug, subcatId);
+    const categoryName = isProductoPersonalizado
+        ? (product.subcategoria_nombre || 'Personalizado')
+        : getSubcategoryName(normalizedCategorySlug, subcatId);
 
     // 1. Género: Dama | Caballero
     const [genero, setGenero] = useState<'Dama' | 'Caballero'>(
@@ -240,13 +245,13 @@ export default function GorroConfigModal({
     };
 
     // Base price adapts dynamically if in Gorros "Diseña tu idea"
-    const effectiveBasePrice = (!isLanyard && isDisenaTuIdea) ? activeDisenaModel.price : product.price;
-    const adicionalesUnitCost = isLanyard ? 0 : selectedAdicionales.length * 0.5;
+    const effectiveBasePrice = (!isGenderless && isDisenaTuIdea) ? activeDisenaModel.price : product.price;
+    const adicionalesUnitCost = isGenderless ? 0 : selectedAdicionales.length * 0.5;
     const unitPrice = Number((effectiveBasePrice + adicionalesUnitCost).toFixed(2));
     const totalPrice = Number((unitPrice * quantity).toFixed(2));
 
-    const effectiveGenero = isLanyard ? undefined : (isExclusivoDamaEspecial ? 'Dama' : genero);
-    const effectiveEstilo = isLanyard
+    const effectiveGenero = isGenderless ? undefined : (isExclusivoDamaEspecial ? 'Dama' : genero);
+    const effectiveEstilo = isGenderless
         ? undefined
         : isExclusivoDamaEspecial
             ? `Modelo ${effectiveEspecialSubcat || 'Especial'}`
@@ -254,22 +259,24 @@ export default function GorroConfigModal({
 
     const buildConfiguredCartItem = () => {
         const adicionalesSummary =
-            !isLanyard && selectedAdicionales.length > 0
+            !isGenderless && selectedAdicionales.length > 0
                 ? `Adicionales (+$${adicionalesUnitCost.toFixed(2)}): ${selectedAdicionales.join(', ')}`
                 : undefined;
 
-        const configSummaryParts = isLanyard
-            ? [
-                  isDisenaTuIdea ? 'Diseño a medida (Diseña tu idea)' : 'Lanyard Personalizado'
-              ]
-            : [
-                  isDisenaTuIdea ? `Diseño: ${activeDisenaModel.label}` : null,
-                  isExclusivoDamaEspecial
-                      ? `Exclusivo Dama (${effectiveEspecialSubcat || product.name})`
-                      : `Género: ${effectiveGenero} • Estilo: ${effectiveEstilo}`,
-                  !isExclusivoDamaEspecial && effectiveEspecialSubcat ? `Especial: ${effectiveEspecialSubcat}` : null,
-                  adicionalesSummary || null
-              ].filter(Boolean);
+        const configSummaryParts = isProductoPersonalizado
+            ? ['Producto Personalizado a medida']
+            : isLanyard
+                ? [
+                      isDisenaTuIdea ? 'Diseño a medida (Diseña tu idea)' : 'Lanyard Personalizado'
+                  ]
+                : [
+                      isDisenaTuIdea ? `Diseño: ${activeDisenaModel.label}` : null,
+                      isExclusivoDamaEspecial
+                          ? `Exclusivo Dama (${effectiveEspecialSubcat || product.name})`
+                          : `Género: ${effectiveGenero} • Estilo: ${effectiveEstilo}`,
+                      !isExclusivoDamaEspecial && effectiveEspecialSubcat ? `Especial: ${effectiveEspecialSubcat}` : null,
+                      adicionalesSummary || null
+                  ].filter(Boolean);
 
         const detallesFinales = [
             configSummaryParts.join(' • '),
@@ -283,7 +290,7 @@ export default function GorroConfigModal({
             : product.name;
 
         return {
-            cart_item_id: `${product.id}-${isLanyard ? 'lanyard' : 'gorro'}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
+            cart_item_id: `${product.id}-${isProductoPersonalizado ? 'pers' : isLanyard ? 'lanyard' : 'gorro'}-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
             id: product.id,
             name: itemDisplayName,
             price: unitPrice,
@@ -291,25 +298,25 @@ export default function GorroConfigModal({
             quantity,
             image_url: product.image_url,
             categoria_slug: product.categoria_slug,
-            subcategoria_id: subcatId,
+            subcategoria_id: subcatId || undefined,
             subcategoria_especial: effectiveEspecialSubcat,
             genero: effectiveGenero,
             modelo: effectiveEstilo,
-            adicionales: isLanyard ? undefined : selectedAdicionales,
-            recargo_adicionales: isLanyard ? undefined : adicionalesUnitCost,
-            type_color: isLanyard
+            adicionales: isGenderless ? undefined : selectedAdicionales,
+            recargo_adicionales: isGenderless ? undefined : adicionalesUnitCost,
+            type_color: isGenderless
                 ? '✨ Diseño Personalizado'
                 : isExclusivoDamaEspecial
                     ? `👩 Exclusivo Dama • ${effectiveEspecialSubcat || 'Especial'}`
                     : `${effectiveGenero} • ${effectiveEstilo}${effectiveEspecialSubcat ? ` • ${effectiveEspecialSubcat}` : ''}`,
             is_personalizado: Boolean(
                 hasPersonalizationCapability &&
-                (isDisenaTuIdea || isPersonalizadoCategory || nombrePersonalizado.trim() || textoLibre.trim() || (isDisenaTuIdea && referenceImages.length > 0))
+                (isDisenaTuIdea || isPersonalizadoCategory || nombrePersonalizado.trim() || textoLibre.trim() || (allowsReferenceImages && referenceImages.length > 0))
             ),
             nombre_personalizado: hasPersonalizationCapability && nombrePersonalizado.trim() ? nombrePersonalizado.trim() : undefined,
             texto_personalizado: hasPersonalizationCapability && textoLibre.trim() ? textoLibre.trim() : undefined,
             detalles_personalizados: detallesFinales || undefined,
-            imagenes_personalizadas: isDisenaTuIdea && referenceImages.length > 0 ? referenceImages : undefined
+            imagenes_personalizadas: allowsReferenceImages && referenceImages.length > 0 ? referenceImages : undefined
         };
     };
 
@@ -363,10 +370,12 @@ export default function GorroConfigModal({
                             {isZoomed ? <ZoomOut size={16} /> : <ZoomIn size={16} />}
                         </button>
 
-                        <span className="px-3 py-1 rounded-full bg-white border border-[#FFC99C] text-[11px] font-black uppercase tracking-wider text-[#5F2142] shadow-2xs">
-                            ✦ {categoryName}
-                            {effectiveEspecialSubcat ? ` • ${effectiveEspecialSubcat}` : ''}
-                        </span>
+                        {(!isProductoPersonalizado || product.subcategoria_nombre) && (
+                            <span className="px-3 py-1 rounded-full bg-white border border-[#FFC99C] text-[11px] font-black uppercase tracking-wider text-[#5F2142] shadow-2xs">
+                                ✦ {categoryName}
+                                {effectiveEspecialSubcat ? ` • ${effectiveEspecialSubcat}` : ''}
+                            </span>
+                        )}
                     </div>
 
                     {/* Main Product Image */}
@@ -385,9 +394,9 @@ export default function GorroConfigModal({
                         {/* Live Floating Configuration Summary Overlay */}
                         <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-md border border-[#FFC99C]/80 rounded-2xl p-3 shadow-lg space-y-1.5 pointer-events-none">
                             <div className="flex items-center justify-between gap-2 text-xs">
-                                {isLanyard ? (
+                                {isGenderless ? (
                                     <span className="font-black text-[#5F2142] flex items-center gap-1.5">
-                                        <span>✨ Lanyard Personalizado</span>
+                                        <span>✨ {isProductoPersonalizado ? 'Producto Personalizado' : 'Lanyard Personalizado'}</span>
                                         <span className="text-[#D86A33]">•</span>
                                         <span className="text-[#D86A33]">Se trabaja con tu diseño</span>
                                     </span>
@@ -411,14 +420,14 @@ export default function GorroConfigModal({
                                     </span>
                                 )}
 
-                                {!isLanyard && selectedAdicionales.length > 0 && (
+                                {!isGenderless && selectedAdicionales.length > 0 && (
                                     <span className="px-2 py-0.5 rounded-full bg-[#D86A33]/15 text-[#D86A33] font-black text-[10px]">
                                         +{selectedAdicionales.length} (+${adicionalesUnitCost.toFixed(2)})
                                     </span>
                                 )}
                             </div>
 
-                            {!isLanyard && selectedAdicionales.length > 0 && (
+                            {!isGenderless && selectedAdicionales.length > 0 && (
                                 <div className="flex flex-wrap gap-1">
                                     {selectedAdicionales.map(ad => (
                                         <span
@@ -431,7 +440,7 @@ export default function GorroConfigModal({
                                 </div>
                             )}
 
-                            {hasPersonalizationCapability && (nombrePersonalizado.trim() || textoLibre.trim() || (isDisenaTuIdea && referenceImages.length > 0)) && (
+                            {hasPersonalizationCapability && (nombrePersonalizado.trim() || textoLibre.trim() || (allowsReferenceImages && referenceImages.length > 0)) && (
                                 <div className="pt-1.5 border-t border-[#FFC99C]/40 text-[11px] space-y-0.5">
                                     {nombrePersonalizado.trim() && (
                                         <div className="truncate font-black text-[#5F2142]">
@@ -443,7 +452,7 @@ export default function GorroConfigModal({
                                             📝 {textoLibre}
                                         </div>
                                     )}
-                                    {isDisenaTuIdea && referenceImages.length > 0 && (
+                                    {allowsReferenceImages && referenceImages.length > 0 && (
                                         <div className="text-[10px] font-black text-emerald-700">
                                             📷 {referenceImages.length} {referenceImages.length === 1 ? 'imagen de referencia adjunta' : 'imágenes de referencia adjuntas'}
                                         </div>
@@ -479,7 +488,7 @@ export default function GorroConfigModal({
                     {/* Brand & Product Header */}
                     <div>
                         <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">
-                            BOHEME • {isLanyard ? 'Lanyards' : 'Gorros Quirúrgicos'}
+                            BOHEME • {isProductoPersonalizado ? 'Productos Personalizados' : isLanyard ? 'Lanyards' : 'Gorros Quirúrgicos'}
                         </p>
                         <h2 className="text-2xl sm:text-3xl font-black text-gray-900 tracking-tight leading-tight">
                             {isDisenaTuIdea ? 'Diseña tu idea' : product.name}
@@ -490,9 +499,11 @@ export default function GorroConfigModal({
                             <span className="text-2xl sm:text-3xl font-black text-[#5F2142]">
                                 ${unitPrice.toFixed(2)}
                             </span>
-                            <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#D86A33] text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
-                                ★ {categoryName}
-                            </span>
+                            {(!isProductoPersonalizado || product.subcategoria_nombre) && (
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#D86A33] text-white text-[10px] font-black uppercase tracking-wider shadow-xs">
+                                    ★ {categoryName}
+                                </span>
+                            )}
                             {effectiveEspecialSubcat && (
                                 <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-[#5F2142] text-[#FFC99C] text-[10px] font-black uppercase tracking-wider shadow-xs">
                                     {effectiveEspecialSubcat}
@@ -526,7 +537,7 @@ export default function GorroConfigModal({
                     {/* ========================================================= */}
                     {/* SELECTOR DE MODELO EN "DISEÑA TU IDEA" (SOLO EN GORROS)   */}
                     {/* ========================================================= */}
-                    {!isLanyard && isDisenaTuIdea && (
+                    {!isGenderless && isDisenaTuIdea && (
                         <div className="p-4 rounded-3xl bg-[#FFF9F5] border-2 border-[#FFC99C] space-y-3">
                             <div className="flex items-center justify-between">
                                 <label className="text-xs font-black uppercase tracking-wider text-[#5F2142]">
@@ -572,9 +583,9 @@ export default function GorroConfigModal({
                     )}
 
                     {/* ========================================================= */}
-                    {/* GÉNERO Y ESTILO (No aplica en Lanyards ni en Cintillo/Ponytail/Coquette) */}
+                    {/* GÉNERO Y ESTILO (No aplica en Lanyards, Productos Personalizados ni en Cintillo/Ponytail/Coquette) */}
                     {/* ========================================================= */}
-                    {isLanyard ? null : isExclusivoDamaEspecial ? (
+                    {isGenderless ? null : isExclusivoDamaEspecial ? (
                         <div className="p-3.5 rounded-2xl bg-[#FFF9F5] border border-[#FFC99C] flex items-center justify-between gap-2">
                             <div className="flex items-center gap-2">
                                 <span className="text-lg">👩</span>
@@ -667,7 +678,7 @@ export default function GorroConfigModal({
                     {/* ========================================================= */}
                     {/* ADICIONALES DESDE $0.50 POR ADICIONAL (SOLO EN GORROS)    */}
                     {/* ========================================================= */}
-                    {!isLanyard && (
+                    {!isGenderless && (
                         <div className="space-y-2.5 pt-1">
                             <div className="flex items-center justify-between">
                                 <label className="text-xs font-black uppercase tracking-wider text-gray-700 flex items-center gap-1.5">
@@ -742,10 +753,14 @@ export default function GorroConfigModal({
                                 </span>
                                 <div>
                                     <h4 className="text-xs sm:text-sm font-black text-[#5F2142] uppercase tracking-wider">
-                                        {isLanyard ? 'Personalización de tu Lanyard' : 'Personalización de tu Gorro'}
+                                        {isProductoPersonalizado
+                                            ? 'Personalización de tu Producto'
+                                            : isLanyard
+                                                ? 'Personalización de tu Lanyard'
+                                                : 'Personalización de tu Gorro'}
                                     </h4>
                                     <p className="text-[11px] text-gray-500 font-medium">
-                                        {isDisenaTuIdea
+                                        {allowsReferenceImages
                                             ? 'Indica el nombre, texto libre de tu diseño y adjunta hasta 5 imágenes de referencia'
                                             : 'Indica el nombre y texto libre para el diseño de tu personalizado'}
                                     </p>
@@ -775,13 +790,13 @@ export default function GorroConfigModal({
                                     rows={3}
                                     value={textoLibre}
                                     onChange={(e) => setTextoLibre(e.target.value)}
-                                    placeholder="Escribe aquí cualquier frase, especialidad, colores, figuras o detalles que desees agregar a tu gorro..."
+                                    placeholder="Escribe aquí cualquier frase, especialidad, colores, figuras o detalles que desees agregar a tu personalizado..."
                                     className="w-full px-3.5 py-2.5 rounded-xl bg-white border border-[#FFC99C] focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-xs sm:text-sm font-medium text-gray-900"
                                 />
                             </div>
 
-                            {/* HASTA 5 IMÁGENES DE REFERENCIA ÚNICAMENTE EN "DISEÑA TU IDEA" */}
-                            {isDisenaTuIdea && (
+                            {/* HASTA 5 IMÁGENES DE REFERENCIA EN "DISEÑA TU IDEA" Y "PRODUCTOS PERSONALIZADOS" */}
+                            {allowsReferenceImages && (
                                 <div className="pt-2 border-t border-[#FFC99C]/60 space-y-2.5">
                                     <div className="flex items-center justify-between">
                                         <label className="text-xs font-black text-[#5F2142] uppercase tracking-wider flex items-center gap-1.5">
@@ -843,7 +858,7 @@ export default function GorroConfigModal({
                                                         + Subir o arrastrar imágenes de referencia ({5 - referenceImages.length} disponibles)
                                                     </span>
                                                     <span className="text-[10px] text-gray-500">
-                                                        Muestra logos, colores, dibujos o ejemplos de cómo deseas tu gorro
+                                                        Muestra logos, fotos, colores, dibujos o ejemplos de cómo deseas tu personalizado
                                                     </span>
                                                 </div>
                                             )}

@@ -592,7 +592,7 @@ export default function AdminPage() {
             ? preselectedSubcategoryId
             : (activeSubcategory !== 'all'
                 ? activeSubcategory
-                : (activeSection === 'accesorios-medicos' || activeSection === 'equipos-medicos'
+                : (activeSection === 'accesorios-medicos' || activeSection === 'equipos-medicos' || activeSection === 'productos-personalizados'
                     ? undefined
                     : catInfo?.subcategories[0]?.id));
         setFormSubcategory(defaultSubId);
@@ -3558,9 +3558,9 @@ export default function AdminPage() {
                                         + Crear Producto en {selectedSubcatObj ? selectedSubcatObj.name : currentCatInfo?.title}
                                     </button>
                                 </div>
-                                ) : (activeSection === 'accesorios-medicos' || activeSection === 'equipos-medicos') ? (
+                                ) : (activeSection === 'accesorios-medicos' || activeSection === 'equipos-medicos' || activeSection === 'productos-personalizados') ? (
                                     <div className="space-y-6">
-                                        {/* Todos los accesorios o equipos médicos disponibles juntos, sin distribuir por bloques de categorías */}
+                                        {/* Todos los accesorios, equipos médicos o productos personalizados disponibles juntos */}
                                         <div className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden transition-all`}>
                                             <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/3 flex flex-wrap items-center justify-between gap-3">
                                                 <div className="flex flex-wrap items-center gap-2">
@@ -3568,7 +3568,11 @@ export default function AdminPage() {
                                                         {currentCatInfo?.title}
                                                     </span>
                                                     <h3 className="font-black text-sm sm:text-base text-[#5F2142] dark:text-[#FFC99C]">
-                                                        {activeSection === 'equipos-medicos' ? 'Todos los Equipos Médicos Disponibles' : 'Todos los Accesorios Disponibles'}
+                                                        {activeSection === 'equipos-medicos'
+                                                            ? 'Todos los Equipos Médicos Disponibles'
+                                                            : activeSection === 'productos-personalizados'
+                                                                ? 'Todos los Productos Personalizados Disponibles'
+                                                                : 'Todos los Accesorios Disponibles'}
                                                     </h3>
                                                     <span className="px-2.5 py-0.5 rounded-full bg-[#D86A33]/10 text-[#D86A33] text-xs font-black">
                                                         {sectionProducts.length} {sectionProducts.length === 1 ? 'producto' : 'productos'}
@@ -3581,7 +3585,13 @@ export default function AdminPage() {
                                                     className="px-3.5 py-1.5 rounded-xl bg-[#D86A33] hover:bg-[#c25925] text-white text-[11px] font-black inline-flex items-center gap-1 shadow-2xs transition-all"
                                                 >
                                                     <Plus size={13} />
-                                                    <span>{activeSection === 'equipos-medicos' ? '+ Nuevo Equipo Médico' : '+ Nuevo Accesorio'}</span>
+                                                    <span>
+                                                        {activeSection === 'equipos-medicos'
+                                                            ? '+ Nuevo Equipo Médico'
+                                                            : activeSection === 'productos-personalizados'
+                                                                ? '+ Nuevo Producto Personalizado'
+                                                                : '+ Nuevo Accesorio'}
+                                                    </span>
                                                 </button>
                                             </div>
 
@@ -3590,8 +3600,12 @@ export default function AdminPage() {
                                                     <thead>
                                                         <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/40 dark:bg-white/2">
                                                             <th className="py-3 px-5">Producto & Fotos</th>
-                                                            <th className="py-3 px-5">Categoría Asignada</th>
-                                                            <th className="py-3 px-5 text-center">Stock</th>
+                                                            {subcats.length > 0 && (
+                                                                <th className="py-3 px-5">Categoría Asignada</th>
+                                                            )}
+                                                            {activeSection !== 'productos-personalizados' && (
+                                                                <th className="py-3 px-5 text-center">Stock</th>
+                                                            )}
                                                             <th className="py-3 px-5">Precio ($ / Bs.)</th>
                                                             <th className="py-3 px-5 text-right">Acciones</th>
                                                         </tr>
@@ -3623,18 +3637,22 @@ export default function AdminPage() {
                                                                                 </span>
                                                                             </div>
                                                                         </td>
-                                                                        <td className="py-2 px-5 whitespace-nowrap">
-                                                                            {assignedSub && (
-                                                                                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-lg bg-[#FFF4EB] border border-[#D86A33]/40 text-[#D86A33] shadow-2xs">
-                                                                                    ✦ {assignedSub.name}
+                                                                        {subcats.length > 0 && (
+                                                                            <td className="py-2 px-5 whitespace-nowrap">
+                                                                                {assignedSub && (
+                                                                                    <span className="text-[10px] font-black px-2.5 py-0.5 rounded-lg bg-[#FFF4EB] border border-[#D86A33]/40 text-[#D86A33] shadow-2xs">
+                                                                                        ✦ {assignedSub.name}
+                                                                                    </span>
+                                                                                )}
+                                                                            </td>
+                                                                        )}
+                                                                        {activeSection !== 'productos-personalizados' && (
+                                                                            <td className="py-2 px-5 text-center whitespace-nowrap">
+                                                                                <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                                                                    {p.stock !== undefined ? p.stock : 20} uds
                                                                                 </span>
-                                                                            )}
-                                                                        </td>
-                                                                        <td className="py-2 px-5 text-center whitespace-nowrap">
-                                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                                                                                {p.stock !== undefined ? p.stock : 20} uds
-                                                                            </span>
-                                                                        </td>
+                                                                            </td>
+                                                                        )}
                                                                         <td className="py-2 px-5 whitespace-nowrap font-black text-xs text-[#5F2142] dark:text-[#FFC99C]">
                                                                             ${p.price.toFixed(2)} USD
                                                                         </td>
@@ -3694,38 +3712,42 @@ export default function AdminPage() {
                                                                         </div>
                                                                     </td>
 
-                                                                    <td className="py-3.5 px-5 whitespace-nowrap">
-                                                                        <div className="space-y-1">
-                                                                            {assignedSub ? (
-                                                                                <span className="inline-flex items-center px-2.5 py-1 rounded-xl bg-[#FFF4EB] dark:bg-[#D86A33]/20 border border-[#D86A33]/40 text-[#D86A33] text-[11px] font-black shadow-2xs">
-                                                                                    ✦ {assignedSub.name}
-                                                                                </span>
-                                                                            ) : (
-                                                                                <span className="text-[11px] text-gray-400 font-medium">Sin categoría</span>
-                                                                            )}
-                                                                            <div>
-                                                                                <select
-                                                                                    value={p.subcategoria_id || ''}
-                                                                                    onChange={(e) => handleChangeProductSubcategory(p, e.target.value ? Number(e.target.value) : null)}
-                                                                                    className={`mt-1 px-2.5 py-1 rounded-xl border text-[11px] font-bold outline-none cursor-pointer transition-all hover:border-[#D86A33] ${inputStyle}`}
-                                                                                    title="Asignar o cambiar categoría"
-                                                                                >
-                                                                                    <option value="">-- Sin categoría --</option>
-                                                                                    {pSubcats.map(sc => (
-                                                                                        <option key={sc.id} value={sc.id}>
-                                                                                            {sc.name}
-                                                                                        </option>
-                                                                                    ))}
-                                                                                </select>
+                                                                    {subcats.length > 0 && (
+                                                                        <td className="py-3.5 px-5 whitespace-nowrap">
+                                                                            <div className="space-y-1">
+                                                                                {assignedSub ? (
+                                                                                    <span className="inline-flex items-center px-2.5 py-1 rounded-xl bg-[#FFF4EB] dark:bg-[#D86A33]/20 border border-[#D86A33]/40 text-[#D86A33] text-[11px] font-black shadow-2xs">
+                                                                                        ✦ {assignedSub.name}
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <span className="text-[11px] text-gray-400 font-medium">Sin categoría</span>
+                                                                                )}
+                                                                                <div>
+                                                                                    <select
+                                                                                        value={p.subcategoria_id || ''}
+                                                                                        onChange={(e) => handleChangeProductSubcategory(p, e.target.value ? Number(e.target.value) : null)}
+                                                                                        className={`mt-1 px-2.5 py-1 rounded-xl border text-[11px] font-bold outline-none cursor-pointer transition-all hover:border-[#D86A33] ${inputStyle}`}
+                                                                                        title="Asignar o cambiar categoría"
+                                                                                    >
+                                                                                        <option value="">-- Sin categoría --</option>
+                                                                                        {pSubcats.map(sc => (
+                                                                                            <option key={sc.id} value={sc.id}>
+                                                                                                {sc.name}
+                                                                                            </option>
+                                                                                        ))}
+                                                                                    </select>
+                                                                                </div>
                                                                             </div>
-                                                                        </div>
-                                                                    </td>
+                                                                        </td>
+                                                                    )}
 
-                                                                    <td className="py-3.5 px-5 text-center whitespace-nowrap">
-                                                                        <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
-                                                                            {p.stock !== undefined ? p.stock : 20} uds
-                                                                        </span>
-                                                                    </td>
+                                                                    {activeSection !== 'productos-personalizados' && (
+                                                                        <td className="py-3.5 px-5 text-center whitespace-nowrap">
+                                                                            <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                                                                {p.stock !== undefined ? p.stock : 20} uds
+                                                                            </span>
+                                                                        </td>
+                                                                    )}
 
                                                                     <td className="py-3.5 px-5 whitespace-nowrap">
                                                                         <div className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
