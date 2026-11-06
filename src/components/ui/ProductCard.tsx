@@ -122,9 +122,11 @@ export default function ProductCard({ product }: ProductCardProps) {
                             <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black uppercase tracking-wider bg-[#5F2142]/10 text-[#5F2142]">
                                 {sectionTitle}
                             </span>
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#FFF9F5] border border-[#D86A33]/40 text-[#D86A33]">
-                                ✦ {categoryName}
-                            </span>
+                            {(normalizedSlug !== 'accesorios-medicos' || product.subcategoria_id !== undefined) && (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#FFF9F5] border border-[#D86A33]/40 text-[#D86A33]">
+                                    ✦ {categoryName}
+                                </span>
+                            )}
                             {product.subcategoria_especial && (
                                 <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-[#5F2142] text-[#FFC99C]">
                                     {product.subcategoria_especial}

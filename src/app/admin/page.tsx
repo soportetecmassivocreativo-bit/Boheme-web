@@ -3542,7 +3542,285 @@ export default function AdminPage() {
                                         + Crear Producto en {selectedSubcatObj ? selectedSubcatObj.name : currentCatInfo?.title}
                                     </button>
                                 </div>
-                            ) : (
+                                ) : activeSection === 'accesorios-medicos' ? (
+                                    <div className="space-y-6">
+                                        {/* Todos los accesorios disponibles juntos, sin distribuir por categorías, mostrando tarjetita si tienen categoría asignada */}
+                                        <div className={`rounded-3xl ${bgCard} border ${borderDefault} shadow-xs overflow-hidden transition-all`}>
+                                            <div className="px-6 py-4 border-b border-gray-100 dark:border-white/10 bg-gray-50/60 dark:bg-white/3 flex flex-wrap items-center justify-between gap-3">
+                                                <div className="flex flex-wrap items-center gap-2">
+                                                    <span className="px-3 py-1 rounded-full bg-[#5F2142] text-[#FFC99C] text-[11px] font-black uppercase tracking-wider">
+                                                        {currentCatInfo?.title}
+                                                    </span>
+                                                    <h3 className="font-black text-sm sm:text-base text-[#5F2142] dark:text-[#FFC99C]">
+                                                        Todos los Accesorios Disponibles
+                                                    </h3>
+                                                    <span className="px-2.5 py-0.5 rounded-full bg-[#D86A33]/10 text-[#D86A33] text-xs font-black">
+                                                        {sectionProducts.length} {sectionProducts.length === 1 ? 'accesorio' : 'accesorios'}
+                                                    </span>
+                                                </div>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => openCreateProductModal(activeSubcategory !== 'all' ? Number(activeSubcategory) : undefined)}
+                                                    className="px-3.5 py-1.5 rounded-xl bg-[#D86A33] hover:bg-[#c25925] text-white text-[11px] font-black inline-flex items-center gap-1 shadow-2xs transition-all"
+                                                >
+                                                    <Plus size={13} />
+                                                    <span>+ Nuevo Accesorio</span>
+                                                </button>
+                                            </div>
+
+                                            <div className="overflow-x-auto divide-y divide-gray-100 dark:divide-white/10">
+                                                <table className="w-full text-left border-collapse text-xs">
+                                                    <thead>
+                                                        <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/40 dark:bg-white/2">
+                                                            <th className="py-3 px-5">Accesorio & Fotos</th>
+                                                            <th className="py-3 px-5">Categoría Asignada</th>
+                                                            <th className="py-3 px-5 text-center">Stock</th>
+                                                            <th className="py-3 px-5">Precio ($ / Bs.)</th>
+                                                            <th className="py-3 px-5 text-right">Acciones</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-gray-100 dark:divide-white/5">
+                                                        {paginatedSectionProducts.map(p => {
+                                                            const imgs = parseImages(p.image_url);
+                                                            const firstImg = imgs[0] || '/cat_accesorios.png';
+                                                            const pSubcats = CATEGORIES[p.categoria_slug]?.subcategories || [];
+                                                            const assignedSub = pSubcats.find(s => s.id === Number(p.subcategoria_id));
+                                                            const isProdMinimized = Boolean(minimizedProductIds[p.id]);
+
+                                                            if (isProdMinimized) {
+                                                                return (
+                                                                    <tr
+                                                                        key={p.id}
+                                                                        className="bg-gray-50/40 dark:bg-white/2 hover:bg-gray-100/60 dark:hover:bg-white/5 transition-colors"
+                                                                    >
+                                                                        <td className="py-2 px-5">
+                                                                            <div
+                                                                                onClick={() => toggleProductMinimized(p.id)}
+                                                                                className="flex items-center gap-2.5 cursor-pointer"
+                                                                            >
+                                                                                <div className="w-7 h-7 rounded-lg bg-gray-100 dark:bg-white/10 overflow-hidden shrink-0 border border-gray-200 dark:border-white/10">
+                                                                                    <img src={firstImg} alt={p.name} className="w-full h-full object-cover" />
+                                                                                </div>
+                                                                                <span className="font-black text-gray-900 dark:text-white text-xs">
+                                                                                    {p.name}
+                                                                                </span>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td className="py-2 px-5 whitespace-nowrap">
+                                                                            {assignedSub && (
+                                                                                <span className="text-[10px] font-black px-2.5 py-0.5 rounded-lg bg-[#FFF4EB] border border-[#D86A33]/40 text-[#D86A33] shadow-2xs">
+                                                                                    ✦ {assignedSub.name}
+                                                                                </span>
+                                                                            )}
+                                                                        </td>
+                                                                        <td className="py-2 px-5 text-center whitespace-nowrap">
+                                                                            <span className="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                                                                {p.stock !== undefined ? p.stock : 20} uds
+                                                                            </span>
+                                                                        </td>
+                                                                        <td className="py-2 px-5 whitespace-nowrap font-black text-xs text-[#5F2142] dark:text-[#FFC99C]">
+                                                                            ${p.price.toFixed(2)} USD
+                                                                        </td>
+                                                                        <td className="py-2 px-5 text-right whitespace-nowrap">
+                                                                            <div className="inline-flex items-center gap-1.5">
+                                                                                <button
+                                                                                    type="button"
+                                                                                    onClick={() => toggleProductMinimized(p.id)}
+                                                                                    className="px-2.5 py-1 rounded-xl bg-[#5F2142] text-white text-[10px] font-black inline-flex items-center gap-1 shadow-2xs hover:bg-[#481831] transition-all"
+                                                                                >
+                                                                                    <ChevronDown size={11} />
+                                                                                    <span>Maximizar ▼</span>
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => openEditProductModal(p)}
+                                                                                    className="w-7 h-7 rounded-full border border-gray-200 dark:border-white/10 hover:border-[#D86A33] hover:text-[#D86A33] flex items-center justify-center transition-all bg-white dark:bg-transparent"
+                                                                                    title="Editar producto"
+                                                                                >
+                                                                                    <Edit2 size={12} />
+                                                                                </button>
+                                                                                <button
+                                                                                    onClick={() => setDeleteConfirmId(p.id)}
+                                                                                    className="w-7 h-7 rounded-full border border-red-200 dark:border-red-900/40 text-red-600 hover:bg-red-50 flex items-center justify-center transition-all bg-white dark:bg-transparent"
+                                                                                    title="Eliminar producto"
+                                                                                >
+                                                                                    <Trash2 size={12} />
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                    </tr>
+                                                                );
+                                                            }
+
+                                                            return (
+                                                                <tr key={p.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5 transition-colors">
+                                                                    <td className="py-3.5 px-5">
+                                                                        <div className="flex items-center gap-3">
+                                                                            <div className="w-12 h-12 rounded-xl bg-gray-100 dark:bg-white/10 overflow-hidden shrink-0 relative flex items-center justify-center border border-gray-200 dark:border-white/10">
+                                                                                <img src={firstImg} alt={p.name} className="w-full h-full object-cover" />
+                                                                                {imgs.length > 1 && (
+                                                                                    <span className="absolute bottom-0 right-0 bg-[#5F2142] text-white text-[9px] font-black px-1 rounded-tl">
+                                                                                        +{imgs.length}
+                                                                                    </span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div>
+                                                                                <div className="font-black text-gray-900 dark:text-white text-xs sm:text-sm">{p.name}</div>
+                                                                                <div className="text-[11px] text-gray-500 line-clamp-1 max-w-md">{p.description}</div>
+                                                                                <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                                                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-[#5F2142]/10 text-[#5F2142] dark:bg-[#FFC99C]/10 dark:text-[#FFC99C]">
+                                                                                        {CATEGORIES[p.categoria_slug]?.title}
+                                                                                    </span>
+                                                                                    {assignedSub && (
+                                                                                        <span className="text-[10px] font-black px-2.5 py-0.5 rounded-lg bg-[#FFF4EB] dark:bg-[#D86A33]/20 border border-[#D86A33]/40 text-[#D86A33] shadow-2xs">
+                                                                                            ✦ {assignedSub.name}
+                                                                                        </span>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+
+                                                                    <td className="py-3.5 px-5 whitespace-nowrap">
+                                                                        <div className="space-y-1">
+                                                                            {assignedSub ? (
+                                                                                <span className="inline-flex items-center px-2.5 py-1 rounded-xl bg-[#FFF4EB] dark:bg-[#D86A33]/20 border border-[#D86A33]/40 text-[#D86A33] text-[11px] font-black shadow-2xs">
+                                                                                    ✦ {assignedSub.name}
+                                                                                </span>
+                                                                            ) : (
+                                                                                <span className="text-[11px] text-gray-400 font-medium">Sin categoría</span>
+                                                                            )}
+                                                                            <div>
+                                                                                <select
+                                                                                    value={p.subcategoria_id || ''}
+                                                                                    onChange={(e) => handleChangeProductSubcategory(p, Number(e.target.value))}
+                                                                                    className={`mt-1 px-2.5 py-1 rounded-xl border text-[11px] font-bold outline-none cursor-pointer transition-all hover:border-[#D86A33] ${inputStyle}`}
+                                                                                    title="Asignar o cambiar categoría"
+                                                                                >
+                                                                                    <option value="">-- Asignar categoría --</option>
+                                                                                    {pSubcats.map(sc => (
+                                                                                        <option key={sc.id} value={sc.id}>
+                                                                                            {sc.name}
+                                                                                        </option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            </div>
+                                                                        </div>
+                                                                    </td>
+
+                                                                    <td className="py-3.5 px-5 text-center whitespace-nowrap">
+                                                                        <span className="px-2.5 py-1 rounded-full text-[11px] font-black bg-emerald-100 text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300">
+                                                                            {p.stock !== undefined ? p.stock : 20} uds
+                                                                        </span>
+                                                                    </td>
+
+                                                                    <td className="py-3.5 px-5 whitespace-nowrap">
+                                                                        <div className="font-black text-sm text-[#5F2142] dark:text-[#FFC99C]">
+                                                                            ${p.price.toFixed(2)} USD
+                                                                        </div>
+                                                                        <div className="text-[10px] font-bold text-[#D86A33]">
+                                                                            {(p.price * bcvRate).toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} Bs.
+                                                                        </div>
+                                                                    </td>
+
+                                                                    <td className="py-3.5 px-5 text-right whitespace-nowrap">
+                                                                        <div className="inline-flex items-center gap-2">
+                                                                            <button
+                                                                                type="button"
+                                                                                onClick={() => toggleProductMinimized(p.id)}
+                                                                                className="px-2.5 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 hover:border-[#5F2142] text-gray-600 dark:text-gray-300 text-[10px] font-black inline-flex items-center gap-1 bg-white dark:bg-neutral-800 transition-all"
+                                                                            >
+                                                                                <ChevronUp size={12} />
+                                                                                <span>Minimizar ▲</span>
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => openEditProductModal(p)}
+                                                                                className="w-8 h-8 rounded-full border border-gray-200 dark:border-white/10 hover:border-[#D86A33] hover:text-[#D86A33] flex items-center justify-center transition-all bg-white dark:bg-transparent"
+                                                                                title="Editar producto y categoría"
+                                                                            >
+                                                                                <Edit2 size={13} />
+                                                                            </button>
+                                                                            <button
+                                                                                onClick={() => setDeleteConfirmId(p.id)}
+                                                                                className="w-8 h-8 rounded-full border border-red-200 dark:border-red-900/40 text-red-600 hover:bg-red-50 flex items-center justify-center transition-all bg-white dark:bg-transparent"
+                                                                                title="Eliminar producto"
+                                                                            >
+                                                                                <Trash2 size={13} />
+                                                                            </button>
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        {/* Pagination Footer Bar - Accesorios */}
+                                        {sectionProducts.length > 0 && (
+                                            <div className={`p-4 rounded-3xl ${bgCard} border ${borderDefault} shadow-xs flex flex-col sm:flex-row items-center justify-between gap-3`}>
+                                                <div className="flex items-center gap-3 flex-wrap">
+                                                    <span className="text-xs font-bold text-gray-500">
+                                                        Mostrando {(safeProductosPage - 1) * productosPageSize + 1} – {Math.min(safeProductosPage * productosPageSize, sectionProducts.length)} de {sectionProducts.length} accesorios
+                                                    </span>
+                                                    <select
+                                                        value={productosPageSize}
+                                                        onChange={(e) => { setProductosPageSize(Number(e.target.value)); setProductosPage(1); }}
+                                                        className={`px-3 py-1.5 rounded-xl border text-xs font-black outline-none cursor-pointer ${inputStyle}`}
+                                                    >
+                                                        <option value={8}>8 por página</option>
+                                                        <option value={12}>12 por página</option>
+                                                        <option value={24}>24 por página</option>
+                                                        <option value={50}>50 por página</option>
+                                                    </select>
+                                                </div>
+                                                {productosTotalPages > 1 && (
+                                                    <div className="flex items-center gap-1.5 flex-wrap justify-center">
+                                                        <button
+                                                            type="button"
+                                                            disabled={safeProductosPage <= 1}
+                                                            onClick={() => setProductosPage(Math.max(1, safeProductosPage - 1))}
+                                                            className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-black disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-white/10 transition flex items-center gap-1"
+                                                        >
+                                                            <ChevronLeft size={14} /> Anterior
+                                                        </button>
+                                                        {Array.from({ length: productosTotalPages }, (_, i) => i + 1)
+                                                            .filter(p => p === 1 || p === productosTotalPages || Math.abs(p - safeProductosPage) <= 2)
+                                                            .map((p, idx, arr) => {
+                                                                const prev = arr[idx - 1];
+                                                                const showDots = prev && p - prev > 1;
+                                                                return (
+                                                                    <span key={p} className="inline-flex items-center gap-1">
+                                                                        {showDots && <span className="px-1 text-gray-400 text-xs font-black">…</span>}
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => setProductosPage(p)}
+                                                                            className={`w-8 h-8 rounded-xl text-xs font-black transition ${
+                                                                                p === safeProductosPage
+                                                                                    ? 'bg-[#5F2142] text-white shadow-xs'
+                                                                                    : 'border border-gray-200 dark:border-white/10 hover:bg-gray-100 dark:hover:bg-white/10'
+                                                                            }`}
+                                                                        >
+                                                                            {p}
+                                                                        </button>
+                                                                    </span>
+                                                                );
+                                                            })}
+                                                        <button
+                                                            type="button"
+                                                            disabled={safeProductosPage >= productosTotalPages}
+                                                            onClick={() => setProductosPage(Math.min(productosTotalPages, safeProductosPage + 1))}
+                                                            className="px-3 py-1.5 rounded-xl border border-gray-200 dark:border-white/10 text-xs font-black disabled:opacity-40 hover:bg-gray-100 dark:hover:bg-white/10 transition flex items-center gap-1"
+                                                        >
+                                                            Siguiente <ChevronRight size={14} />
+                                                        </button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
                                 <div className="space-y-6">
                                     {subcatGroups.map(({ sub, items }) => {
                                         const isCatCollapsed = Boolean(collapsedCategoryIds[sub.id]);

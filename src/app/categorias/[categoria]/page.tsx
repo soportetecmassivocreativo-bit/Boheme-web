@@ -128,45 +128,47 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
 
             {/* Main Content Area */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full flex-1">
-                {/* Subcategories Filter Bar */}
-                <div className="mb-4 overflow-x-auto pb-3 scrollbar-thin">
-                    <div className="flex space-x-2.5 items-center">
-                        {/* "Todas las Categorías" Filter Link */}
-                        <Link
-                            href={`/categorias/${categoria}${itemsPerPage !== 8 ? `?por_pagina=${itemsPerPage}` : ''}`}
-                            onClick={undefined}
-                            className={`px-5 py-2.5 rounded-full text-xs font-black whitespace-nowrap transition-all duration-200 border uppercase tracking-wider flex items-center gap-1.5 ${
-                                !subcategoriaId
-                                    ? 'bg-[#5F2142] text-[#FFC99C] border-[#5F2142] shadow-md -rotate-1 scale-105'
-                                    : 'bg-white text-[#5F2142] border-[#FFC99C]/50 hover:border-[#D86A33] hover:text-[#D86A33] hover:scale-105'
-                            }`}
-                        >
-                            <span>✦ Todas las Categorías</span>
-                        </Link>
+                {/* Subcategories Filter Bar (Not shown as filter bar if user wants all accessories together, or kept clean) */}
+                {normalizedCategoria !== 'accesorios-medicos' && (
+                    <div className="mb-4 overflow-x-auto pb-3 scrollbar-thin">
+                        <div className="flex space-x-2.5 items-center">
+                            {/* "Todas las Categorías" Filter Link */}
+                            <Link
+                                href={`/categorias/${categoria}${itemsPerPage !== 8 ? `?por_pagina=${itemsPerPage}` : ''}`}
+                                onClick={undefined}
+                                className={`px-5 py-2.5 rounded-full text-xs font-black whitespace-nowrap transition-all duration-200 border uppercase tracking-wider flex items-center gap-1.5 ${
+                                    !subcategoriaId
+                                        ? 'bg-[#5F2142] text-[#FFC99C] border-[#5F2142] shadow-md -rotate-1 scale-105'
+                                        : 'bg-white text-[#5F2142] border-[#FFC99C]/50 hover:border-[#D86A33] hover:text-[#D86A33] hover:scale-105'
+                                }`}
+                            >
+                                <span>✦ Todas las Categorías</span>
+                            </Link>
 
-                        {/* Dynamic Subcategory Filter Links */}
-                        {category.subcategories.map((sub) => {
-                            const isActive = subcategoriaId === sub.id;
-                            const subParams = new URLSearchParams();
-                            subParams.set('subcategoria', String(sub.id));
-                            if (itemsPerPage !== 8) subParams.set('por_pagina', String(itemsPerPage));
+                            {/* Dynamic Subcategory Filter Links */}
+                            {category.subcategories.map((sub) => {
+                                const isActive = subcategoriaId === sub.id;
+                                const subParams = new URLSearchParams();
+                                subParams.set('subcategoria', String(sub.id));
+                                if (itemsPerPage !== 8) subParams.set('por_pagina', String(itemsPerPage));
 
-                            return (
-                                <Link
-                                    key={sub.id}
-                                    href={`/categorias/${categoria}?${subParams.toString()}`}
-                                    className={`px-5 py-2.5 rounded-full text-xs font-black whitespace-nowrap transition-all duration-200 border uppercase tracking-wider flex items-center gap-1.5 ${
-                                        isActive
-                                            ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-md rotate-1 scale-105'
-                                            : 'bg-white text-[#5F2142] border-[#FFC99C]/50 hover:border-[#D86A33] hover:text-[#D86A33] hover:scale-105'
-                                    }`}
-                                >
-                                    <span>{sub.name}</span>
-                                </Link>
-                            );
-                        })}
+                                return (
+                                    <Link
+                                        key={sub.id}
+                                        href={`/categorias/${categoria}?${subParams.toString()}`}
+                                        className={`px-5 py-2.5 rounded-full text-xs font-black whitespace-nowrap transition-all duration-200 border uppercase tracking-wider flex items-center gap-1.5 ${
+                                            isActive
+                                                ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-md rotate-1 scale-105'
+                                                : 'bg-white text-[#5F2142] border-[#FFC99C]/50 hover:border-[#D86A33] hover:text-[#D86A33] hover:scale-105'
+                                        }`}
+                                    >
+                                        <span>{sub.name}</span>
+                                    </Link>
+                                );
+                            })}
+                        </div>
                     </div>
-                </div>
+                )}
 
                 {/* Top Pagination & Items Per Page Summary Bar */}
                 {pagination.totalItems > 0 && (
@@ -199,7 +201,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                     </div>
                 )}
 
-                {/* Products Grid Grouped by Category Specified at Creation or Empty Fallback State */}
+                {/* Products Grid */}
                 {products.length === 0 ? (
                     <div className="text-center py-20 bg-[#FFF9F5] rounded-3xl border-2 border-dashed border-[#FFC99C]/60 shadow-sm space-y-4 max-w-lg mx-auto">
                         <span className="text-4xl">🌸</span>
@@ -209,6 +211,13 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                         <p className="text-sm text-gray-500 font-light">
                             Estamos preparando nuevos diseños increíbles para esta categoría.
                         </p>
+                    </div>
+                ) : normalizedCategoria === 'accesorios-medicos' ? (
+                    /* Accesorios médicos: Todos los accesorios disponibles juntos, sin distribuir por bloques de categorías (cada producto muestra su tarjetita de categoría) */
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                        {products.map((product) => (
+                            <ProductCard key={product.id} product={product} />
+                        ))}
                     </div>
                 ) : (
                     <div className="space-y-14">
