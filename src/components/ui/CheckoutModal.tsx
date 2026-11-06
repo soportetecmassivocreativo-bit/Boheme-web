@@ -97,8 +97,6 @@ export default function CheckoutModal() {
     const [estado, setEstado] = useState('');
     const [ciudad, setCiudad] = useState('');
     const [direccionAgencia, setDireccionAgencia] = useState('');
-    const [personaRetira, setPersonaRetira] = useState('');
-    const [cedulaRetira, setCedulaRetira] = useState('');
 
     // Form: Payment Data
     const [metodoPago, setMetodoPago] = useState<'pago_movil' | 'binance' | string>('pago_movil');
@@ -292,9 +290,6 @@ export default function CheckoutModal() {
             msg += `• *Empresa:* ${empresaEnvio}\n`;
             msg += `• *Destino:* ${ciudad.trim()}, ${estado.trim()}\n`;
             msg += `• *Dirección / Agencia de Retiro:* ${direccionAgencia.trim()}\n`;
-            const receptor = personaRetira.trim() || `${nombre.trim()} ${apellido.trim()}`;
-            const ciReceptor = cedulaRetira.trim() || cedula.trim();
-            msg += `• *Quién retira:* ${receptor} (C.I: ${ciReceptor})\n`;
         }
         msg += `\n`;
 
@@ -337,8 +332,6 @@ export default function CheckoutModal() {
                     empresa_envio: tipoEntrega === 'nacional' ? empresaEnvio : undefined,
                     estado: tipoEntrega === 'nacional' ? estado.trim() : undefined,
                     ciudad: tipoEntrega === 'nacional' ? ciudad.trim() : undefined,
-                    persona_retira: personaRetira.trim() || undefined,
-                    cedula_retira: cedulaRetira.trim() || undefined,
                     metodo_pago: activeExtraAccount ? activeExtraAccount.tipo : metodoPago,
                     nombre_metodo_pago: activeExtraAccount ? `${activeExtraAccount.nombreMetodo} (${activeExtraAccount.bancoOPlataforma})` : (metodoPago === 'pago_movil' ? `Pago Móvil (${siteSettings.pagoMovil.banco})` : 'Binance Pay (USDT)'),
                     banco_emisor: bancoEmisor.trim() || undefined,
@@ -725,33 +718,6 @@ export default function CheckoutModal() {
                                                 placeholder="Ej: Agencia MRW San Diego - Código 0204, o dirección detallada con puntos de referencia..."
                                                 className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm font-medium bg-white"
                                             />
-                                        </div>
-
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                                            <div>
-                                                <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1">
-                                                    Nombre de quien retira (si es otra persona)
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={personaRetira}
-                                                    onChange={(e) => setPersonaRetira(e.target.value)}
-                                                    placeholder="Dejar vacío si retiras tú"
-                                                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-medium bg-white"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1">
-                                                    Cédula de quien retira
-                                                </label>
-                                                <input
-                                                    type="text"
-                                                    value={cedulaRetira}
-                                                    onChange={(e) => setCedulaRetira(e.target.value)}
-                                                    placeholder="Dejar vacío si retiras tú"
-                                                    className="w-full px-3.5 py-2 rounded-xl border border-gray-200 text-xs font-medium bg-white"
-                                                />
-                                            </div>
                                         </div>
                                     </div>
                                 )}
