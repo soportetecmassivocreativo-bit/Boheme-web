@@ -90,6 +90,31 @@ export default function CartDrawer() {
                                                     </span>
                                                 </div>
 
+                                                {/* Gorro Quirúrgico Selector Info (Género, Estilo, Especial, Adicionales) */}
+                                                {(item.genero || item.modelo || (item.adicionales && item.adicionales.length > 0) || item.subcategoria_especial) && (
+                                                    <div className="mt-1.5 p-2 rounded-xl bg-[#FFF9F5] border border-[#FFC99C]/60 text-[11px] text-gray-700 space-y-1">
+                                                        <div className="flex flex-wrap items-center gap-1.5 font-black text-[#5F2142]">
+                                                            {item.genero && <span>{item.genero === 'Dama' ? '👩 Dama' : '👨 Caballero'}</span>}
+                                                            {item.modelo && (
+                                                                <span className="px-1.5 py-0.5 rounded-md bg-white border border-[#FFC99C] text-[#D86A33]">
+                                                                    {item.modelo}
+                                                                </span>
+                                                            )}
+                                                            {item.subcategoria_especial && (
+                                                                <span className="px-1.5 py-0.5 rounded-md bg-[#5F2142] text-[#FFC99C]">
+                                                                    {item.subcategoria_especial}
+                                                                </span>
+                                                            )}
+                                                        </div>
+                                                        {item.adicionales && item.adicionales.length > 0 && (
+                                                            <div className="text-[10px] text-gray-600">
+                                                                <strong className="text-[#D86A33]">Adicionales (+${(item.adicionales.length * 0.5).toFixed(2)}):</strong>{' '}
+                                                                {item.adicionales.join(', ')}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                )}
+
                                                 {/* Personalization Info Card */}
                                                 {item.is_personalizado && (
                                                     <div className="mt-1.5 p-2 rounded-xl bg-[#FFF9F5] border border-[#FFC99C]/50 text-[11px] text-gray-700 space-y-0.5">
@@ -100,19 +125,22 @@ export default function CartDrawer() {
                                                         {item.nombre_personalizado && (
                                                             <div><strong>Nombre:</strong> {item.nombre_personalizado}</div>
                                                         )}
+                                                        {item.texto_personalizado && (
+                                                            <div><strong>Texto libre:</strong> {item.texto_personalizado}</div>
+                                                        )}
                                                         {item.especialidad_personalizada && (
                                                             <div><strong>Especialidad:</strong> {item.especialidad_personalizada}</div>
                                                         )}
                                                         {item.color_preferencia && (
                                                             <div><strong>Color/Preferencia:</strong> {item.color_preferencia}</div>
                                                         )}
-                                                        {item.detalles_personalizados && (
+                                                        {item.detalles_personalizados && !item.texto_personalizado && (
                                                             <div><strong>Notas:</strong> {item.detalles_personalizados}</div>
                                                         )}
                                                     </div>
                                                 )}
 
-                                                {item.type_color && (
+                                                {item.type_color && !item.genero && (
                                                     <p className="text-xs text-[#D86A33] font-medium mt-1">{item.type_color}</p>
                                                 )}
 

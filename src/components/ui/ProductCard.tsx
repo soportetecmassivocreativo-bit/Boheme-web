@@ -2,10 +2,11 @@
 
 import { useState } from 'react';
 import { useCartStore } from '@/lib/store';
-import { Plus, Minus, ShoppingCart, Sparkles } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, Sparkles, Sliders } from 'lucide-react';
 import { parseImages } from '@/lib/utils';
-import { Product, CATEGORIES, getSubcategoryName } from '@/lib/db';
+import { Product, CATEGORIES, getSubcategoryName, normalizeCategorySlug } from '@/lib/db';
 import PersonalizeModal from './PersonalizeModal';
+import GorroConfigModal from './GorroConfigModal';
 
 interface ProductCardProps {
     product: Product;
@@ -15,10 +16,14 @@ export default function ProductCard({ product }: ProductCardProps) {
     const { addItem, toggleCart } = useCartStore();
     const [quantity, setQuantity] = useState(1);
     const [isPersonalizeOpen, setIsPersonalizeOpen] = useState(false);
+    const [isGorroModalOpen, setIsGorroModalOpen] = useState(false);
+
+    const normalizedSlug = normalizeCategorySlug(product.categoria_slug);
+    const isGorroProduct = normalizedSlug === 'gorros';
 
     const firstImage = parseImages(product.image_url)[0];
-    const sectionTitle = CATEGORIES[product.categoria_slug]?.title || product.categoria_slug;
-    const categoryName = getSubcategoryName(product.categoria_slug, product.subcategoria_id);
+    const sectionTitle = CATEGORIES[normalizedSlug]?.title || product.categoria_slug;
+    const categoryName = getSubcategoryName(normalizedSlug, product.subcategoria_id);
 
     const isPersonalizable = Boolean(
         product.categoria_slug === 'productos-personalizados' ||
@@ -29,7 +34,9 @@ export default function ProductCard({ product }: ProductCardProps) {
     );
 
     const handleActionClick = () => {
-        if (isPersonalizable) {
+        if (isGorroProduct) {
+            setIsGorroModalOpen(true);
+        } else if (isPersonalizable) {
             setIsPersonalizeOpen(true);
         } else {
             addItem({
@@ -58,12 +65,21 @@ export default function ProductCard({ product }: ProductCardProps) {
                     <span className={`washi-tape text-[10px] font-black px-2.5 py-0.5 tracking-wider uppercase inline-block -rotate-3 ${
                         isPersonalizable ? 'text-[#D86A33] border border-[#D86A33]/40' : 'text-[#5F2142]'
                     }`}>
-                        {isPersonalizable ? '★ PERSONALIZABLE' : '★ BOHEME'}
+                        {isPersonalizable
+                            ? '★ PERSONALIZABLE'
+                            : product.subcategoria_especial
+                                ? `★ ${product.subcategoria_especial.toUpperCase()}`
+                                : '★ BOHEME'}
                     </span>
                 </div>
 
                 {/* Image container */}
-                <div className="aspect-square bg-[#FFF9F5] relative overflow-hidden flex items-center justify-center border-b border-[#FFC99C]/30 m-2.5 rounded-2xl">
+                <div
+                    onClick={isGorroProduct ? () => setIsGorroModalOpen(true) : undefined}
+                    className={`aspect-square bg-[#FFF9F5] relative overflow-hidden flex items-center justify-center border-b border-[#FFC99C]/30 m-2.5 rounded-2xl ${
+                        isGorroProduct ? 'cursor-pointer' : ''
+                    }`}
+                >
                     {firstImage ? (
                         <img 
                             src={firstImage} 
@@ -96,8 +112,18 @@ export default function ProductCard({ product }: ProductCardProps) {
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-black bg-[#FFF9F5] border border-[#D86A33]/40 text-[#D86A33]">
                                 ✦ {categoryName}
                             </span>
+                            {product.subcategoria_especial && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-black bg-[#5F2142] text-[#FFC99C]">
+                                    {product.subcategoria_especial}
+                                </span>
+                            )}
                         </div>
-                        <h3 className="text-lg font-extrabold text-[#5F2142] mb-1.5 line-clamp-1 group-hover:text-[#D86A33] transition-colors">
+                        <h3
+                            onClick={isGorroProduct ? () => setIsGorroModalOpen(true) : undefined}
+                            className={`text-lg font-extrabold text-[#5F2142] mb-1.5 line-clamp-1 group-hover:text-[#D86A33] transition-colors ${
+                                isGorroProduct ? 'cursor-pointer' : ''
+                            }`}
+                        >
                             {product.name}
                         </h3>
                         <p className="text-xs text-gray-500 line-clamp-2 mb-4 leading-relaxed font-normal">
@@ -109,7 +135,7 @@ export default function ProductCard({ product }: ProductCardProps) {
                         {/* Actions */}
                         <div className="flex items-center gap-2.5">
                             {/* Quantity Selector (only if not customized directly via modal) */}
-                            {!isPersonalizable && (
+                            {!isPersonalizable && !isGorroProduct && (
                                 <div className="flex items-center border border-[#FFC99C]/60 rounded-full bg-[#FFF9F5] p-0.5">
                                     <button
                                         onClick={() => setQuantity(prev => Math.max(1, prev - 1))}
@@ -129,16 +155,25 @@ export default function ProductCard({ product }: ProductCardProps) {
                                 </div>
                             )}
 
-                            {/* Add / Personalize button */}
+                            {/* Add / Configure / Personalize button */}
                             <button
                                 onClick={handleActionClick}
-                                className={`flex-1 text-white font-bold py-2.5 px-3.5 rounded-full flex items-center justify-center gap-1.5 text-xs transition-all duration-300 shadow-md hover:scale-[1.02] active:scale-[0.98] ${
+                                className={`flex-1 text-white font-bold py-2.5 px-3.5 rounded-full flex items-center justify-center gap-1.5 text-xs transition-all duration-300 shadow-md hover:scale-[1.02] active:scale-[0.98] cursor-pointer ${
                                     isPersonalizable
                                         ? 'bg-[#5F2142] hover:bg-[#43142e] shadow-[#5F2142]/20'
                                         : 'bg-[#D86A33] hover:bg-[#5F2142] shadow-[#D86A33]/20'
                                 }`}
                             >
-                                {isPersonalizable ? (
+                                {isGorroProduct ? (
+                                    <>
+                                        {isPersonalizable ? (
+                                            <Sparkles size={14} className="text-[#FFC99C]" />
+                                        ) : (
+                                            <Sliders size={14} />
+                                        )}
+                                        <span>{isPersonalizable ? 'Personalizar Gorro' : 'Elegir Opciones'}</span>
+                                    </>
+                                ) : isPersonalizable ? (
                                     <>
                                         <Sparkles size={14} className="text-[#FFC99C]" />
                                         <span>Personalizar</span>
@@ -155,12 +190,24 @@ export default function ProductCard({ product }: ProductCardProps) {
                 </div>
             </div>
 
-            {/* Personalization Modal for this product */}
-            <PersonalizeModal
-                product={product}
-                isOpen={isPersonalizeOpen}
-                onClose={() => setIsPersonalizeOpen(false)}
-            />
+            {/* Gorro Quirúrgico Dynamic Selector Modal */}
+            {isGorroProduct && (
+                <GorroConfigModal
+                    product={product}
+                    isOpen={isGorroModalOpen}
+                    onClose={() => setIsGorroModalOpen(false)}
+                    initialQuantity={quantity}
+                />
+            )}
+
+            {/* Personalization Modal for non-gorro custom products */}
+            {!isGorroProduct && (
+                <PersonalizeModal
+                    product={product}
+                    isOpen={isPersonalizeOpen}
+                    onClose={() => setIsPersonalizeOpen(false)}
+                />
+            )}
         </>
     );
 }

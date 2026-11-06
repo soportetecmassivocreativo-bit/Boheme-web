@@ -240,12 +240,22 @@ export default function CheckoutModal() {
         items.forEach((item, idx) => {
             const itemTotal = (item.price * item.quantity).toFixed(2);
             msg += `*${idx + 1}. ${item.quantity}x ${item.name}* — $${itemTotal}\n`;
-            
+
+            if (item.genero) msg += `   ▫️ *Género:* ${item.genero}\n`;
+            if (item.modelo) msg += `   ▫️ *Estilo / Ajuste:* ${item.modelo}\n`;
+            if (item.subcategoria_especial) msg += `   ▫️ *Subcategoría Especial:* ${item.subcategoria_especial}\n`;
+            if (item.adicionales && item.adicionales.length > 0) {
+                msg += `   ▫️ *Adicionales (+$${(item.adicionales.length * 0.5).toFixed(2)}):* ${item.adicionales.join(', ')}\n`;
+            }
+
             // Personalization details
             if (item.is_personalizado || item.nombre_personalizado || item.especialidad_personalizada || item.texto_personalizado) {
                 msg += `   ✨ *Personalización:*\n`;
                 if (item.nombre_personalizado) {
-                    msg += `   ▫️ *Nombre a bordar/estampar:* ${item.nombre_personalizado}\n`;
+                    msg += `   ▫️ *Nombre:* ${item.nombre_personalizado}\n`;
+                }
+                if (item.texto_personalizado) {
+                    msg += `   ▫️ *Texto libre:* ${item.texto_personalizado}\n`;
                 }
                 if (item.especialidad_personalizada) {
                     msg += `   ▫️ *Especialidad/Cargo:* ${item.especialidad_personalizada}\n`;
@@ -253,17 +263,12 @@ export default function CheckoutModal() {
                 if (item.color_preferencia) {
                     msg += `   ▫️ *Color/Preferencia:* ${item.color_preferencia}\n`;
                 }
-                if (item.detalles_personalizados) {
+                if (item.detalles_personalizados && !item.texto_personalizado && !item.genero) {
                     msg += `   ▫️ *Especificaciones:* ${item.detalles_personalizados}\n`;
-                }
-                if (item.texto_personalizado && !item.nombre_personalizado) {
-                    msg += `   ▫️ *Texto:* ${item.texto_personalizado}\n`;
                 }
             }
 
-            if (item.type_color) msg += `   ▫️ *Color:* ${item.type_color}\n`;
-            if (item.genero) msg += `   ▫️ *Género:* ${item.genero}\n`;
-            if (item.modelo) msg += `   ▫️ *Modelo:* ${item.modelo}\n`;
+            if (item.type_color && !item.genero) msg += `   ▫️ *Color:* ${item.type_color}\n`;
         });
 
         const formattedBs = totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -342,8 +347,15 @@ export default function CheckoutModal() {
                         quantity: it.quantity,
                         image_url: it.image_url,
                         categoria_slug: it.categoria_slug,
+                        subcategoria_id: it.subcategoria_id,
+                        subcategoria_especial: it.subcategoria_especial,
+                        genero: it.genero,
+                        modelo: it.modelo,
+                        adicionales: it.adicionales,
+                        recargo_adicionales: it.recargo_adicionales,
                         is_personalizado: it.is_personalizado,
                         nombre_personalizado: it.nombre_personalizado,
+                        texto_personalizado: it.texto_personalizado,
                         especialidad_personalizada: it.especialidad_personalizada,
                         color_preferencia: it.color_preferencia,
                         detalles_personalizados: it.detalles_personalizados

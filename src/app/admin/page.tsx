@@ -62,7 +62,7 @@ import {
     Shield,
     Key
 } from 'lucide-react';
-import { Product, CATEGORIES, Order, OrderItem } from '@/lib/db';
+import { Product, CATEGORIES, Order, OrderItem, GORROS_ESPECIALES_SUBCATEGORIES } from '@/lib/db';
 import { parseImages } from '@/lib/utils';
 import { SiteSettings, ExtraPaymentAccount, ExtraPaymentType, AdminUser, AdminUserRole } from '@/lib/settings';
 import {
@@ -116,6 +116,7 @@ export default function AdminPage() {
     const [loadingProducts, setLoadingProducts] = useState(true);
     const [activeSection, setActiveSection] = useState<string>('gorros');
     const [activeSubcategory, setActiveSubcategory] = useState<number | 'all'>('all');
+    const [activeEspecialFilter, setActiveEspecialFilter] = useState<string>('all');
     const [productSearch, setProductSearch] = useState('');
     const [collapsedCategoryIds, setCollapsedCategoryIds] = useState<Record<string | number, boolean>>({});
     const [minimizedProductIds, setMinimizedProductIds] = useState<Record<string, boolean>>({});
@@ -170,6 +171,7 @@ export default function AdminPage() {
     const [formStock, setFormStock] = useState<number | string>(20);
     const [formCategory, setFormCategory] = useState('gorros');
     const [formSubcategory, setFormSubcategory] = useState<number | undefined>(70);
+    const [formSubcategoryEspecial, setFormSubcategoryEspecial] = useState<string>('Reversible');
     const [formImages, setFormImages] = useState<string[]>([]);
     const [newImageUrl, setNewImageUrl] = useState('');
     const [isDragging, setIsDragging] = useState(false);
@@ -529,6 +531,7 @@ export default function AdminPage() {
             ? preselectedSubcategoryId
             : (activeSubcategory !== 'all' ? activeSubcategory : catInfo?.subcategories[0]?.id);
         setFormSubcategory(defaultSubId);
+        setFormSubcategoryEspecial(activeEspecialFilter !== 'all' ? activeEspecialFilter : 'Reversible');
         
         // Start fresh so admin can drop/select images directly
         setFormImages([]);
@@ -545,6 +548,7 @@ export default function AdminPage() {
         setFormStock(product.stock !== undefined ? product.stock : 20);
         setFormCategory(product.categoria_slug);
         setFormSubcategory(product.subcategoria_id);
+        setFormSubcategoryEspecial(product.subcategoria_especial || 'Reversible');
         const imgs = parseImages(product.image_url);
         setFormImages(imgs.length > 0 ? imgs.slice(0, 10) : []);
         setNewImageUrl('');
@@ -654,6 +658,7 @@ export default function AdminPage() {
             stock: Number(formStock) >= 0 ? Number(formStock) : 20,
             categoria_slug: formCategory,
             subcategoria_id: formSubcategory ? Number(formSubcategory) : undefined,
+            subcategoria_especial: (formCategory === 'gorros' && Number(formSubcategory) === 72) ? formSubcategoryEspecial : undefined,
             // Store as array or JSON string if multiple
             image_url: formImages.length === 1 ? formImages[0] : JSON.stringify(formImages)
         };
@@ -1563,10 +1568,14 @@ export default function AdminPage() {
     // Filter products by active section and optional subcategory (NO "TODOS" section)
     const sectionProducts = allSectionProducts.filter(p => {
         const matchesSubcategory = activeSubcategory === 'all' || Number(p.subcategoria_id) === Number(activeSubcategory);
+        const matchesEspecial =
+            activeSection !== 'gorros' ||
+            activeEspecialFilter === 'all' ||
+            (Number(p.subcategoria_id) === 72 && (p.subcategoria_especial || '').toLowerCase() === activeEspecialFilter.toLowerCase());
         const matchesSearch = !productSearch.trim() || 
             p.name.toLowerCase().includes(productSearch.toLowerCase()) || 
             (p.description && p.description.toLowerCase().includes(productSearch.toLowerCase()));
-        return matchesSubcategory && matchesSearch;
+        return matchesSubcategory && matchesEspecial && matchesSearch;
     });
 
     // Pagination slices for Facturado, Taller y Pedidos, and Agregar Productos
@@ -2911,17 +2920,52 @@ export default function AdminPage() {
                                                                                 </span>
                                                                             </div>
 
+                                                                            {/* GORROS QUIRÚRGICOS CONFIGURATION CALLOUT (GÉNERO, ESTILO, ESPECIAL, ADICIONALES) */}
+                                                                            {(item.genero || item.modelo || item.subcategoria_especial || (item.adicionales && item.adicionales.length > 0)) && (
+                                                                                <div className="p-2.5 rounded-xl bg-[#5F2142]/8 dark:bg-white/5 border border-[#5F2142]/20 dark:border-white/10 space-y-1 text-xs">
+                                                                                    <div className="flex flex-wrap items-center gap-1.5">
+                                                                                        {item.genero && (
+                                                                                            <span className="px-2 py-0.5 rounded-md bg-[#5F2142] text-white text-[10px] font-black">
+                                                                                                {item.genero === 'Dama' ? '👩 Dama' : '👨 Caballero'}
+                                                                                            </span>
+                                                                                        )}
+                                                                                        {item.modelo && (
+                                                                                            <span className="px-2 py-0.5 rounded-md bg-[#D86A33] text-white text-[10px] font-black">
+                                                                                                Estilo: {item.modelo}
+                                                                                            </span>
+                                                                                        )}
+                                                                                        {item.subcategoria_especial && (
+                                                                                            <span className="px-2 py-0.5 rounded-md bg-purple-700 text-white text-[10px] font-black">
+                                                                                                Especial: {item.subcategoria_especial}
+                                                                                            </span>
+                                                                                        )}
+                                                                                    </div>
+                                                                                    {item.adicionales && item.adicionales.length > 0 && (
+                                                                                        <div className="text-[11px] pt-0.5">
+                                                                                            <span className="font-black text-[#D86A33]">Adicionales (+${(item.adicionales.length * 0.5).toFixed(2)}): </span>
+                                                                                            <span className="font-bold text-gray-800 dark:text-gray-200">{item.adicionales.join(', ')}</span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            )}
+
                                                                             {/* PERSONALIZATION CALLOUT BOX (CRITICAL FOR WORKSHOP) */}
-                                                                            {hasCustom && (
+                                                                            {(hasCustom || item.texto_personalizado) && (
                                                                                 <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/25 space-y-1 text-xs">
                                                                                     {item.nombre_personalizado && (
                                                                                         <div className="flex items-baseline gap-1.5">
                                                                                             <span className="text-[10px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-wider shrink-0">
-                                                                                                Bordado / Nombre:
+                                                                                                Nombre:
                                                                                             </span>
                                                                                             <span className="font-black text-[#5F2142] dark:text-[#FFC99C] text-sm bg-white dark:bg-neutral-800 px-2 py-0.5 rounded-md border border-amber-300 dark:border-amber-700 shadow-2xs">
                                                                                                 {item.nombre_personalizado}
                                                                                             </span>
+                                                                                        </div>
+                                                                                    )}
+                                                                                    {item.texto_personalizado && (
+                                                                                        <div className="flex items-baseline gap-1.5 text-[11px]">
+                                                                                            <span className="font-bold text-amber-800 dark:text-amber-400 shrink-0">Texto libre:</span>
+                                                                                            <span className="font-bold text-gray-900 dark:text-white">{item.texto_personalizado}</span>
                                                                                         </div>
                                                                                     )}
                                                                                     {item.especialidad_personalizada && (
@@ -2936,7 +2980,7 @@ export default function AdminPage() {
                                                                                             <span className="font-medium text-gray-800 dark:text-gray-200">{item.color_preferencia}</span>
                                                                                         </div>
                                                                                     )}
-                                                                                    {item.detalles_personalizados && (
+                                                                                    {item.detalles_personalizados && !item.texto_personalizado && !item.genero && (
                                                                                         <div className="flex items-baseline gap-1.5 text-[11px]">
                                                                                             <span className="font-bold text-gray-500 shrink-0">Observaciones:</span>
                                                                                             <span className="font-medium text-gray-700 dark:text-gray-300">{item.detalles_personalizados}</span>
@@ -3254,6 +3298,55 @@ export default function AdminPage() {
                                             );
                                         })}
                                     </div>
+
+                                    {/* Subcategorías de Especiales (Reversible, Cintillo, Ponytail, Coquette) cuando la sección es Gorros Quirúrgicos */}
+                                    {activeSection === 'gorros' && (activeSubcategory === 'all' || Number(activeSubcategory) === 72) && (
+                                        <div className="pt-3 border-t border-gray-100 dark:border-white/10 flex flex-wrap items-center gap-2">
+                                            <span className="text-[11px] font-black uppercase tracking-wider text-[#D86A33] flex items-center gap-1 mr-1">
+                                                <Sparkles size={13} />
+                                                <span>Subcategorías de Especiales:</span>
+                                            </span>
+                                            <button
+                                                type="button"
+                                                onClick={() => setActiveEspecialFilter('all')}
+                                                className={`px-3 py-1 rounded-xl text-[11px] font-black transition-all border ${
+                                                    activeEspecialFilter === 'all'
+                                                        ? 'bg-[#5F2142] text-white border-[#5F2142]'
+                                                        : 'bg-white dark:bg-neutral-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
+                                                }`}
+                                            >
+                                                Todas ({allSectionProducts.filter(p => Number(p.subcategoria_id) === 72).length})
+                                            </button>
+                                            {GORROS_ESPECIALES_SUBCATEGORIES.map(subEsp => {
+                                                const espActive = activeEspecialFilter === subEsp && (activeSubcategory === 'all' || Number(activeSubcategory) === 72);
+                                                const espCount = allSectionProducts.filter(
+                                                    p => Number(p.subcategoria_id) === 72 && (p.subcategoria_especial || '').toLowerCase() === subEsp.toLowerCase()
+                                                ).length;
+                                                return (
+                                                    <button
+                                                        key={subEsp}
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setActiveSubcategory(72);
+                                                            setActiveEspecialFilter(subEsp);
+                                                        }}
+                                                        className={`px-3 py-1 rounded-xl text-[11px] font-black transition-all border flex items-center gap-1.5 ${
+                                                            espActive
+                                                                ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-2xs scale-105'
+                                                                : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
+                                                        }`}
+                                                    >
+                                                        <span>{subEsp}</span>
+                                                        <span className={`px-1.5 py-0.5 rounded-full text-[9px] ${
+                                                            espActive ? 'bg-white/25 text-white' : 'bg-gray-100 dark:bg-white/10 text-gray-500'
+                                                        }`}>
+                                                            {espCount}
+                                                        </span>
+                                                    </button>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
                                 </div>
                             )}
 
@@ -6232,6 +6325,34 @@ export default function AdminPage() {
                                             );
                                         })}
                                     </div>
+
+                                    {/* Subcategorías de Especiales (Reversible, Cintillo, Ponytail, Coquette) cuando es Gorros Quirúrgicos › Especiales (72) */}
+                                    {formCategory === 'gorros' && Number(formSubcategory) === 72 && (
+                                        <div className="pt-2 space-y-1.5">
+                                            <label className="block font-black text-[#D86A33] uppercase">
+                                                Subcategoría de Especiales *
+                                            </label>
+                                            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                                                {GORROS_ESPECIALES_SUBCATEGORIES.map(subEsp => {
+                                                    const isEspSelected = formSubcategoryEspecial === subEsp;
+                                                    return (
+                                                        <button
+                                                            key={subEsp}
+                                                            type="button"
+                                                            onClick={() => setFormSubcategoryEspecial(subEsp)}
+                                                            className={`py-2 px-3 rounded-xl text-xs font-black transition-all border ${
+                                                                isEspSelected
+                                                                    ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-xs scale-105'
+                                                                    : 'bg-white dark:bg-white/5 text-gray-700 dark:text-gray-200 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
+                                                            }`}
+                                                        >
+                                                            {subEsp}
+                                                        </button>
+                                                    );
+                                                })}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             )}
 

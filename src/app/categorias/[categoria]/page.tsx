@@ -1,10 +1,10 @@
 import Navbar from '@/components/ui/Navbar';
 import ProductCard from '@/components/ui/ProductCard';
 import Footer from '@/components/ui/Footer';
-import { fetchCategoryProducts, CATEGORIES } from '@/lib/db';
+import { fetchCategoryProducts, CATEGORIES, normalizeCategorySlug, GORROS_ESPECIALES_SUBCATEGORIES } from '@/lib/db';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
-import { ChevronLeft, ChevronRight, Layers } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Layers, Sparkles } from 'lucide-react';
 import type { Metadata } from 'next';
 
 interface PageProps {
@@ -13,6 +13,7 @@ interface PageProps {
     }>;
     searchParams: Promise<{
         subcategoria?: string;
+        especial?: string;
         pagina?: string;
         por_pagina?: string;
     }>;
@@ -20,7 +21,8 @@ interface PageProps {
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
     const { categoria } = await params;
-    const category = CATEGORIES[categoria];
+    const normalized = normalizeCategorySlug(categoria);
+    const category = CATEGORIES[normalized];
     if (!category) {
         return {
             title: 'Categoría no encontrada | BOHEME',
@@ -34,9 +36,10 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 export default async function CategoriaPage({ params, searchParams }: PageProps) {
     const { categoria } = await params;
-    const { subcategoria, pagina, por_pagina } = await searchParams;
+    const { subcategoria, especial, pagina, por_pagina } = await searchParams;
 
-    const category = CATEGORIES[categoria];
+    const normalizedCategoria = normalizeCategorySlug(categoria);
+    const category = CATEGORIES[normalizedCategoria];
     if (!category) {
         notFound();
     }
@@ -49,10 +52,12 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
         paginatedProducts: products,
         totalCategoryProducts,
         subcategoryCounts,
+        especialCounts,
         pagination
-    } = await fetchCategoryProducts(categoria, subcategoriaId, {
+    } = await fetchCategoryProducts(normalizedCategoria, subcategoriaId, {
         page: requestedPage,
-        limit: itemsPerPage
+        limit: itemsPerPage,
+        especial: especial
     });
 
     const selectedSubcategoryObj = subcategoriaId
@@ -76,6 +81,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
     const buildPageUrl = (targetPage: number, customLimit?: number) => {
         const paramsObj = new URLSearchParams();
         if (subcategoriaId) paramsObj.set('subcategoria', String(subcategoriaId));
+        if (especial) paramsObj.set('especial', especial);
         if (targetPage > 1) paramsObj.set('pagina', String(targetPage));
         const limitToUse = customLimit ?? itemsPerPage;
         if (limitToUse !== 8) paramsObj.set('por_pagina', String(limitToUse));
@@ -109,6 +115,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                         {selectedSubcategoryObj && (
                             <span className="text-xl md:text-2xl font-black px-4 py-1 rounded-full bg-[#D86A33] text-white shadow-sm">
                                 Categoría: {selectedSubcategoryObj.name}
+                                {especial ? ` › ${especial}` : ''}
                             </span>
                         )}
                         <span className="text-[#D86A33] text-2xl md:text-3xl">✦</span>
@@ -122,11 +129,11 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
             {/* Main Content Area */}
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full flex-1">
                 {/* Subcategories Filter Bar */}
-                <div className="mb-6 overflow-x-auto pb-4 scrollbar-thin">
+                <div className="mb-4 overflow-x-auto pb-3 scrollbar-thin">
                     <div className="flex space-x-2.5 items-center">
                         {/* "Todas las Categorías" Filter Link */}
                         <Link
-                            href={buildPageUrl(1)}
+                            href={`/categorias/${categoria}${itemsPerPage !== 8 ? `?por_pagina=${itemsPerPage}` : ''}`}
                             onClick={undefined}
                             className={`px-5 py-2.5 rounded-full text-xs font-black whitespace-nowrap transition-all duration-200 border uppercase tracking-wider flex items-center gap-1.5 ${
                                 !subcategoriaId
@@ -167,6 +174,57 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                         })}
                     </div>
                 </div>
+
+                {/* Subcategorías de "Especiales" (Reversible, Cintillo, Ponytail, Coquette) cuando está en Gorros Quirúrgicos */}
+                {normalizedCategoria === 'gorros' && (!subcategoriaId || subcategoriaId === 72) && (
+                    <div className="mb-6 p-3.5 rounded-2xl bg-[#FFF9F5] border border-[#FFC99C]/60 flex flex-wrap items-center gap-2">
+                        <span className="text-[11px] font-black uppercase tracking-wider text-[#5F2142] flex items-center gap-1.5 mr-1">
+                            <Sparkles size={13} className="text-[#D86A33]" />
+                            <span>Subcategorías de Especiales:</span>
+                        </span>
+
+                        {subcategoriaId === 72 && (
+                            <Link
+                                href={`/categorias/${categoria}?subcategoria=72${itemsPerPage !== 8 ? `&por_pagina=${itemsPerPage}` : ''}`}
+                                className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all border ${
+                                    !especial
+                                        ? 'bg-[#5F2142] text-[#FFC99C] border-[#5F2142] shadow-xs'
+                                        : 'bg-white text-[#5F2142] border-[#FFC99C]/60 hover:border-[#D86A33]'
+                                }`}
+                            >
+                                Todas ({subcategoryCounts[72] || 0})
+                            </Link>
+                        )}
+
+                        {GORROS_ESPECIALES_SUBCATEGORIES.map((subEsp) => {
+                            const isEspActive = subcategoriaId === 72 && especial?.toLowerCase() === subEsp.toLowerCase();
+                            const espCount = especialCounts[subEsp] || 0;
+                            const espParams = new URLSearchParams();
+                            espParams.set('subcategoria', '72');
+                            espParams.set('especial', subEsp);
+                            if (itemsPerPage !== 8) espParams.set('por_pagina', String(itemsPerPage));
+
+                            return (
+                                <Link
+                                    key={subEsp}
+                                    href={`/categorias/${categoria}?${espParams.toString()}`}
+                                    className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all border flex items-center gap-1.5 ${
+                                        isEspActive
+                                            ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-xs scale-105'
+                                            : 'bg-white text-[#5F2142] border-[#FFC99C]/60 hover:border-[#D86A33] hover:text-[#D86A33]'
+                                    }`}
+                                >
+                                    <span>{subEsp}</span>
+                                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                                        isEspActive ? 'bg-white/25 text-white' : 'bg-[#FFF9F5] text-[#5F2142]'
+                                    }`}>
+                                        {espCount}
+                                    </span>
+                                </Link>
+                            );
+                        })}
+                    </div>
+                )}
 
                 {/* Top Pagination & Items Per Page Summary Bar */}
                 {pagination.totalItems > 0 && (

@@ -3,6 +3,7 @@ import { supabase, isSupabaseConfigured } from './supabase';
 export interface Subcategory {
     id: number;
     name: string;
+    subcategories?: string[];
 }
 
 export interface CategoryInfo {
@@ -20,6 +21,7 @@ export interface Product {
     image_url: string;
     categoria_slug: string;
     subcategoria_id?: number;
+    subcategoria_especial?: string; // Para Especiales: 'Reversible' | 'Cintillo' | 'Ponytail' | 'Coquette'
     type_color?: string;
     genero?: string;
     modelo?: string;
@@ -28,16 +30,49 @@ export interface Product {
     disponible?: boolean;
 }
 
+export const GORROS_ESPECIALES_SUBCATEGORIES = [
+    'Reversible',
+    'Cintillo',
+    'Ponytail',
+    'Coquette'
+] as const;
+
+export const GORROS_GENERO_OPTIONS = [
+    {
+        genero: 'Dama',
+        icon: '👩',
+        estilos: ['Lazo', 'Elástica', 'Tiras Abiertas']
+    },
+    {
+        genero: 'Caballero',
+        icon: '👨',
+        estilos: ['Largo', 'Corto']
+    }
+] as const;
+
+export const GORROS_ADICIONALES_OPTIONS = [
+    { id: 'botones_tapabocas', label: 'Botones para tapabocas', price: 0.50, desc: 'Alivia la presión en las orejas' },
+    { id: 'cinta_gruesa', label: 'Cinta gruesa', price: 0.50, desc: 'Mayor soporte y ajuste firme' },
+    { id: 'protector_sudor', label: 'Protector de sudor', price: 0.50, desc: 'Banda frontal absorbente' },
+    { id: 'ruedo', label: 'Ruedo', price: 0.50, desc: 'Acabado reforzado en el borde' }
+] as const;
+
+export function normalizeCategorySlug(slug: string): string {
+    if (slug === 'gorros-quirurgicos') return 'gorros';
+    return slug;
+}
+
 // Category Configuration mapped exactly to production slug URLs
 export const CATEGORIES: Record<string, CategoryInfo> = {
     'gorros': {
         id: 'gorros',
         title: 'Gorros Quirúrgicos',
-        description: 'Explora nuestra colección de gorros diseñados para brindarte confort y estilo en tu labor diaria.',
+        description: 'Explora nuestra colección de gorros quirúrgicos diseñados para brindarte confort y estilo en tu labor diaria.',
         subcategories: [
-            { id: 70, name: 'Gorritos en stock' },
-            { id: 71, name: 'Gorritos personalizados' },
-            { id: 72, name: 'Gorros especiales' }
+            { id: 70, name: 'Stock', subcategories: [] },
+            { id: 73, name: 'Básicos', subcategories: [] },
+            { id: 71, name: 'Personalizados', subcategories: [] },
+            { id: 72, name: 'Especiales', subcategories: ['Reversible', 'Cintillo', 'Ponytail', 'Coquette'] }
         ]
     },
     'lanyards': {
@@ -412,12 +447,13 @@ let MOCK_PRODUCTS: Product[] = [
     },
 
     // ==========================================
-    // GORROS (Subcategories: 70 - En Stock, 71 - Personalizados)
+    // GORROS QUIRÚRGICOS
+    // Categorías en orden: 70 - Stock, 73 - Básicos, 71 - Personalizados, 72 - Especiales (Reversible, Cintillo, Ponytail, Coquette)
     // ==========================================
     {
         id: '101',
         name: 'Gorro Quirúrgico Flores Boheme',
-        description: '100% Algodón transpirable. Diseño floral exclusivo, banda absorbente en la frente y ajuste con elástico y tiras posteriores.',
+        description: '100% Algodón transpirable en stock listo para entrega inmediata. Diseño floral exclusivo de nuestra colección.',
         price: 8,
         image_url: '/cat_gorros.png',
         categoria_slug: 'gorros',
@@ -426,7 +462,7 @@ let MOCK_PRODUCTS: Product[] = [
     {
         id: '102',
         name: 'Gorro Quirófano Antifluido Azul Profundo',
-        description: 'Tejido antifluido repelente de líquidos. Máxima frescura, suavidad y durabilidad para largas jornadas de turno.',
+        description: 'Tejido antifluido repelente de líquidos en stock. Máxima frescura, suavidad y durabilidad para largas jornadas de turno.',
         price: 9,
         image_url: '/cat_gorros.png',
         categoria_slug: 'gorros',
@@ -435,43 +471,34 @@ let MOCK_PRODUCTS: Product[] = [
     {
         id: '103',
         name: 'Gorro Quirúrgico Butterfly Pastel',
-        description: 'Confeccionado en tela suave y liviana con estampado de mariposas en tonos pastel. Ajuste anatómico perfecto.',
+        description: 'Confeccionado en tela suave y liviana con estampado de mariposas en tonos pastel. Disponible en stock.',
         price: 8.5,
         image_url: '/cat_gorros.png',
         categoria_slug: 'gorros',
         subcategoria_id: 70
     },
     {
-        id: '104',
-        name: 'Gorro Satinado Anti-Frizz Rosa Boheme',
-        description: 'Interior forrado en satén de seda para proteger tu cabello del frizz y la estática durante todo tu turno.',
-        price: 10,
-        image_url: '/cat_gorros.png',
-        categoria_slug: 'gorros',
-        subcategoria_id: 72
-    },
-    {
         id: '105',
-        name: 'Gorro Confort con Botones para Mascarilla',
-        description: 'Incorpora botones laterales para enganchar la mascarilla y evitar dolor o presión en las orejas. Color Lila Boheme.',
-        price: 9,
+        name: 'Gorro Básico Unicolor Azul Quirófano',
+        description: 'Gorro básico clásico unicolor de corte ergonómico, ideal para guardias clínicas y quirúrgicas.',
+        price: 7.5,
         image_url: '/cat_gorros.png',
         categoria_slug: 'gorros',
-        subcategoria_id: 70
+        subcategoria_id: 73
     },
     {
         id: '106',
-        name: 'Gorro Bandana Unisex Lavanda',
-        description: 'Modelo bandana envolvente de fácil ajuste. Excelente para doctores, enfermeros y odontólogos.',
-        price: 8,
+        name: 'Gorro Básico Unicolor Borgoña Boheme',
+        description: 'Modelo básico minimalista en tono borgoña institucional. Tela fresca de secado rápido y alta resistencia.',
+        price: 7.5,
         image_url: '/cat_gorros.png',
         categoria_slug: 'gorros',
-        subcategoria_id: 70
+        subcategoria_id: 73
     },
     {
         id: '107',
-        name: 'Gorro Personalizado con Nombre & Especialidad',
-        description: 'Personalizado a tu gusto con tu nombre, especialidad médica o logo bordado de alta definición.',
+        name: 'Gorro Personalizado con Nombre & Diseño',
+        description: 'Personalizado a tu medida: incluye tu nombre y texto libre con los detalles o motivos que desees agregar.',
         price: 12,
         image_url: '/cat_gorros.png',
         categoria_slug: 'gorros',
@@ -479,12 +506,52 @@ let MOCK_PRODUCTS: Product[] = [
     },
     {
         id: '108',
-        name: 'Gorro Personalizado Full Sublimación',
-        description: 'Diseño temático exclusivo personalizado con los motivos, personajes o identidad que prefieras.',
+        name: 'Gorro Personalizado Full Sublimación Exclusiva',
+        description: 'Diseño temático exclusivo personalizado con tu nombre, texto libre y la identidad visual de tu especialidad.',
         price: 14,
         image_url: '/cat_gorros.png',
         categoria_slug: 'gorros',
         subcategoria_id: 71
+    },
+    {
+        id: '104',
+        name: 'Gorro Especial Doble Faz Reversible Boheme',
+        description: 'Gorro especial doble vista: un lado estampado artístico y reverso unicolor combinable para dos estilos en uno.',
+        price: 11,
+        image_url: '/cat_gorros.png',
+        categoria_slug: 'gorros',
+        subcategoria_id: 72,
+        subcategoria_especial: 'Reversible'
+    },
+    {
+        id: '109',
+        name: 'Gorro Especial con Cintillo Frontal Anatómico',
+        description: 'Diseño especial con cintillo frontal acolchado de ajuste suave que estiliza y brinda soporte extra durante el turno.',
+        price: 10.5,
+        image_url: '/cat_gorros.png',
+        categoria_slug: 'gorros',
+        subcategoria_id: 72,
+        subcategoria_especial: 'Cintillo'
+    },
+    {
+        id: '110',
+        name: 'Gorro Especial Ponytail Cabello Largo',
+        description: 'Diseñado especialmente con bolsa posterior y ajuste para coleta o cabello largo y abundante con total comodidad.',
+        price: 11.5,
+        image_url: '/cat_gorros.png',
+        categoria_slug: 'gorros',
+        subcategoria_id: 72,
+        subcategoria_especial: 'Ponytail'
+    },
+    {
+        id: '111',
+        name: 'Gorro Especial Coquette con Lazo Satinado',
+        description: 'Edición especial Coquette con delicados detalles románticos, caída suave y acabados de alta costura médica.',
+        price: 12,
+        image_url: '/cat_gorros.png',
+        categoria_slug: 'gorros',
+        subcategoria_id: 72,
+        subcategoria_especial: 'Coquette'
     },
 
     // ==========================================
@@ -740,6 +807,7 @@ function mapRowToProduct(row: any): Product {
         image_url: String(row.image_url || ''),
         categoria_slug: String(row.categoria_slug),
         subcategoria_id: row.subcategoria_id ? Number(row.subcategoria_id) : undefined,
+        subcategoria_especial: row.subcategoria_especial ? String(row.subcategoria_especial) : undefined,
         type_color: row.type_color ? String(row.type_color) : undefined,
         genero: row.genero ? String(row.genero) : undefined,
         modelo: row.modelo ? String(row.modelo) : undefined,
@@ -801,16 +869,18 @@ async function getOrFetchCatalogProducts(): Promise<Product[]> {
 export async function fetchCategoryProducts(
     categorySlug: string,
     subcategoryId?: number,
-    options?: { page?: number; limit?: number; search?: string }
+    options?: { page?: number; limit?: number; search?: string; especial?: string }
 ): Promise<{
     category: CategoryInfo | null;
     products: Product[];
     paginatedProducts: Product[];
     totalCategoryProducts: number;
     subcategoryCounts: Record<number, number>;
+    especialCounts: Record<string, number>;
     pagination: PaginationMeta;
 }> {
-    const category = CATEGORIES[categorySlug] || null;
+    const normalizedSlug = normalizeCategorySlug(categorySlug);
+    const category = CATEGORIES[normalizedSlug] || null;
     const page = Math.max(1, Number(options?.page) || 1);
     const limit = Math.min(100, Math.max(1, Number(options?.limit) || 12));
 
@@ -821,6 +891,7 @@ export async function fetchCategoryProducts(
             paginatedProducts: [],
             totalCategoryProducts: 0,
             subcategoryCounts: {},
+            especialCounts: {},
             pagination: {
                 page: 1,
                 limit,
@@ -833,20 +904,29 @@ export async function fetchCategoryProducts(
     }
 
     const catalog = await getOrFetchCatalogProducts();
-    const allInCategory = catalog.filter(p => p.categoria_slug === categorySlug);
+    const allInCategory = catalog.filter(p => normalizeCategorySlug(p.categoria_slug) === normalizedSlug);
 
     // Precompute counts per subcategory in O(N)
     const subcategoryCounts: Record<number, number> = {};
+    const especialCounts: Record<string, number> = {};
     for (const p of allInCategory) {
         if (p.subcategoria_id !== undefined) {
             const subId = Number(p.subcategoria_id);
             subcategoryCounts[subId] = (subcategoryCounts[subId] || 0) + 1;
+        }
+        if (Number(p.subcategoria_id) === 72 && p.subcategoria_especial) {
+            especialCounts[p.subcategoria_especial] = (especialCounts[p.subcategoria_especial] || 0) + 1;
         }
     }
 
     let filtered = subcategoryId
         ? allInCategory.filter(p => Number(p.subcategoria_id) === Number(subcategoryId))
         : allInCategory;
+
+    if (options?.especial && options.especial.trim()) {
+        const esp = options.especial.trim().toLowerCase();
+        filtered = filtered.filter(p => (p.subcategoria_especial || '').toLowerCase() === esp);
+    }
 
     if (options?.search && options.search.trim()) {
         const q = options.search.trim().toLowerCase();
@@ -869,6 +949,7 @@ export async function fetchCategoryProducts(
         paginatedProducts,
         totalCategoryProducts: allInCategory.length,
         subcategoryCounts,
+        especialCounts,
         pagination: {
             page: safePage,
             limit,
@@ -943,6 +1024,7 @@ export async function createProduct(productData: Omit<Product, 'id'> & { id?: st
         image_url: productData.image_url || '/cat_gorros.png',
         categoria_slug: productData.categoria_slug,
         subcategoria_id: productData.subcategoria_id ? Number(productData.subcategoria_id) : undefined,
+        subcategoria_especial: productData.subcategoria_especial || undefined,
         type_color: productData.type_color,
         genero: productData.genero,
         modelo: productData.modelo,
@@ -1042,11 +1124,18 @@ export interface OrderItem {
     quantity: number;
     image_url?: string;
     categoria_slug?: string;
+    subcategoria_id?: number;
+    subcategoria_especial?: string;
+    genero?: string;
+    modelo?: string;
+    adicionales?: string[];
+    recargo_adicionales?: number;
     is_personalizado?: boolean;
     nombre_personalizado?: string;
     especialidad_personalizada?: string;
     color_preferencia?: string;
     detalles_personalizados?: string;
+    texto_personalizado?: string;
     // Taller / Production specific
     estado_taller?: string;
     notas_taller?: string;
@@ -1331,7 +1420,86 @@ function loadProductsFromDisk(force = false) {
             const data = fs.readFileSync(PRODUCTS_FILE, 'utf-8');
             const parsed = JSON.parse(data);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                MOCK_PRODUCTS = parsed;
+                const defaultGorrosSpecials: Product[] = [
+                    {
+                        id: '105',
+                        name: 'Gorro Básico Unicolor Azul Quirófano',
+                        description: 'Gorro básico clásico unicolor de corte ergonómico, ideal para guardias clínicas y quirúrgicas.',
+                        price: 7.5,
+                        image_url: '/cat_gorros.png',
+                        categoria_slug: 'gorros',
+                        subcategoria_id: 73
+                    },
+                    {
+                        id: '106',
+                        name: 'Gorro Básico Unicolor Borgoña Boheme',
+                        description: 'Modelo básico minimalista en tono borgoña institucional. Tela fresca de secado rápido y alta resistencia.',
+                        price: 7.5,
+                        image_url: '/cat_gorros.png',
+                        categoria_slug: 'gorros',
+                        subcategoria_id: 73
+                    },
+                    {
+                        id: '104',
+                        name: 'Gorro Especial Doble Faz Reversible Boheme',
+                        description: 'Gorro especial doble vista: un lado estampado artístico y reverso unicolor combinable para dos estilos en uno.',
+                        price: 11,
+                        image_url: '/cat_gorros.png',
+                        categoria_slug: 'gorros',
+                        subcategoria_id: 72,
+                        subcategoria_especial: 'Reversible'
+                    },
+                    {
+                        id: '109',
+                        name: 'Gorro Especial con Cintillo Frontal Anatómico',
+                        description: 'Diseño especial con cintillo frontal acolchado de ajuste suave que estiliza y brinda soporte extra durante el turno.',
+                        price: 10.5,
+                        image_url: '/cat_gorros.png',
+                        categoria_slug: 'gorros',
+                        subcategoria_id: 72,
+                        subcategoria_especial: 'Cintillo'
+                    },
+                    {
+                        id: '110',
+                        name: 'Gorro Especial Ponytail Cabello Largo',
+                        description: 'Diseñado especialmente con bolsa posterior y ajuste para coleta o cabello largo y abundante con total comodidad.',
+                        price: 11.5,
+                        image_url: '/cat_gorros.png',
+                        categoria_slug: 'gorros',
+                        subcategoria_id: 72,
+                        subcategoria_especial: 'Ponytail'
+                    },
+                    {
+                        id: '111',
+                        name: 'Gorro Especial Coquette con Lazo Satinado',
+                        description: 'Edición especial Coquette con delicados detalles románticos, caída suave y acabados de alta costura médica.',
+                        price: 12,
+                        image_url: '/cat_gorros.png',
+                        categoria_slug: 'gorros',
+                        subcategoria_id: 72,
+                        subcategoria_especial: 'Coquette'
+                    }
+                ];
+
+                let merged: Product[] = [...parsed];
+                let changed = false;
+                for (const defProd of defaultGorrosSpecials) {
+                    const existingIdx = merged.findIndex(p => p.id === defProd.id);
+                    if (existingIdx === -1) {
+                        merged.push(defProd);
+                        changed = true;
+                    } else if (defProd.subcategoria_especial && !merged[existingIdx].subcategoria_especial) {
+                        merged[existingIdx] = { ...merged[existingIdx], ...defProd };
+                        changed = true;
+                    } else if (defProd.subcategoria_id === 73 && merged[existingIdx].subcategoria_id === 70 && (defProd.id === '105' || defProd.id === '106')) {
+                        merged[existingIdx] = { ...merged[existingIdx], ...defProd };
+                        changed = true;
+                    }
+                }
+                MOCK_PRODUCTS = merged;
+                if (changed) {
+                    scheduleSaveProductsToDisk();
+                }
             }
         }
         productsLoadedOnce = true;

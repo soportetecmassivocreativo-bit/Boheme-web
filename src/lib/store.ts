@@ -5,13 +5,18 @@ export interface CartItem {
     id?: string;
     name: string;
     price: number;
+    precio_base?: number;
     quantity: number;
     image_url?: string;
     categoria_slug?: string;
+    subcategoria_id?: number;
+    subcategoria_especial?: string;
     type_color?: string;
     genero?: string;
     modelo?: string;
     cinta?: string;
+    adicionales?: string[];
+    recargo_adicionales?: number;
     // Personalization details
     is_personalizado?: boolean;
     nombre_personalizado?: string;
@@ -48,11 +53,19 @@ export const useCartStore = create<CartStore>((set) => ({
             return { items: [...state.items, { ...newItem, quantity: newItem.quantity || 1 }] };
         }
         
-        const existingIndex = state.items.findIndex((item) => 
-            item.id === newItem.id && 
-            !item.is_personalizado &&
-            item.type_color === newItem.type_color
-        );
+        const newAdicionalesKey = (newItem.adicionales || []).slice().sort().join('|');
+        const existingIndex = state.items.findIndex((item) => {
+            const itemAdicionalesKey = (item.adicionales || []).slice().sort().join('|');
+            return (
+                item.id === newItem.id && 
+                !item.is_personalizado &&
+                item.type_color === newItem.type_color &&
+                item.genero === newItem.genero &&
+                item.modelo === newItem.modelo &&
+                item.subcategoria_especial === newItem.subcategoria_especial &&
+                itemAdicionalesKey === newAdicionalesKey
+            );
+        });
         if (existingIndex > -1) {
             const newItems = [...state.items];
             newItems[existingIndex].quantity += (newItem.quantity || 1);
