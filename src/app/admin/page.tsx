@@ -3255,7 +3255,10 @@ export default function AdminPage() {
                                     <div className="flex flex-wrap items-center gap-2">
                                         <button
                                             type="button"
-                                            onClick={() => setActiveSubcategory('all')}
+                                            onClick={() => {
+                                                setActiveSubcategory('all');
+                                                setActiveEspecialFilter('all');
+                                            }}
                                             className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border ${
                                                 activeSubcategory === 'all'
                                                     ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-xs'
@@ -3277,7 +3280,10 @@ export default function AdminPage() {
                                                 <button
                                                     key={sub.id}
                                                     type="button"
-                                                    onClick={() => setActiveSubcategory(sub.id)}
+                                                    onClick={() => {
+                                                        setActiveSubcategory(sub.id);
+                                                        setActiveEspecialFilter('all');
+                                                    }}
                                                     className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border ${
                                                         isSubActive
                                                             ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-xs scale-105'
@@ -3299,12 +3305,12 @@ export default function AdminPage() {
                                         })}
                                     </div>
 
-                                    {/* Subcategorías de Especiales (Reversible, Cintillo, Ponytail, Coquette) cuando la sección es Gorros Quirúrgicos */}
-                                    {activeSection === 'gorros' && (activeSubcategory === 'all' || Number(activeSubcategory) === 72) && (
+                                    {/* Subcategorías específicas únicamente cuando se selecciona su categoría (ej. Especiales › Reversible, Cintillo, Ponytail, Coquette) */}
+                                    {selectedSubcatObj?.subcategories && selectedSubcatObj.subcategories.length > 0 && (
                                         <div className="pt-3 border-t border-gray-100 dark:border-white/10 flex flex-wrap items-center gap-2">
                                             <span className="text-[11px] font-black uppercase tracking-wider text-[#D86A33] flex items-center gap-1 mr-1">
                                                 <Sparkles size={13} />
-                                                <span>Subcategorías de Especiales:</span>
+                                                <span>Subcategorías de {selectedSubcatObj.name}:</span>
                                             </span>
                                             <button
                                                 type="button"
@@ -3315,21 +3321,18 @@ export default function AdminPage() {
                                                         : 'bg-white dark:bg-neutral-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
                                                 }`}
                                             >
-                                                Todas ({allSectionProducts.filter(p => Number(p.subcategoria_id) === 72).length})
+                                                Todas ({allSectionProducts.filter(p => Number(p.subcategoria_id) === selectedSubcatObj.id).length})
                                             </button>
-                                            {GORROS_ESPECIALES_SUBCATEGORIES.map(subEsp => {
-                                                const espActive = activeEspecialFilter === subEsp && (activeSubcategory === 'all' || Number(activeSubcategory) === 72);
+                                            {selectedSubcatObj.subcategories.map(subEsp => {
+                                                const espActive = activeEspecialFilter === subEsp;
                                                 const espCount = allSectionProducts.filter(
-                                                    p => Number(p.subcategoria_id) === 72 && (p.subcategoria_especial || '').toLowerCase() === subEsp.toLowerCase()
+                                                    p => Number(p.subcategoria_id) === selectedSubcatObj.id && (p.subcategoria_especial || '').toLowerCase() === subEsp.toLowerCase()
                                                 ).length;
                                                 return (
                                                     <button
                                                         key={subEsp}
                                                         type="button"
-                                                        onClick={() => {
-                                                            setActiveSubcategory(72);
-                                                            setActiveEspecialFilter(subEsp);
-                                                        }}
+                                                        onClick={() => setActiveEspecialFilter(subEsp)}
                                                         className={`px-3 py-1 rounded-xl text-[11px] font-black transition-all border flex items-center gap-1.5 ${
                                                             espActive
                                                                 ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-2xs scale-105'

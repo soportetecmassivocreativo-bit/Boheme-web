@@ -175,32 +175,30 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                     </div>
                 </div>
 
-                {/* Subcategorías de "Especiales" (Reversible, Cintillo, Ponytail, Coquette) cuando está en Gorros Quirúrgicos */}
-                {normalizedCategoria === 'gorros' && (!subcategoriaId || subcategoriaId === 72) && (
+                {/* Subcategorías de la categoría seleccionada (ej. Especiales › Reversible, Cintillo, Ponytail, Coquette) */}
+                {selectedSubcategoryObj?.subcategories && selectedSubcategoryObj.subcategories.length > 0 && (
                     <div className="mb-6 p-3.5 rounded-2xl bg-[#FFF9F5] border border-[#FFC99C]/60 flex flex-wrap items-center gap-2">
                         <span className="text-[11px] font-black uppercase tracking-wider text-[#5F2142] flex items-center gap-1.5 mr-1">
                             <Sparkles size={13} className="text-[#D86A33]" />
-                            <span>Subcategorías de Especiales:</span>
+                            <span>Subcategorías de {selectedSubcategoryObj.name}:</span>
                         </span>
 
-                        {subcategoriaId === 72 && (
-                            <Link
-                                href={`/categorias/${categoria}?subcategoria=72${itemsPerPage !== 8 ? `&por_pagina=${itemsPerPage}` : ''}`}
-                                className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all border ${
-                                    !especial
-                                        ? 'bg-[#5F2142] text-[#FFC99C] border-[#5F2142] shadow-xs'
-                                        : 'bg-white text-[#5F2142] border-[#FFC99C]/60 hover:border-[#D86A33]'
-                                }`}
-                            >
-                                Todas ({subcategoryCounts[72] || 0})
-                            </Link>
-                        )}
+                        <Link
+                            href={`/categorias/${categoria}?subcategoria=${selectedSubcategoryObj.id}${itemsPerPage !== 8 ? `&por_pagina=${itemsPerPage}` : ''}`}
+                            className={`px-3.5 py-1.5 rounded-full text-xs font-black transition-all border ${
+                                !especial
+                                    ? 'bg-[#5F2142] text-[#FFC99C] border-[#5F2142] shadow-xs'
+                                    : 'bg-white text-[#5F2142] border-[#FFC99C]/60 hover:border-[#D86A33]'
+                            }`}
+                        >
+                            Todas ({subcategoryCounts[selectedSubcategoryObj.id] || 0})
+                        </Link>
 
-                        {GORROS_ESPECIALES_SUBCATEGORIES.map((subEsp) => {
-                            const isEspActive = subcategoriaId === 72 && especial?.toLowerCase() === subEsp.toLowerCase();
+                        {selectedSubcategoryObj.subcategories.map((subEsp) => {
+                            const isEspActive = especial?.toLowerCase() === subEsp.toLowerCase();
                             const espCount = especialCounts[subEsp] || 0;
                             const espParams = new URLSearchParams();
-                            espParams.set('subcategoria', '72');
+                            espParams.set('subcategoria', String(selectedSubcategoryObj.id));
                             espParams.set('especial', subEsp);
                             if (itemsPerPage !== 8) espParams.set('por_pagina', String(itemsPerPage));
 
