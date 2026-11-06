@@ -7,9 +7,15 @@ import {
     normalizeCategorySlug
 } from '@/lib/db';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
     loadCategoriesFromDisk(true);
-    return NextResponse.json({ categories: CATEGORIES });
+    return NextResponse.json(
+        { categories: CATEGORIES },
+        { headers: { 'Cache-Control': 'no-store, max-age=0' } }
+    );
 }
 
 export async function POST(req: NextRequest) {

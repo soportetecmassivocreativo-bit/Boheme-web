@@ -983,18 +983,19 @@ function mapRowToProduct(row: any): Product {
  * If 100 users hit the site simultaneously, only 1 DB query executes; all 100 get an instant response.
  */
 async function getOrFetchCatalogProducts(): Promise<Product[]> {
+    loadCategoriesFromDisk(false);
     loadProductsFromDisk(false);
     const now = Date.now();
 
-    if (cachedRemoteProducts && (now - lastProductsCacheTime < PRODUCTS_CACHE_TTL_MS)) {
-        return cachedRemoteProducts;
-    }
-
-    if (inflightProductsPromise) {
-        return inflightProductsPromise;
-    }
-
     if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
+        if (cachedRemoteProducts && (now - lastProductsCacheTime < PRODUCTS_CACHE_TTL_MS)) {
+            return cachedRemoteProducts.map(enrichProductWithCategoryName);
+        }
+
+        if (inflightProductsPromise) {
+            return inflightProductsPromise;
+        }
+
         inflightProductsPromise = (async () => {
             try {
                 const { data, error } = await executeWithTimeout(
@@ -1004,7 +1005,7 @@ async function getOrFetchCatalogProducts(): Promise<Product[]> {
                 if (error) {
                     tripCircuit(error);
                 } else if (data && data.length > 0) {
-                    const mapped = data.map(mapRowToProduct);
+                    const mapped = data.map(mapRowToProduct).map(enrichProductWithCategoryName);
                     cachedRemoteProducts = mapped;
                     lastProductsCacheTime = Date.now();
                     return mapped;
@@ -1014,9 +1015,10 @@ async function getOrFetchCatalogProducts(): Promise<Product[]> {
             } finally {
                 inflightProductsPromise = null;
             }
-            cachedRemoteProducts = MOCK_PRODUCTS;
+            const fallback = MOCK_PRODUCTS.map(enrichProductWithCategoryName);
+            cachedRemoteProducts = fallback;
             lastProductsCacheTime = Date.now();
-            return MOCK_PRODUCTS;
+            return fallback;
         })();
 
         return inflightProductsPromise;
@@ -1203,7 +1205,8 @@ export async function fetchProductById(id: string): Promise<Product | null> {
 }
 
 export async function createProduct(productData: Omit<Product, 'id'> & { id?: string }): Promise<Product> {
-    loadProductsFromDisk(false);
+    loadCategoriesFromDisk(true);
+    loadProductsFromDisk(true);
     const newProduct: Product = {
         id: productData.id || `${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
         name: productData.name,
@@ -1246,7 +1249,8 @@ export async function createProduct(productData: Omit<Product, 'id'> & { id?: st
 }
 
 export async function updateProduct(id: string, updates: Partial<Product>): Promise<Product | null> {
-    loadProductsFromDisk(false);
+    loadCategoriesFromDisk(true);
+    loadProductsFromDisk(true);
     const existingIndex = MOCK_PRODUCTS.findIndex(p => p.id === id);
 
     if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
@@ -1287,7 +1291,8 @@ export async function updateProduct(id: string, updates: Partial<Product>): Prom
 }
 
 export async function deleteProduct(id: string): Promise<boolean> {
-    loadProductsFromDisk(false);
+    loadCategoriesFromDisk(true);
+    loadProductsFromDisk(true);
     if (isSupabaseConfigured() && supabase && !isCircuitOpen()) {
         try {
             const { error } = await executeWithTimeout(
@@ -1529,7 +1534,7 @@ let lastCategoriesMtimeMs = 0;
 let pendingCategoriesWrite: Promise<void> | null = null;
 let categoriesWriteQueued = false;
 
-const STORE_DISK_TTL_MS = 5000;
+const STORE_DISK_TTL_MS = 0;
 
 function getFsModule() {
     if (typeof window === 'undefined') {
@@ -1545,11 +1550,7 @@ function getFsModule() {
 function loadOrdersFromDisk(force = false) {
     const fs = getFsModule();
     if (!fs) return;
-    const now = Date.now();
-    if (!force && ordersLoadedOnce && (now - lastOrdersDiskCheck < STORE_DISK_TTL_MS)) {
-        return;
-    }
-    lastOrdersDiskCheck = now;
+    lastOrdersDiskCheck = Date.now();
 
     try {
         if (fs.existsSync(ORDERS_FILE)) {
@@ -1578,46 +1579,23 @@ function loadOrdersFromDisk(force = false) {
 function scheduleSaveOrdersToDisk() {
     const fs = getFsModule();
     if (!fs) return;
-    if (pendingOrdersWrite) {
-        ordersWriteQueued = true;
-        return;
-    }
-
-    const flush = async () => {
+    try {
+        const payload = JSON.stringify(ORDERS, null, 2);
+        fs.writeFileSync(ORDERS_FILE, payload, 'utf-8');
         try {
-            const payload = JSON.stringify(ORDERS, null, 2);
-            const tmp = `${ORDERS_FILE}.tmp`;
-            await fs.promises.writeFile(tmp, payload, 'utf-8');
-            await fs.promises.rename(tmp, ORDERS_FILE);
-            try {
-                const stat = await fs.promises.stat(ORDERS_FILE);
-                lastOrdersMtimeMs = stat.mtimeMs;
-                lastOrdersDiskCheck = Date.now();
-            } catch {}
-        } catch {
-            try {
-                await fs.promises.writeFile(ORDERS_FILE, JSON.stringify(ORDERS, null, 2), 'utf-8');
-            } catch {}
-        } finally {
-            pendingOrdersWrite = null;
-            if (ordersWriteQueued) {
-                ordersWriteQueued = false;
-                scheduleSaveOrdersToDisk();
-            }
-        }
-    };
-
-    pendingOrdersWrite = flush();
+            const stat = fs.statSync(ORDERS_FILE);
+            lastOrdersMtimeMs = stat.mtimeMs;
+            lastOrdersDiskCheck = Date.now();
+        } catch {}
+    } catch (err) {
+        console.error('Error saving orders to disk:', err);
+    }
 }
 
 function loadProductsFromDisk(force = false) {
     const fs = getFsModule();
     if (!fs) return;
-    const now = Date.now();
-    if (!force && productsLoadedOnce && (now - lastProductsDiskCheck < STORE_DISK_TTL_MS)) {
-        return;
-    }
-    lastProductsDiskCheck = now;
+    lastProductsDiskCheck = Date.now();
 
     try {
         if (fs.existsSync(PRODUCTS_FILE)) {
@@ -1813,11 +1791,7 @@ function loadProductsFromDisk(force = false) {
 export function loadCategoriesFromDisk(force = false) {
     const fs = getFsModule();
     if (!fs) return;
-    const now = Date.now();
-    if (!force && categoriesLoadedOnce && (now - lastCategoriesDiskCheck < STORE_DISK_TTL_MS)) {
-        return;
-    }
-    lastCategoriesDiskCheck = now;
+    lastCategoriesDiskCheck = Date.now();
 
     try {
         if (fs.existsSync(CATEGORIES_FILE)) {
@@ -1862,44 +1836,21 @@ export function loadCategoriesFromDisk(force = false) {
 function scheduleSaveCategoriesToDisk() {
     const fs = getFsModule();
     if (!fs) return;
-    if (pendingCategoriesWrite) {
-        categoriesWriteQueued = true;
-        return;
-    }
-
-    const flush = async () => {
-        try {
-            const snapshot: Record<string, Subcategory[]> = {};
-            for (const [slug, cat] of Object.entries(CATEGORIES)) {
-                snapshot[slug] = cat.subcategories;
-            }
-            const payload = JSON.stringify(snapshot, null, 2);
-            const tmp = `${CATEGORIES_FILE}.tmp`;
-            await fs.promises.writeFile(tmp, payload, 'utf-8');
-            await fs.promises.rename(tmp, CATEGORIES_FILE);
-            try {
-                const stat = await fs.promises.stat(CATEGORIES_FILE);
-                lastCategoriesMtimeMs = stat.mtimeMs;
-                lastCategoriesDiskCheck = Date.now();
-            } catch {}
-        } catch {
-            try {
-                const snapshot: Record<string, Subcategory[]> = {};
-                for (const [slug, cat] of Object.entries(CATEGORIES)) {
-                    snapshot[slug] = cat.subcategories;
-                }
-                await fs.promises.writeFile(CATEGORIES_FILE, JSON.stringify(snapshot, null, 2), 'utf-8');
-            } catch {}
-        } finally {
-            pendingCategoriesWrite = null;
-            if (categoriesWriteQueued) {
-                categoriesWriteQueued = false;
-                scheduleSaveCategoriesToDisk();
-            }
+    try {
+        const snapshot: Record<string, Subcategory[]> = {};
+        for (const [slug, cat] of Object.entries(CATEGORIES)) {
+            snapshot[slug] = cat.subcategories;
         }
-    };
-
-    pendingCategoriesWrite = flush();
+        const payload = JSON.stringify(snapshot, null, 2);
+        fs.writeFileSync(CATEGORIES_FILE, payload, 'utf-8');
+        try {
+            const stat = fs.statSync(CATEGORIES_FILE);
+            lastCategoriesMtimeMs = stat.mtimeMs;
+            lastCategoriesDiskCheck = Date.now();
+        } catch {}
+    } catch (err) {
+        console.error('Error saving categories to disk:', err);
+    }
 }
 
 export async function addCustomSubcategory(sectionSlug: string, name: string): Promise<Subcategory | null> {
@@ -1928,6 +1879,7 @@ export async function addCustomSubcategory(sectionSlug: string, name: string): P
 
     cat.subcategories.push(newSub);
     scheduleSaveCategoriesToDisk();
+    invalidateProductsCache();
     return newSub;
 }
 
@@ -1941,6 +1893,7 @@ export async function deleteCustomSubcategory(sectionSlug: string, subcategoryId
     cat.subcategories = cat.subcategories.filter(s => s.id !== Number(subcategoryId));
     if (cat.subcategories.length < initialLen) {
         scheduleSaveCategoriesToDisk();
+        invalidateProductsCache();
         return true;
     }
     return false;
@@ -1949,36 +1902,17 @@ export async function deleteCustomSubcategory(sectionSlug: string, subcategoryId
 function scheduleSaveProductsToDisk() {
     const fs = getFsModule();
     if (!fs) return;
-    if (pendingProductsWrite) {
-        productsWriteQueued = true;
-        return;
-    }
-
-    const flush = async () => {
+    try {
+        const payload = JSON.stringify(MOCK_PRODUCTS, null, 2);
+        fs.writeFileSync(PRODUCTS_FILE, payload, 'utf-8');
         try {
-            const payload = JSON.stringify(MOCK_PRODUCTS, null, 2);
-            const tmp = `${PRODUCTS_FILE}.tmp`;
-            await fs.promises.writeFile(tmp, payload, 'utf-8');
-            await fs.promises.rename(tmp, PRODUCTS_FILE);
-            try {
-                const stat = await fs.promises.stat(PRODUCTS_FILE);
-                lastProductsMtimeMs = stat.mtimeMs;
-                lastProductsDiskCheck = Date.now();
-            } catch {}
-        } catch {
-            try {
-                await fs.promises.writeFile(PRODUCTS_FILE, JSON.stringify(MOCK_PRODUCTS, null, 2), 'utf-8');
-            } catch {}
-        } finally {
-            pendingProductsWrite = null;
-            if (productsWriteQueued) {
-                productsWriteQueued = false;
-                scheduleSaveProductsToDisk();
-            }
-        }
-    };
-
-    pendingProductsWrite = flush();
+            const stat = fs.statSync(PRODUCTS_FILE);
+            lastProductsMtimeMs = stat.mtimeMs;
+            lastProductsDiskCheck = Date.now();
+        } catch {}
+    } catch (err) {
+        console.error('Error saving products to disk:', err);
+    }
 }
 
 // Initial server-side load

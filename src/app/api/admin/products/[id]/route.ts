@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { updateProduct, deleteProduct, fetchProductById } from '@/lib/db';
 import { getAdminSession } from '@/lib/auth';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 interface RouteProps {
     params: Promise<{
         id: string;

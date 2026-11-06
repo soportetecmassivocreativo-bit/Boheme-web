@@ -338,11 +338,11 @@ export default function GorroConfigModal({
 
     return (
         <div
-            className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-2.5 sm:p-5 overflow-y-auto animate-fadeIn"
+            className="fixed inset-0 z-50 bg-black/65 backdrop-blur-xs flex items-center justify-center p-2 sm:p-5 overflow-y-auto animate-fadeIn"
             onClick={onClose}
         >
             <div
-                className="bg-white rounded-3xl max-w-5xl w-full shadow-2xl border border-[#FFC99C]/60 relative my-auto max-h-[94vh] flex flex-col lg:flex-row overflow-hidden"
+                className="bg-white rounded-3xl max-w-5xl w-full shadow-2xl border border-[#FFC99C]/60 relative my-auto max-h-[92dvh] flex flex-col lg:flex-row overflow-y-auto lg:overflow-hidden"
                 onClick={(e) => e.stopPropagation()}
             >
                 {/* Close button top-right */}

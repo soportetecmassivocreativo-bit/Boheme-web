@@ -290,11 +290,25 @@ export default function AdminPage() {
     const [extraAccMoneda, setExtraAccMoneda] = useState<'BS' | 'USD'>('BS');
     const [extraAccInstrucciones, setExtraAccInstrucciones] = useState('');
 
-    // Dynamic Categories State (allows creating new categories in Accesorios médicos from Admin)
+    // Dynamic Categories State (persisted on server in .categories_store.json and kept in React state to prevent HMR loss)
     const [categoriesVersion, setCategoriesVersion] = useState(0);
+    const [categoriesMap, setCategoriesMap] = useState<Record<string, { id: number; name: string; subcategories?: string[] }[]>>(() => {
+        const init: Record<string, { id: number; name: string; subcategories?: string[] }[]> = {};
+        for (const [slug, cat] of Object.entries(CATEGORIES)) {
+            init[slug] = [...(cat.subcategories || [])];
+        }
+        return init;
+    });
     const [newAccesorioCatName, setNewAccesorioCatName] = useState('');
     const [isCreatingAccesorioCat, setIsCreatingAccesorioCat] = useState(false);
     const [showCreateCatInput, setShowCreateCatInput] = useState(false);
+
+    // Always keep imported CATEGORIES object in sync with React state across HMR reloads
+    for (const [slug, subList] of Object.entries(categoriesMap)) {
+        if (CATEGORIES[slug] && Array.isArray(subList)) {
+            CATEGORIES[slug].subcategories = subList;
+        }
+    }
 
     // Site & Payment Settings (Manipulación de Cuentas, Correlativo, PDFs y Tienda sin código)
     const [settings, setSettings] = useState<SiteSettings>({
@@ -417,7 +431,7 @@ export default function AdminPage() {
         // Load Products
         try {
             setLoadingProducts(true);
-            const resP = await fetch('/api/admin/products');
+            const resP = await fetch('/api/admin/products', { cache: 'no-store' });
             const dataP = await resP.json();
             if (dataP.products) setProducts(dataP.products);
         } catch {} finally {
@@ -426,14 +440,17 @@ export default function AdminPage() {
 
         // Load Dynamic Categories
         try {
-            const resC = await fetch('/api/admin/categories');
+            const resC = await fetch('/api/admin/categories', { cache: 'no-store' });
             const dataC = await resC.json();
             if (dataC && dataC.categories) {
+                const nextMap: Record<string, { id: number; name: string; subcategories?: string[] }[]> = {};
                 for (const [slug, catObj] of Object.entries(dataC.categories as Record<string, any>)) {
                     if (CATEGORIES[slug] && Array.isArray(catObj.subcategories)) {
                         CATEGORIES[slug].subcategories = catObj.subcategories;
+                        nextMap[slug] = catObj.subcategories;
                     }
                 }
+                setCategoriesMap(prev => ({ ...prev, ...nextMap }));
                 setCategoriesVersion(v => v + 1);
             }
         } catch {}
@@ -441,7 +458,7 @@ export default function AdminPage() {
         // Load Orders
         try {
             setLoadingOrders(true);
-            const resO = await fetch('/api/orders');
+            const resO = await fetch('/api/orders', { cache: 'no-store' });
             const dataO = await resO.json();
             if (dataO.orders) setOrders(dataO.orders);
         } catch {} finally {
@@ -450,7 +467,7 @@ export default function AdminPage() {
 
         // Load Settings (Cuentas de pago, usuarios y tienda)
         try {
-            const resS = await fetch('/api/settings');
+            const resS = await fetch('/api/settings', { cache: 'no-store' });
             const dataS = await resS.json();
             if (dataS && dataS.settings) setSettings(dataS.settings);
         } catch {}
@@ -560,6 +577,10 @@ export default function AdminPage() {
             if (res.ok && data.subcategory) {
                 if (Array.isArray(data.subcategories)) {
                     CATEGORIES['accesorios-medicos'].subcategories = data.subcategories;
+                    setCategoriesMap(prev => ({
+                        ...prev,
+                        'accesorios-medicos': data.subcategories
+                    }));
                 }
                 setCategoriesVersion(v => v + 1);
                 setNewAccesorioCatName('');
@@ -567,9 +588,9 @@ export default function AdminPage() {
                 if (selectInForm) {
                     setFormSubcategory(data.subcategory.id);
                 } else {
-                    setActiveSubcategory(data.subcategory.id);
+                    setActiveSubcategory('all');
                 }
-                showToast(`✓ Categoría "${data.subcategory.name}" creada en Accesorios`);
+                showToast(`✓ Categoría "${data.subcategory.name}" guardada en Accesorios`);
             } else {
                 alert(data.error || 'No se pudo crear la categoría.');
             }
@@ -577,6 +598,35 @@ export default function AdminPage() {
             alert('Error de conexión al crear la categoría.');
         } finally {
             setIsCreatingAccesorioCat(false);
+        }
+    };
+
+    const handleDeleteAccesorioCategory = async (subId: number, subName: string) => {
+        if (subId === 10) return;
+        try {
+            const res = await fetch('/api/admin/categories', {
+                method: 'DELETE',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    sectionSlug: 'accesorios-medicos',
+                    subcategoryId: subId
+                })
+            });
+            const data = await res.json();
+            if (res.ok && Array.isArray(data.subcategories)) {
+                CATEGORIES['accesorios-medicos'].subcategories = data.subcategories;
+                setCategoriesMap(prev => ({
+                    ...prev,
+                    'accesorios-medicos': data.subcategories
+                }));
+                setCategoriesVersion(v => v + 1);
+                if (Number(activeSubcategory) === subId) {
+                    setActiveSubcategory('all');
+                }
+                showToast(`✓ Categoría "${subName}" eliminada`);
+            }
+        } catch {
+            alert('Error al eliminar la categoría.');
         }
     };
 
@@ -1716,9 +1766,17 @@ export default function AdminPage() {
                 </div>
             </div>
 
+            {/* Mobile Backdrop Overlay when Sidebar is Open */}
+            {sidebarOpen && (
+                <div
+                    className="fixed inset-0 z-30 bg-black/50 backdrop-blur-xs md:hidden"
+                    onClick={() => setSidebarOpen(false)}
+                />
+            )}
+
             {/* Sidebar Navigation */}
             <aside className={`
-                fixed inset-y-0 left-0 z-40 w-64 md:static md:translate-x-0 transform transition-transform duration-300
+                fixed inset-y-0 left-0 z-40 w-64 shrink-0 overflow-y-auto md:static md:translate-x-0 transform transition-transform duration-300
                 flex flex-col justify-between p-5 border-r ${bgSidebar} shadow-sm
                 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
             `}>
@@ -3421,30 +3479,41 @@ export default function AdminPage() {
                                             const isSubActive = activeSubcategory !== 'all' && Number(activeSubcategory) === sub.id;
                                             const subCount = allSectionProducts.filter(p => Number(p.subcategoria_id) === sub.id).length;
                                             return (
-                                                <button
-                                                    key={sub.id}
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setActiveSubcategory(sub.id);
-                                                        setActiveEspecialFilter('all');
-                                                    }}
-                                                    className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border ${
-                                                        isSubActive
-                                                            ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-xs scale-105'
-                                                            : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
-                                                    }`}
-                                                >
-                                                    <span>{sub.name}</span>
-                                                    <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
-                                                        isSubActive
-                                                            ? 'bg-white/25 text-white'
-                                                            : subCount > 0
-                                                                ? 'bg-[#5F2142]/10 text-[#5F2142] dark:bg-[#FFC99C]/15 dark:text-[#FFC99C]'
-                                                                : 'bg-gray-100 dark:bg-white/5 text-gray-400'
-                                                    }`}>
-                                                        {subCount}
-                                                    </span>
-                                                </button>
+                                                <div key={sub.id} className="inline-flex items-center gap-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setActiveSubcategory(sub.id);
+                                                            setActiveEspecialFilter('all');
+                                                        }}
+                                                        className={`px-3.5 py-1.5 rounded-xl text-xs font-black transition-all flex items-center gap-1.5 border ${
+                                                            isSubActive
+                                                                ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-xs scale-105'
+                                                                : 'bg-white dark:bg-neutral-800 text-gray-700 dark:text-gray-300 border-gray-200 dark:border-white/10 hover:border-[#D86A33]'
+                                                        }`}
+                                                    >
+                                                        <span>{sub.name}</span>
+                                                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${
+                                                            isSubActive
+                                                                ? 'bg-white/25 text-white'
+                                                                : subCount > 0
+                                                                    ? 'bg-[#5F2142]/10 text-[#5F2142] dark:bg-[#FFC99C]/15 dark:text-[#FFC99C]'
+                                                                    : 'bg-gray-100 dark:bg-white/5 text-gray-400'
+                                                        }`}>
+                                                            {subCount}
+                                                        </span>
+                                                    </button>
+                                                    {activeSection === 'accesorios-medicos' && sub.id > 200 && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeleteAccesorioCategory(sub.id, sub.name)}
+                                                            title={`Eliminar categoría ${sub.name}`}
+                                                            className="w-6 h-6 rounded-full border border-red-200 dark:border-red-900/40 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center text-xs font-black transition-colors"
+                                                        >
+                                                            ×
+                                                        </button>
+                                                    )}
+                                                </div>
                                             );
                                         })}
                                     </div>

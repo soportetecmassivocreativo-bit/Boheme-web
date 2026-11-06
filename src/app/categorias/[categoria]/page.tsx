@@ -2,11 +2,14 @@ import Navbar from '@/components/ui/Navbar';
 import ProductCard from '@/components/ui/ProductCard';
 import CatalogSearchBar from '@/components/ui/CatalogSearchBar';
 import Footer from '@/components/ui/Footer';
-import { fetchCategoryProducts, CATEGORIES, normalizeCategorySlug, GORROS_ESPECIALES_SUBCATEGORIES } from '@/lib/db';
+import { fetchCategoryProducts, CATEGORIES, loadCategoriesFromDisk, normalizeCategorySlug, GORROS_ESPECIALES_SUBCATEGORIES } from '@/lib/db';
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft, ChevronRight, Layers, Sparkles } from 'lucide-react';
 import type { Metadata } from 'next';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 interface PageProps {
     params: Promise<{
@@ -22,6 +25,7 @@ interface PageProps {
 }
 
 export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+    loadCategoriesFromDisk(true);
     const { categoria } = await params;
     const normalized = normalizeCategorySlug(categoria);
     const category = CATEGORIES[normalized];
@@ -37,6 +41,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 }
 
 export default async function CategoriaPage({ params, searchParams }: PageProps) {
+    loadCategoriesFromDisk(true);
     const { categoria } = await params;
     const { subcategoria, especial, buscar, pagina, por_pagina } = await searchParams;
 
@@ -101,35 +106,35 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
     }
 
     return (
-        <main className="min-h-screen flex flex-col bg-white pt-20">
+        <main className="min-h-screen flex flex-col bg-white pt-16 sm:pt-20">
             {/* Header Navbar */}
             <Navbar />
 
             {/* Category Banner */}
-            <div className="bg-[#FFF9F5] border-b border-[#FFC99C]/40 py-12 relative overflow-hidden">
+            <div className="bg-[#FFF9F5] border-b border-[#FFC99C]/40 py-8 sm:py-12 relative overflow-hidden">
                 <div className="absolute top-0 right-10 w-72 h-72 bg-[#FFC99C]/20 rounded-full blur-3xl pointer-events-none"></div>
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-                    <div className="inline-block washi-tape text-xs font-black text-[#5F2142] px-3.5 py-1 tracking-wider uppercase mb-3 -rotate-1 shadow-sm">
+                    <div className="inline-block washi-tape text-[11px] sm:text-xs font-black text-[#5F2142] px-3.5 py-1 tracking-wider uppercase mb-3 -rotate-1 shadow-sm">
                         ★ COLECCIÓN BOHEME ★
                     </div>
-                    <h1 className="text-4xl md:text-5xl font-black text-[#5F2142] capitalize tracking-tight flex flex-wrap items-center gap-3">
+                    <h1 className="text-2xl sm:text-4xl md:text-5xl font-black text-[#5F2142] capitalize tracking-tight flex flex-wrap items-center gap-2 sm:gap-3">
                         <span>{category.title}</span>
                         {selectedSubcategoryObj && (
-                            <span className="text-xl md:text-2xl font-black px-4 py-1 rounded-full bg-[#D86A33] text-white shadow-sm">
+                            <span className="text-sm sm:text-xl md:text-2xl font-black px-3 sm:px-4 py-1 rounded-full bg-[#D86A33] text-white shadow-sm">
                                 {selectedSubcategoryObj.id === 74 || selectedSubcategoryObj.id === 75 ? selectedSubcategoryObj.name : `Categoría: ${selectedSubcategoryObj.name}`}
                                 {especial ? ` › ${especial}` : ''}
                             </span>
                         )}
-                        <span className="text-[#D86A33] text-2xl md:text-3xl">✦</span>
+                        <span className="text-[#D86A33] text-xl sm:text-2xl md:text-3xl">✦</span>
                     </h1>
-                    <p className="mt-3 text-base md:text-lg text-[#5F2142]/80 max-w-2xl font-light leading-relaxed">
+                    <p className="mt-2.5 sm:mt-3 text-sm sm:text-base md:text-lg text-[#5F2142]/80 max-w-2xl font-light leading-relaxed">
                         {category.description}
                     </p>
                 </div>
             </div>
 
             {/* Main Content Area */}
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 w-full flex-1">
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-12 w-full flex-1">
                 {/* Search Bar by Description & Name in all Ecommerce Sections */}
                 <CatalogSearchBar categoryTitle={category.title} initialQuery={buscar || ''} />
 
@@ -195,22 +200,22 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                     </div>
                 ) : (normalizedCategoria === 'accesorios-medicos' || normalizedCategoria === 'equipos-medicos' || normalizedCategoria === 'productos-personalizados') ? (
                     /* Accesorios, Equipos médicos y Productos personalizados: Todos los productos disponibles juntos en una sola vista */
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 lg:gap-8">
                         {products.map((product) => (
                             <ProductCard key={product.id} product={product} />
                         ))}
                     </div>
                 ) : (
-                    <div className="space-y-14">
+                    <div className="space-y-12 sm:space-y-14">
                         {groupedBySubcategory.map(({ sub, items }) => (
-                            <section key={sub.id} className="space-y-6">
+                            <section key={sub.id} className="space-y-5 sm:space-y-6">
                                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-3 border-b-2 border-[#FFC99C]/50">
-                                    <div className="flex items-center gap-3 flex-wrap">
+                                    <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
                                         <span className="px-3.5 py-1 rounded-full bg-[#5F2142] text-[#FFC99C] text-xs font-black uppercase tracking-wider">
                                             {category.title}
                                         </span>
                                         <span className="text-[#D86A33] font-black">›</span>
-                                        <h2 className="text-xl sm:text-2xl font-black text-[#5F2142]">
+                                        <h2 className="text-lg sm:text-2xl font-black text-[#5F2142]">
                                             {sub.id === 74 || sub.id === 75 ? (
                                                 <span className="text-[#D86A33]">{sub.name}</span>
                                             ) : (
@@ -223,7 +228,7 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                                     </span>
                                 </div>
 
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 lg:gap-8">
                                     {items.map((product) => (
                                         <ProductCard key={product.id} product={product} />
                                     ))}
@@ -232,16 +237,16 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
                         ))}
 
                         {unassignedProducts.length > 0 && (
-                            <section className="space-y-6">
+                            <section className="space-y-5 sm:space-y-6">
                                 <div className="flex items-center justify-between pb-3 border-b-2 border-[#FFC99C]/50">
-                                    <h2 className="text-xl sm:text-2xl font-black text-[#5F2142]">
+                                    <h2 className="text-lg sm:text-2xl font-black text-[#5F2142]">
                                         {category.title} • Categoría General
                                     </h2>
                                     <span className="text-xs font-black text-[#5F2142] bg-[#FFF9F5] border border-[#FFC99C] px-3 py-1 rounded-full">
                                         {unassignedProducts.length} productos
                                     </span>
                                 </div>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-8">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 sm:gap-6 lg:gap-8">
                                     {unassignedProducts.map((product) => (
                                         <ProductCard key={product.id} product={product} />
                                     ))}
