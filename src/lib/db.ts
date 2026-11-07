@@ -1423,12 +1423,14 @@ let ORDERS: Order[] = [
                 name: 'Gorro Quirúrgico Flores Boheme',
                 price: 8.00,
                 quantity: 1,
+                image_url: '/cat_gorros.png',
                 categoria_slug: 'gorros'
             },
             {
                 name: 'Gorro Personalizado con Nombre & Especialidad',
                 price: 12.00,
                 quantity: 1,
+                image_url: '/cat_gorros.png',
                 categoria_slug: 'gorros',
                 is_personalizado: true,
                 nombre_personalizado: 'Dra. María Fernández',
@@ -1439,6 +1441,7 @@ let ORDERS: Order[] = [
                 name: 'Lanyard Clásico Boheme con Gancho',
                 price: 4.00,
                 quantity: 1,
+                image_url: '/cat_accesorios.png',
                 categoria_slug: 'lanyards'
             }
         ]
@@ -1468,12 +1471,14 @@ let ORDERS: Order[] = [
                 name: 'Estetoscopio Doble Campana Profesional',
                 price: 25.00,
                 quantity: 1,
+                image_url: '/cat_accesorios.png',
                 categoria_slug: 'equipos-medicos'
             },
             {
                 name: 'Oxímetro de Pulso Digital OLED Portátil',
                 price: 15.00,
                 quantity: 1,
+                image_url: '/cat_accesorios.png',
                 categoria_slug: 'equipos-medicos'
             }
         ]
@@ -1505,6 +1510,7 @@ let ORDERS: Order[] = [
                 name: 'Gorro Quirúrgico Básico Verde Quirófano',
                 price: 8.00,
                 quantity: 2,
+                image_url: '/cat_gorros.png',
                 categoria_slug: 'gorros'
             }
         ]
@@ -1547,6 +1553,29 @@ function getFsModule() {
     return null;
 }
 
+function getFallbackOrderItemImage(categoriaSlug?: string): string {
+    const slug = normalizeCategorySlug(categoriaSlug || '');
+    if (slug === 'equipos-medicos') return '/cat_equipos.png';
+    if (slug === 'accesorios-medicos' || slug === 'lanyards') return '/cat_accesorios.png';
+    return '/cat_gorros.png';
+}
+
+function enrichOrderItemsWithProductSnapshot(items: OrderItem[]): OrderItem[] {
+    if (!Array.isArray(items)) return [];
+    return items.map(item => {
+        const matchedProd = item.id
+            ? MOCK_PRODUCTS.find(p => String(p.id) === String(item.id))
+            : MOCK_PRODUCTS.find(p => p.name?.trim().toLowerCase() === item.name?.trim().toLowerCase());
+        const resolvedImage = item.image_url || matchedProd?.image_url || getFallbackOrderItemImage(item.categoria_slug || matchedProd?.categoria_slug);
+        return {
+            ...item,
+            image_url: resolvedImage,
+            categoria_slug: item.categoria_slug || matchedProd?.categoria_slug,
+            subcategoria_id: item.subcategoria_id ?? matchedProd?.subcategoria_id,
+        };
+    });
+}
+
 function loadOrdersFromDisk(force = false) {
     const fs = getFsModule();
     if (!fs) return;
@@ -1562,12 +1591,23 @@ function loadOrdersFromDisk(force = false) {
             const data = fs.readFileSync(ORDERS_FILE, 'utf-8');
             const parsed = JSON.parse(data);
             if (Array.isArray(parsed) && parsed.length > 0) {
-                ORDERS = parsed;
+                let needsSave = false;
+                ORDERS = parsed.map((o: Order) => {
+                    const hadMissingImg = Array.isArray(o.items) && o.items.some(it => !it.image_url);
+                    if (hadMissingImg) needsSave = true;
+                    return {
+                        ...o,
+                        items: enrichOrderItemsWithProductSnapshot(o.items || [])
+                    };
+                });
                 const maxNum = parsed.reduce((max: number, o: Order) => {
                     const match = o.numero_factura?.match(/BHM-(\d+)/i);
                     return match ? Math.max(max, parseInt(match[1], 10)) : max;
                 }, 1002);
                 INVOICE_COUNTER = Math.max(INVOICE_COUNTER, maxNum);
+                if (needsSave) {
+                    scheduleSaveOrdersToDisk();
+                }
             }
         }
         ordersLoadedOnce = true;
@@ -1925,9 +1965,9 @@ function scheduleSaveProductsToDisk() {
 }
 
 // Initial server-side load
-loadOrdersFromDisk(true);
-loadProductsFromDisk(true);
 loadCategoriesFromDisk(true);
+loadProductsFromDisk(true);
+loadOrdersFromDisk(true);
 
 export async function fetchOrders(): Promise<Order[]> {
     loadOrdersFromDisk(false);
@@ -2002,18 +2042,23 @@ export async function createOrder(
         }
     }
 
+    // Snapshot exact product images & metadata BEFORE any stock deduction or automatic product deletion
+    loadProductsFromDisk(false);
+    const snapshottedItems = enrichOrderItemsWithProductSnapshot(orderData.items || []);
+
     INVOICE_COUNTER += 1;
     const uniqueSuffix = Math.random().toString(36).slice(2, 6);
     const newOrder: Order = {
         ...orderData,
+        items: snapshottedItems,
         id: orderData.id || `ord-${Date.now()}-${uniqueSuffix}`,
         numero_factura: orderData.numero_factura || `BHM-${INVOICE_COUNTER}`,
         created_at: orderData.created_at || new Date().toISOString(),
         estado_pago: orderData.estado_pago || 'por_verificar',
         estado_taller: orderData.estado_taller || (
-            orderData.items && orderData.items.some(i => i.is_personalizado || i.nombre_personalizado || (i.categoria_slug === 'gorros' && !i.name.toLowerCase().includes('básico'))) 
+            snapshottedItems.some(i => i.is_personalizado || i.nombre_personalizado || (i.categoria_slug === 'gorros' && !i.name.toLowerCase().includes('básico'))) 
                 ? 'por_disenar' 
-                : (orderData.items && orderData.items.some(i => i.categoria_slug === 'gorros')) 
+                : (snapshottedItems.some(i => i.categoria_slug === 'gorros')) 
                     ? 'por_coser' 
                     : 'pedido_solicitado'
         ),
@@ -2025,7 +2070,6 @@ export async function createOrder(
 
     // Deduct stock for purchased items; if a Stock Gorro (70) or Stock Lanyard (5) is sold, delete it automatically (since it is a unique single product)
     if (Array.isArray(newOrder.items) && newOrder.items.length > 0) {
-        loadProductsFromDisk(false);
         for (const item of newOrder.items) {
             if (!item.id) continue;
             const currentProd = MOCK_PRODUCTS.find(p => p.id === item.id);

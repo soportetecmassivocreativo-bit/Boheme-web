@@ -191,6 +191,7 @@ export default function AdminPage() {
     const [editingGuideOrder, setEditingGuideOrder] = useState<Order | null>(null);
     const [guideNumberInput, setGuideNumberInput] = useState<string>('');
     const [expandedOrderIds, setExpandedOrderIds] = useState<Record<string, boolean>>({});
+    const [previewWorkshopImage, setPreviewWorkshopImage] = useState<{ url: string; title: string; subtitle?: string } | null>(null);
 
     // Order View & Manual Invoice Modals
     const [viewingOrder, setViewingOrder] = useState<Order | null>(null);
@@ -460,7 +461,17 @@ export default function AdminPage() {
             setLoadingOrders(true);
             const resO = await fetch('/api/orders', { cache: 'no-store' });
             const dataO = await resO.json();
-            if (dataO.orders) setOrders(dataO.orders);
+            if (dataO.orders) {
+                setOrders(dataO.orders);
+                setExpandedOrderIds(prev => {
+                    if (Object.keys(prev).length > 0) return prev;
+                    const initial: Record<string, boolean> = {};
+                    dataO.orders.forEach((o: Order) => {
+                        if (!o.pedido_cerrado) initial[o.id] = true;
+                    });
+                    return initial;
+                });
+            }
         } catch {} finally {
             setLoadingOrders(false);
         }
@@ -1463,6 +1474,23 @@ export default function AdminPage() {
         }
     };
 
+    const resolveOrderItemImages = (item: Order['items'][number]): string[] => {
+        const directImgs = item.image_url ? parseImages(item.image_url) : [];
+        if (directImgs.length > 0 && directImgs[0]) {
+            return directImgs;
+        }
+        const matchedProd = item.id
+            ? products.find(p => String(p.id) === String(item.id))
+            : products.find(p => p.name?.trim().toLowerCase() === item.name?.trim().toLowerCase());
+        if (matchedProd?.image_url) {
+            const prodImgs = parseImages(matchedProd.image_url);
+            if (prodImgs.length > 0 && prodImgs[0]) return prodImgs;
+        }
+        if (item.categoria_slug === 'equipos-medicos') return ['/cat_equipos.png'];
+        if (item.categoria_slug === 'accesorios-medicos' || item.categoria_slug === 'lanyards') return ['/cat_accesorios.png'];
+        return ['/cat_gorros.png'];
+    };
+
     const handlePrintWorkshopSheet = (order: Order) => {
         const printWindow = window.open('', '_blank');
         if (!printWindow) {
@@ -1482,7 +1510,8 @@ export default function AdminPage() {
                     .section { margin-bottom: 16px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
                     .section-title { font-size: 12px; font-weight: 900; text-transform: uppercase; color: #5F2142; margin-bottom: 8px; border-bottom: 1px dashed #eee; padding-bottom: 4px; }
                     .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; }
-                    .item-card { border: 1px solid #ddd; border-radius: 6px; padding: 10px; margin-bottom: 8px; background: #fafafa; }
+                    .item-card { border: 1px solid #ddd; border-radius: 6px; padding: 10px; margin-bottom: 8px; background: #fafafa; display: flex; gap: 12px; align-items: flex-start; }
+                    .item-img { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; border: 1px solid #ccc; flex-shrink: 0; background: #fff; }
                     .checklist { display: flex; gap: 14px; margin-top: 14px; font-size: 11px; font-weight: bold; flex-wrap: wrap; }
                     .box { width: 14px; height: 14px; border: 1.5px solid #333; display: inline-block; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
                     @media print { button { display: none; } body { padding: 0; } }
@@ -1513,18 +1542,27 @@ export default function AdminPage() {
 
                 <div class="section">
                     <div class="section-title">Prendas y Especificaciones de Personalización</div>
-                    ${order.items.map((it, idx) => `
+                    ${order.items.map((it, idx) => {
+                        const imgs = resolveOrderItemImages(it);
+                        return `
                         <div class="item-card">
-                            <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 13px;">
-                                <span>${idx + 1}. ${it.name} (Cantidad: ${it.quantity})</span>
-                                <span style="color: #5F2142;">${it.is_personalizado ? '★ PERSONALIZADO' : 'ESTÁNDAR'}</span>
+                            ${imgs[0] ? `<img src="${imgs[0]}" alt="${it.name}" class="item-img" />` : ''}
+                            <div style="flex: 1;">
+                                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 13px;">
+                                    <span>${idx + 1}. ${it.name} (Cantidad: ${it.quantity})</span>
+                                    <span style="color: #5F2142;">${it.is_personalizado ? '★ PERSONALIZADO' : 'ESTÁNDAR'}</span>
+                                </div>
+                                ${it.genero ? `<div style="font-size: 12px; margin-top: 2px;"><strong>• Género:</strong> ${it.genero} ${it.modelo ? `• <strong>Estilo:</strong> ${it.modelo}` : ''}</div>` : ''}
+                                ${it.subcategoria_especial ? `<div style="font-size: 12px;"><strong>• Subcategoría Especial:</strong> ${it.subcategoria_especial}</div>` : ''}
+                                ${it.adicionales && it.adicionales.length > 0 ? `<div style="font-size: 12px;"><strong>• Adicionales:</strong> ${it.adicionales.join(', ')}</div>` : ''}
+                                ${it.nombre_personalizado ? `<div style="font-size: 12px; margin-top: 4px;"><strong>• Nombre a bordar / imprimir:</strong> <span style="font-size: 14px; color: #5F2142; font-weight: 900; background: #fff3e6; padding: 1px 4px; border-radius: 3px;">${it.nombre_personalizado}</span></div>` : ''}
+                                ${it.texto_personalizado ? `<div style="font-size: 12px;"><strong>• Texto libre:</strong> ${it.texto_personalizado}</div>` : ''}
+                                ${it.especialidad_personalizada ? `<div style="font-size: 12px;"><strong>• Especialidad / Profesión:</strong> ${it.especialidad_personalizada}</div>` : ''}
+                                ${it.color_preferencia ? `<div style="font-size: 12px;"><strong>• Color de tela / bordado:</strong> ${it.color_preferencia}</div>` : ''}
+                                ${it.detalles_personalizados ? `<div style="font-size: 12px;"><strong>• Notas adicionales:</strong> ${it.detalles_personalizados}</div>` : ''}
                             </div>
-                            ${it.nombre_personalizado ? `<div style="font-size: 12px; margin-top: 4px;"><strong>• Nombre a bordar / imprimir:</strong> <span style="font-size: 14px; color: #5F2142; font-weight: 900; background: #fff3e6; padding: 1px 4px; border-radius: 3px;">${it.nombre_personalizado}</span></div>` : ''}
-                            ${it.especialidad_personalizada ? `<div style="font-size: 12px;"><strong>• Especialidad / Profesión:</strong> ${it.especialidad_personalizada}</div>` : ''}
-                            ${it.color_preferencia ? `<div style="font-size: 12px;"><strong>• Color de tela / bordado:</strong> ${it.color_preferencia}</div>` : ''}
-                            ${it.detalles_personalizados ? `<div style="font-size: 12px;"><strong>• Notas adicionales:</strong> ${it.detalles_personalizados}</div>` : ''}
                         </div>
-                    `).join('')}
+                    `}).join('')}
                 </div>
 
                 ${order.notas_taller ? `
@@ -2860,8 +2898,42 @@ export default function AdminPage() {
                                                         </span>
                                                     )}
 
+                                                    {/* Miniaturas de Productos Solicitados en la Cabecera */}
+                                                    <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
+                                                        {order.items.slice(0, 3).map((it, thumbIdx) => {
+                                                            const thumbUrl = resolveOrderItemImages(it)[0];
+                                                            return (
+                                                                <button
+                                                                    key={thumbIdx}
+                                                                    type="button"
+                                                                    onClick={() => setPreviewWorkshopImage({
+                                                                        url: thumbUrl,
+                                                                        title: `${it.quantity}x ${it.name}`,
+                                                                        subtitle: `Pedido #${order.numero_factura} • ${order.cliente_nombre} ${order.cliente_apellido}`
+                                                                    })}
+                                                                    title={`Ver imagen de: ${it.name}`}
+                                                                    className="flex items-center gap-1.5 pr-2.5 pl-1 py-1 rounded-xl bg-white dark:bg-neutral-800 border border-[#D86A33]/40 hover:border-[#D86A33] shadow-2xs transition-all hover:scale-102 cursor-pointer"
+                                                                >
+                                                                    <img
+                                                                        src={thumbUrl}
+                                                                        alt={it.name}
+                                                                        className="w-8 h-8 rounded-lg object-cover border border-gray-200 dark:border-white/10 shrink-0"
+                                                                    />
+                                                                    <span className="text-[11px] font-black text-gray-800 dark:text-gray-200 max-w-[140px] truncate">
+                                                                        {it.quantity}x {it.name}
+                                                                    </span>
+                                                                </button>
+                                                            );
+                                                        })}
+                                                        {order.items.length > 3 && (
+                                                            <span className="text-[10px] font-black px-2 py-1 rounded-lg bg-[#FFF4EB] text-[#D86A33] border border-[#D86A33]/30">
+                                                                +{order.items.length - 3} más
+                                                            </span>
+                                                        )}
+                                                    </div>
+
                                                     {/* Resumen de Prendas */}
-                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10 hidden md:inline-block">
+                                                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-lg bg-gray-100 dark:bg-white/5 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-white/10 hidden xl:inline-block">
                                                         {totalPrendas} prenda(s) • {getWorkshopTypeLabel(workshopType)}
                                                     </span>
                                                 </div>
@@ -3026,6 +3098,11 @@ export default function AdminPage() {
                                                                 {order.items.map((item, itIdx) => {
                                                                     const itemType = determineItemWorkshopType(item, order.tipo_entrega);
                                                                     const hasCustom = item.is_personalizado || item.nombre_personalizado || item.especialidad_personalizada || item.detalles_personalizados;
+                                                                    const itemImages = resolveOrderItemImages(item);
+                                                                    const mainImg = itemImages[0];
+                                                                    const isRemovedFromCatalog = Boolean(
+                                                                        item.id && !products.some(p => String(p.id) === String(item.id))
+                                                                    );
 
                                                                     return (
                                                                         <div
@@ -3036,30 +3113,67 @@ export default function AdminPage() {
                                                                                     : 'border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/1'
                                                                             } space-y-2.5`}
                                                                         >
-                                                                            <div className="flex items-start justify-between gap-2">
-                                                                                <div className="flex items-center gap-2.5">
-                                                                                    <div className="w-10 h-10 rounded-xl bg-gray-200 dark:bg-white/10 overflow-hidden shrink-0 border border-gray-300 dark:border-white/10">
-                                                                                        {item.image_url ? (
-                                                                                            <img src={parseImages(item.image_url)[0]} alt={item.name} className="w-full h-full object-cover" />
-                                                                                        ) : (
-                                                                                            <div className="w-full h-full flex items-center justify-center text-gray-400 font-bold text-xs">
-                                                                                                BHM
+                                                                            <div className="flex items-start justify-between gap-3">
+                                                                                <div className="flex items-start gap-3">
+                                                                                    {/* Imagen grande del producto específico solicitado */}
+                                                                                    <button
+                                                                                        type="button"
+                                                                                        onClick={() => setPreviewWorkshopImage({
+                                                                                            url: mainImg,
+                                                                                            title: `${item.quantity}x ${item.name}`,
+                                                                                            subtitle: `Pedido #${order.numero_factura} • ${order.cliente_nombre} ${order.cliente_apellido}`
+                                                                                        })}
+                                                                                        title="Clic para ampliar la foto del producto solicitado"
+                                                                                        className="group relative w-20 h-20 sm:w-24 sm:h-24 rounded-2xl bg-white dark:bg-neutral-800 overflow-hidden shrink-0 border-2 border-[#D86A33]/50 hover:border-[#D86A33] shadow-sm transition-all hover:scale-103 cursor-pointer"
+                                                                                    >
+                                                                                        <img
+                                                                                            src={mainImg}
+                                                                                            alt={item.name}
+                                                                                            className="w-full h-full object-cover"
+                                                                                        />
+                                                                                        <span className="absolute inset-x-0 bottom-0 bg-black/65 text-white text-[9px] font-black py-0.5 text-center opacity-90 group-hover:bg-[#D86A33] transition-colors">
+                                                                                            🔍 Ver Foto
+                                                                                        </span>
+                                                                                    </button>
+
+                                                                                    <div className="space-y-1">
+                                                                                        <div className="font-black text-gray-900 dark:text-white text-sm leading-tight">
+                                                                                            {item.quantity}x {item.name}
+                                                                                        </div>
+                                                                                        <div className="text-[11px] text-gray-500 dark:text-gray-400 font-semibold">
+                                                                                            ${item.price} c/u • Categoría: {item.categoria_slug || 'General'}
+                                                                                        </div>
+                                                                                        <div className="flex flex-wrap items-center gap-1.5 pt-0.5">
+                                                                                            <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-[#5F2142]/10 text-[#5F2142] dark:text-[#FFC99C]">
+                                                                                                {getWorkshopTypeLabel(itemType)}
+                                                                                            </span>
+                                                                                            {isRemovedFromCatalog && (
+                                                                                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border border-amber-300 dark:border-amber-700">
+                                                                                                    📸 Foto guardada en Taller (Retirado de vitrina)
+                                                                                                </span>
+                                                                                            )}
+                                                                                        </div>
+                                                                                        {itemImages.length > 1 && (
+                                                                                            <div className="flex items-center gap-1.5 pt-1">
+                                                                                                {itemImages.map((extraImg, exIdx) => (
+                                                                                                    <button
+                                                                                                        key={exIdx}
+                                                                                                        type="button"
+                                                                                                        onClick={() => setPreviewWorkshopImage({
+                                                                                                            url: extraImg,
+                                                                                                            title: `${item.name} (Vista ${exIdx + 1})`,
+                                                                                                            subtitle: `Pedido #${order.numero_factura}`
+                                                                                                        })}
+                                                                                                        className="w-8 h-8 rounded-lg overflow-hidden border border-gray-300 dark:border-white/20 hover:border-[#D86A33] transition-transform hover:scale-105 cursor-pointer"
+                                                                                                        title={`Ver foto ${exIdx + 1} del producto`}
+                                                                                                    >
+                                                                                                        <img src={extraImg} alt={`${item.name} ${exIdx + 1}`} className="w-full h-full object-cover" />
+                                                                                                    </button>
+                                                                                                ))}
                                                                                             </div>
                                                                                         )}
                                                                                     </div>
-                                                                                    <div>
-                                                                                        <div className="font-black text-gray-900 dark:text-white text-xs leading-tight">
-                                                                                            {item.quantity}x {item.name}
-                                                                                        </div>
-                                                                                        <span className="text-[10px] text-gray-400 font-semibold">
-                                                                                            ${item.price} c/u • Ref: {item.categoria_slug || 'General'}
-                                                                                        </span>
-                                                                                    </div>
                                                                                 </div>
-
-                                                                                <span className="text-[9px] font-black px-2 py-0.5 rounded-md bg-[#5F2142]/10 text-[#5F2142] dark:text-[#FFC99C] shrink-0">
-                                                                                    {getWorkshopTypeLabel(itemType)}
-                                                                                </span>
                                                                             </div>
 
                                                                             {/* GORROS QUIRÚRGICOS CONFIGURATION CALLOUT (GÉNERO, ESTILO, ESPECIAL, ADICIONALES) */}
@@ -7408,10 +7522,24 @@ export default function AdminPage() {
                                     Artículos en la Factura
                                 </div>
                                 <div className="divide-y divide-gray-200/50 dark:divide-white/10 space-y-2 pt-1">
-                                    {viewingOrder.items.map((it, idx) => (
+                                    {viewingOrder.items.map((it, idx) => {
+                                        const itImg = resolveOrderItemImages(it)[0];
+                                        return (
                                         <div key={idx} className="pt-2">
                                             <div className="flex justify-between font-bold items-center gap-2">
-                                                <div className="flex flex-wrap items-center gap-1.5">
+                                                <div className="flex flex-wrap items-center gap-2.5">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setPreviewWorkshopImage({
+                                                            url: itImg,
+                                                            title: `${it.quantity}x ${it.name}`,
+                                                            subtitle: `Factura #${viewingOrder.numero_factura}`
+                                                        })}
+                                                        className="w-12 h-12 rounded-xl overflow-hidden border border-[#D86A33]/40 shrink-0 shadow-2xs hover:scale-105 transition-transform cursor-pointer"
+                                                        title="Ver imagen del producto"
+                                                    >
+                                                        <img src={itImg} alt={it.name} className="w-full h-full object-cover" />
+                                                    </button>
                                                     <span>{it.quantity}x {it.name}</span>
                                                     {it.es_por_encargo && (
                                                         <span className="px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 border border-amber-300 text-[10px] font-black">
@@ -7462,7 +7590,8 @@ export default function AdminPage() {
                                                 </div>
                                             )}
                                         </div>
-                                    ))}
+                                        );
+                                    })}
                                 </div>
                             </div>
                         </div>
@@ -7853,6 +7982,66 @@ export default function AdminPage() {
                                 className="px-5 py-2 rounded-full bg-[#5F2142] hover:bg-[#43142e] text-white text-xs font-black shadow-md"
                             >
                                 {actionLoading ? 'Guardando...' : 'Guardar en Bitácora'}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: VISTA AMPLIADA DE IMAGEN DEL PRODUCTO EN TALLER */}
+            {previewWorkshopImage && (
+                <div
+                    className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4 animate-fadeIn"
+                    onClick={() => setPreviewWorkshopImage(null)}
+                >
+                    <div
+                        className={`rounded-3xl max-w-lg w-full p-5 ${bgCard} border ${borderDefault} shadow-2xl space-y-4`}
+                        onClick={(e) => e.stopPropagation()}
+                    >
+                        <div className="flex items-center justify-between pb-3 border-b border-gray-100 dark:border-white/10">
+                            <div>
+                                <h4 className="text-base font-black text-[#5F2142] dark:text-[#FFC99C]">
+                                    📸 {previewWorkshopImage.title}
+                                </h4>
+                                {previewWorkshopImage.subtitle && (
+                                    <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold">
+                                        {previewWorkshopImage.subtitle}
+                                    </p>
+                                )}
+                            </div>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewWorkshopImage(null)}
+                                className="w-8 h-8 rounded-full bg-gray-100 dark:bg-white/10 hover:bg-gray-200 flex items-center justify-center text-gray-500 cursor-pointer"
+                            >
+                                <X size={16} />
+                            </button>
+                        </div>
+
+                        <div className="rounded-2xl overflow-hidden bg-gray-50 dark:bg-neutral-900 border border-gray-200 dark:border-white/10 flex items-center justify-center max-h-[65vh]">
+                            <img
+                                src={previewWorkshopImage.url}
+                                alt={previewWorkshopImage.title}
+                                className="w-full h-full max-h-[62vh] object-contain"
+                            />
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 pt-2 border-t border-gray-100 dark:border-white/10">
+                            <a
+                                href={previewWorkshopImage.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="px-4 py-2 rounded-full border border-[#D86A33] text-[#D86A33] hover:bg-[#D86A33] hover:text-white text-xs font-black transition-all inline-flex items-center gap-1.5"
+                            >
+                                <span>Abrir imagen original</span>
+                                <ExternalLink size={13} />
+                            </a>
+                            <button
+                                type="button"
+                                onClick={() => setPreviewWorkshopImage(null)}
+                                className="px-5 py-2 rounded-full bg-[#5F2142] hover:bg-[#43142e] text-white text-xs font-black shadow-md cursor-pointer"
+                            >
+                                Cerrar Vista
                             </button>
                         </div>
                     </div>

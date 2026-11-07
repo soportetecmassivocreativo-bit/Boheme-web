@@ -304,115 +304,118 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
         if (!validateStep2()) return;
         setIsSubmitting(true);
 
-        // 1. Build WhatsApp Message
-        let msg = `🌸 *NUEVO PEDIDO FORMALIZADO - BOHEME* 🌸\n`;
+        // 1. Build WhatsApp Message (100% en negrita línea por línea)
+        const cleanText = (str: string) => str.replace(/\*/g, '').replace(/\r?\n/g, ' ').trim();
+        const boldLine = (text: string, indent = '') => `${indent}*${cleanText(text)}*\n`;
+
+        let msg = boldLine(`🌸 NUEVO PEDIDO FORMALIZADO - BOHEME 🌸`);
         msg += `━━━━━━━━━━━━━━━━━━━━━━\n\n`;
 
-        msg += `👤 *DATOS DEL CLIENTE:*\n`;
-        msg += `• *Nombre:* ${nombre.trim()} ${apellido.trim()}\n`;
-        msg += `• *Cédula:* ${cedula.trim()}\n`;
-        msg += `• *Teléfono:* ${telefono.trim()}\n\n`;
+        msg += boldLine(`👤 DATOS DEL CLIENTE:`);
+        msg += boldLine(`• Nombre: ${nombre.trim()} ${apellido.trim()}`);
+        msg += boldLine(`• Cédula: ${cedula.trim()}`);
+        msg += boldLine(`• Teléfono: ${telefono.trim()}`) + `\n`;
 
-        msg += `📦 *DETALLE DEL PEDIDO:*\n`;
+        msg += boldLine(`📦 DETALLE DEL PEDIDO:`);
         items.forEach((item, idx) => {
             const itemTotal = (item.price * item.quantity).toFixed(2);
-            msg += `*${idx + 1}. ${item.quantity}x ${item.name}* — $${itemTotal}\n`;
+            msg += boldLine(`${idx + 1}. ${item.quantity}x ${item.name} — $${itemTotal}`);
             if (item.es_por_encargo) {
-                msg += `   📦 *MODALIDAD: SOLICITADO POR ENCARGO*${item.stock_disponible !== undefined ? ` (Stock actual: ${item.stock_disponible} uds)` : ''}\n`;
+                msg += boldLine(`📦 MODALIDAD: SOLICITADO POR ENCARGO${item.stock_disponible !== undefined ? ` (Stock actual: ${item.stock_disponible} uds)` : ''}`, '   ');
             }
 
-            if (item.genero) msg += `   ▫️ *Género:* ${item.genero}\n`;
-            if (item.modelo) msg += `   ▫️ *Estilo / Ajuste:* ${item.modelo}\n`;
-            if (item.subcategoria_especial) msg += `   ▫️ *Subcategoría Especial:* ${item.subcategoria_especial}\n`;
+            if (item.genero) msg += boldLine(`▫️ Género: ${item.genero}`, '   ');
+            if (item.modelo) msg += boldLine(`▫️ Estilo / Ajuste: ${item.modelo}`, '   ');
+            if (item.subcategoria_especial) msg += boldLine(`▫️ Subcategoría Especial: ${item.subcategoria_especial}`, '   ');
             if (item.adicionales && item.adicionales.length > 0) {
-                msg += `   ▫️ *Adicionales (+$${(item.adicionales.length * 0.5).toFixed(2)}):* ${item.adicionales.join(', ')}\n`;
+                msg += boldLine(`▫️ Adicionales (+$${(item.adicionales.length * 0.5).toFixed(2)}): ${item.adicionales.join(', ')}`, '   ');
             }
 
             // Personalization details
             if (item.is_personalizado || item.nombre_personalizado || item.especialidad_personalizada || item.texto_personalizado) {
-                msg += `   ✨ *Personalización:*\n`;
+                msg += boldLine(`✨ Personalización:`, '   ');
                 if (item.nombre_personalizado) {
-                    msg += `   ▫️ *Nombre:* ${item.nombre_personalizado}\n`;
+                    msg += boldLine(`▫️ Nombre: ${item.nombre_personalizado}`, '   ');
                 }
                 if (item.texto_personalizado) {
-                    msg += `   ▫️ *Texto libre:* ${item.texto_personalizado}\n`;
+                    msg += boldLine(`▫️ Texto libre: ${item.texto_personalizado}`, '   ');
                 }
                 if (item.especialidad_personalizada) {
-                    msg += `   ▫️ *Especialidad/Cargo:* ${item.especialidad_personalizada}\n`;
+                    msg += boldLine(`▫️ Especialidad/Cargo: ${item.especialidad_personalizada}`, '   ');
                 }
                 if (item.color_preferencia) {
-                    msg += `   ▫️ *Color/Preferencia:* ${item.color_preferencia}\n`;
+                    msg += boldLine(`▫️ Color/Preferencia: ${item.color_preferencia}`, '   ');
                 }
                 if (item.detalles_personalizados && !item.texto_personalizado && !item.genero) {
-                    msg += `   ▫️ *Especificaciones:* ${item.detalles_personalizados}\n`;
+                    msg += boldLine(`▫️ Especificaciones: ${item.detalles_personalizados}`, '   ');
                 }
                 if (item.imagenes_personalizadas && item.imagenes_personalizadas.length > 0) {
-                    msg += `   📷 *Imágenes de referencia adjuntas:* ${item.imagenes_personalizadas.length} foto(s)\n`;
+                    msg += boldLine(`📷 Imágenes de referencia adjuntas: ${item.imagenes_personalizadas.length} foto(s)`, '   ');
                 }
             }
 
-            if (item.type_color && !item.genero) msg += `   ▫️ *Color:* ${item.type_color}\n`;
+            if (item.type_color && !item.genero) msg += boldLine(`▫️ Color: ${item.type_color}`, '   ');
         });
 
         const formattedBs = totalBs.toLocaleString('es-VE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-        msg += `\n💰 *TOTAL DEL PEDIDO:* $${totalUSD.toFixed(2)} USD  ≈  *Bs. ${formattedBs}* (Tasa BCV: ${bcvRate} Bs/$)\n\n`;
+        msg += `\n` + boldLine(`💰 TOTAL DEL PEDIDO: $${totalUSD.toFixed(2)} USD  ≈  Bs. ${formattedBs} (Tasa BCV: ${bcvRate} Bs/$)`) + `\n`;
 
-        msg += `🚚 *DATOS DE ENTREGA:*\n`;
+        msg += boldLine(`🚚 DATOS DE ENTREGA:`);
         if (tipoEntrega === 'local') {
-            msg += `• *Modalidad:* Entrega Local\n`;
-            msg += `• *Municipio:* ${municipioLocal}\n`;
+            msg += boldLine(`• Modalidad: Entrega Local`);
+            msg += boldLine(`• Municipio: ${municipioLocal}`);
             if (municipioLocal === 'Municipio Miranda') {
                 if (tipoEntregaLocal === 'fija') {
-                    msg += `• *Tipo de Entrega Local:* Entrega Fija\n`;
-                    msg += `• *Lugar Fijo de Entrega:* El Hospital Universitario Dr. Alfredo Van Grieken de Coro\n`;
-                    msg += `• *Horario de Entrega:* Lunes en la mañana (hasta las 11:30 am) y Jueves (desde la 1:00 pm hasta las 4:30 pm)\n`;
+                    msg += boldLine(`• Tipo de Entrega Local: Entrega Fija`);
+                    msg += boldLine(`• Lugar Fijo de Entrega: El Hospital Universitario Dr. Alfredo Van Grieken de Coro`);
+                    msg += boldLine(`• Horario de Entrega: Lunes en la mañana (hasta las 11:30 am) y Jueves (desde la 1:00 pm hasta las 4:30 pm)`);
                 } else {
-                    msg += `• *Tipo de Entrega Local:* Delivery (Cotizable desde WhatsApp)\n`;
-                    msg += `• *Dirección de Destino Delivery:* ${direccionDeliveryLocal.trim()}\n`;
-                    msg += `• *Costo de Delivery:* A cotizar y coordinar por WhatsApp\n`;
+                    msg += boldLine(`• Tipo de Entrega Local: Delivery (Cotizable desde WhatsApp)`);
+                    msg += boldLine(`• Dirección de Destino Delivery: ${direccionDeliveryLocal.trim()}`);
+                    msg += boldLine(`• Costo de Delivery: A cotizar y coordinar por WhatsApp`);
                 }
             } else {
                 // Municipio Colina
                 if (tipoEntregaLocal === 'fija') {
-                    msg += `• *Tipo de Entrega Local:* Entrega Fija\n`;
-                    msg += `• *Lugar Fijo de Entrega:* Casa azul de 2 pisos en la esquina frente al ambulatorio Wilfredo Medina (La Vela)\n`;
+                    msg += boldLine(`• Tipo de Entrega Local: Entrega Fija`);
+                    msg += boldLine(`• Lugar Fijo de Entrega: Casa azul de 2 pisos en la esquina frente al ambulatorio Wilfredo Medina (La Vela)`);
                 } else {
-                    msg += `• *Tipo de Entrega Local:* Delivery (Cotizable desde WhatsApp)\n`;
-                    msg += `• *Dirección de Destino Delivery:* ${direccionDeliveryLocal.trim()}\n`;
-                    msg += `• *Costo de Delivery:* A cotizar y coordinar por WhatsApp\n`;
+                    msg += boldLine(`• Tipo de Entrega Local: Delivery (Cotizable desde WhatsApp)`);
+                    msg += boldLine(`• Dirección de Destino Delivery: ${direccionDeliveryLocal.trim()}`);
+                    msg += boldLine(`• Costo de Delivery: A cotizar y coordinar por WhatsApp`);
                 }
             }
         } else {
-            msg += `• *Modalidad:* Envío Nacional\n`;
-            msg += `• *Empresa:* ${empresaEnvio}\n`;
-            msg += `• *Destino:* ${ciudad.trim()}, ${estado.trim()}\n`;
-            msg += `• *Dirección / Agencia de Retiro:* ${direccionAgencia.trim()}\n`;
+            msg += boldLine(`• Modalidad: Envío Nacional`);
+            msg += boldLine(`• Empresa: ${empresaEnvio}`);
+            msg += boldLine(`• Destino: ${ciudad.trim()}, ${estado.trim()}`);
+            msg += boldLine(`• Dirección / Agencia de Retiro: ${direccionAgencia.trim()}`);
         }
         msg += `\n`;
 
         const activeExtraAccount = (siteSettings.cuentasAdicionales || []).find(c => c.id === metodoPago);
 
-        msg += `💳 *DATOS DEL PAGO REALIZADO:*\n`;
+        msg += boldLine(`💳 DATOS DEL PAGO REALIZADO:`);
         if (metodoPago === 'pago_movil') {
-            msg += `• *Método:* Pago Móvil (${siteSettings.pagoMovil.banco})\n`;
-            if (bancoEmisor.trim()) msg += `• *Banco Emisor:* ${bancoEmisor.trim()}\n`;
-            msg += `• *Teléfono Emisor:* ${telefonoOEmailEmisor.trim()}\n`;
-            msg += `• *Nro. de Referencia:* ${referenciaPago.trim()}\n`;
-            msg += `• *Monto Transferido:* ${montoPagado.trim()}\n`;
+            msg += boldLine(`• Método: Pago Móvil (${siteSettings.pagoMovil.banco})`);
+            if (bancoEmisor.trim()) msg += boldLine(`• Banco Emisor: ${bancoEmisor.trim()}`);
+            msg += boldLine(`• Teléfono Emisor: ${telefonoOEmailEmisor.trim()}`);
+            msg += boldLine(`• Nro. de Referencia: ${referenciaPago.trim()}`);
+            msg += boldLine(`• Monto Transferido: ${montoPagado.trim()}`);
         } else if (metodoPago === 'binance') {
-            msg += `• *Método:* Binance Pay (USDT)\n`;
-            msg += `• *Usuario / Correo Binance:* ${telefonoOEmailEmisor.trim()}\n`;
-            msg += `• *ID / TxID de Transacción:* ${referenciaPago.trim()}\n`;
-            msg += `• *Monto Transferido:* ${montoPagado.trim()}\n`;
+            msg += boldLine(`• Método: Binance Pay (USDT)`);
+            msg += boldLine(`• Usuario / Correo Binance: ${telefonoOEmailEmisor.trim()}`);
+            msg += boldLine(`• ID / TxID de Transacción: ${referenciaPago.trim()}`);
+            msg += boldLine(`• Monto Transferido: ${montoPagado.trim()}`);
         } else if (activeExtraAccount) {
-            msg += `• *Método:* ${activeExtraAccount.nombreMetodo} (${activeExtraAccount.bancoOPlataforma})\n`;
-            if (bancoEmisor.trim()) msg += `• *Banco / Plataforma Emisor:* ${bancoEmisor.trim()}\n`;
-            msg += `• *Emisor (Teléfono / Correo / Titular):* ${telefonoOEmailEmisor.trim()}\n`;
-            msg += `• *Nro. de Referencia / Comprobante:* ${referenciaPago.trim()}\n`;
-            msg += `• *Monto Transferido:* ${montoPagado.trim()}\n`;
+            msg += boldLine(`• Método: ${activeExtraAccount.nombreMetodo} (${activeExtraAccount.bancoOPlataforma})`);
+            if (bancoEmisor.trim()) msg += boldLine(`• Banco / Plataforma Emisor: ${bancoEmisor.trim()}`);
+            msg += boldLine(`• Emisor (Teléfono / Correo / Titular): ${telefonoOEmailEmisor.trim()}`);
+            msg += boldLine(`• Nro. de Referencia / Comprobante: ${referenciaPago.trim()}`);
+            msg += boldLine(`• Monto Transferido: ${montoPagado.trim()}`);
         }
         msg += `\n━━━━━━━━━━━━━━━━━━━━━━\n`;
-        msg += `¡Quedo atento a la confirmación de mi pedido! Muchas gracias.`;
+        msg += `*¡Quedo atento a la confirmación de mi pedido! Muchas gracias.*`;
 
         // 2. Register Order in Admin Billing Module (Facturado)
         try {
