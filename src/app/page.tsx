@@ -123,7 +123,7 @@ export default function Home() {
             <MarqueeTicker variant="orange" />
 
             {/* 2. Paper Sunshine Style Quick Category Circle Bar on Pure White Background */}
-            <section className="py-10 bg-white border-b border-gray-100">
+            <section id="favoritos-boheme" className="py-10 bg-white border-b border-gray-100 scroll-mt-20">
                 <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                     <div className="flex items-center justify-between gap-4 overflow-x-auto pb-2 scrollbar-none sm:justify-center sm:gap-10">
                         {CIRCLE_CATEGORIES.map((cat) => {
