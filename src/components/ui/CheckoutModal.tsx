@@ -412,7 +412,7 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
             msg += `• *Monto Transferido:* ${montoPagado.trim()}\n`;
         }
         msg += `\n━━━━━━━━━━━━━━━━━━━━━━\n`;
-        msg += `📎 *Adjunto a continuación la captura del comprobante de pago.* ¡Quedo atento a la confirmación!`;
+        msg += `¡Quedo atento a la confirmación de mi pedido! Muchas gracias.`;
 
         // 2. Register Order in Admin Billing Module (Facturado)
         try {
@@ -1515,7 +1515,7 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
                             </h3>
                             <p className="text-sm text-gray-600 max-w-md mx-auto leading-relaxed font-normal">
                                 Tu orden ha sido registrada en nuestro sistema y enviada a nuestro WhatsApp oficial. 
-                                Recuerda enviar la <strong>captura del comprobante</strong> en el chat para iniciar la preparación de tus prendas.
+                                ¡Quedamos atentos para confirmar tu pedido y comenzar su preparación!
                             </p>
 
                             <div className="pt-4 flex flex-col sm:flex-row items-center justify-center gap-3">
