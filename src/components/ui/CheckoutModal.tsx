@@ -28,27 +28,32 @@ import {
 const WHATSAPP_NUMBER = "584121409976";
 
 const VENEZUELAN_BANKS = [
-    { code: '0102', name: 'Banco de Venezuela (0102)' },
-    { code: '0134', name: 'Banesco (0134)' },
-    { code: '0105', name: 'Banco Mercantil (0105)' },
-    { code: '0108', name: 'Banco Provincial BBVA (0108)' },
-    { code: '0114', name: 'Bancaribe (0114)' },
-    { code: '0115', name: 'Banco Exterior (0115)' },
-    { code: '0172', name: 'Bancamiga (0172)' },
-    { code: '0168', name: 'Bancrecer (0168)' },
-    { code: '0175', name: 'Banco Bicentenario (0175)' },
-    { code: '0163', name: 'Banco del Tesoro (0163)' },
-    { code: '0177', name: 'Banco de la Fuerza Armada FANB (0177)' },
-    { code: '0138', name: 'Banco Plaza (0138)' },
-    { code: '0128', name: 'Banco Caroní (0128)' },
-    { code: '0151', name: 'BFC Banco Fondo Común (0151)' },
-    { code: '0169', name: 'Mi Banco (0169)' },
-    { code: '0174', name: 'Banplus (0174)' },
-    { code: '0157', name: 'Delsur Banco Universal (0157)' },
-    { code: '0171', name: 'Banco Activo (0171)' },
-    { code: '0156', name: '100% Banco (0156)' },
-    { code: '0166', name: 'Banco Agrícola de Venezuela (0166)' },
-    { code: '0178', name: 'N58 Banco Digital (0178)' }
+    { code: '0102', name: '0102 - Banco de Venezuela' },
+    { code: '0104', name: '0104 - Banco Venezolano de Crédito' },
+    { code: '0105', name: '0105 - Banco Mercantil' },
+    { code: '0108', name: '0108 - BBVA Provincial' },
+    { code: '0114', name: '0114 - Bancaribe' },
+    { code: '0115', name: '0115 - Banco Exterior' },
+    { code: '0128', name: '0128 - Banco Caroní' },
+    { code: '0134', name: '0134 - Banesco' },
+    { code: '0137', name: '0137 - Banco Sofitasa' },
+    { code: '0138', name: '0138 - Banco Plaza' },
+    { code: '0146', name: '0146 - Bangente' },
+    { code: '0151', name: '0151 - Banco Fondo Común' },
+    { code: '0156', name: '0156 - 100% Banco' },
+    { code: '0157', name: '0157 - DelSur Banco Universal' },
+    { code: '0163', name: '0163 - Banco del Tesoro' },
+    { code: '0166', name: '0166 - Banco Agrícola de Venezuela' },
+    { code: '0168', name: '0168 - Bancrecer' },
+    { code: '0169', name: '0169 - R4 Banco Microfinanciero' },
+    { code: '0171', name: '0171 - Banco Activo' },
+    { code: '0172', name: '0172 - Bancamiga' },
+    { code: '0173', name: '0173 - Banco Internacional de Desarrollo' },
+    { code: '0174', name: '0174 - Banplus' },
+    { code: '0175', name: '0175 - Banco Digital de los Trabajadores' },
+    { code: '0177', name: '0177 - BANFANB' },
+    { code: '0178', name: '0178 - N58 Banco Digital' },
+    { code: '0191', name: '0191 - Banco Nacional de Crédito' }
 ];
 
 // Payment details specified by BOHEME
@@ -132,7 +137,7 @@ export default function CheckoutModal() {
 
     // Form: Payment Data
     const [metodoPago, setMetodoPago] = useState<'pago_movil' | 'binance' | string>('pago_movil');
-    const [bancoEmisor, setBancoEmisor] = useState('Banco de Venezuela (0102)');
+    const [bancoEmisor, setBancoEmisor] = useState('0102 - Banco de Venezuela');
     const [telefonoOEmailEmisor, setTelefonoOEmailEmisor] = useState('');
     const [referenciaPago, setReferenciaPago] = useState('');
     const [montoPagado, setMontoPagado] = useState('');
