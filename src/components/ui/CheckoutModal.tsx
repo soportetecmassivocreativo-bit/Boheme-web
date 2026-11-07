@@ -122,6 +122,8 @@ export default function CheckoutModal() {
     const [telefono, setTelefono] = useState('');
     const [tipoEntrega, setTipoEntrega] = useState<'local' | 'nacional'>('local');
     const [municipioLocal, setMunicipioLocal] = useState<'Municipio Miranda' | 'Municipio Colina'>('Municipio Miranda');
+    const [tipoEntregaLocal, setTipoEntregaLocal] = useState<'fija' | 'delivery'>('fija');
+    const [direccionDeliveryLocal, setDireccionDeliveryLocal] = useState('');
     const [direccionLocal, setDireccionLocal] = useState('');
     const [empresaEnvio, setEmpresaEnvio] = useState('MRW');
     const [estado, setEstado] = useState('');
@@ -267,8 +269,8 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
         }
 
         if (tipoEntrega === 'local') {
-            if (!direccionLocal.trim()) {
-                setFormError('Por favor indica tu dirección o zona para la entrega local.');
+            if (tipoEntregaLocal === 'delivery' && !direccionDeliveryLocal.trim()) {
+                setFormError('Por favor indica tu dirección exacta de entrega para el delivery.');
                 return false;
             }
         } else {
@@ -399,9 +401,29 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
 
         msg += `🚚 *DATOS DE ENTREGA:*\n`;
         if (tipoEntrega === 'local') {
-            msg += `• *Modalidad:* Entrega Local (${municipioLocal})\n`;
+            msg += `• *Modalidad:* Entrega Local\n`;
             msg += `• *Municipio:* ${municipioLocal}\n`;
-            msg += `• *Dirección / Punto de Entrega:* ${direccionLocal.trim()}\n`;
+            if (municipioLocal === 'Municipio Miranda') {
+                if (tipoEntregaLocal === 'fija') {
+                    msg += `• *Tipo de Entrega Local:* Entrega Fija\n`;
+                    msg += `• *Lugar Fijo de Entrega:* El Hospital Universitario Dr. Alfredo Van Grieken de Coro\n`;
+                    msg += `• *Horario de Entrega:* Lunes en la mañana (hasta las 11:30 am) y Jueves (desde la 1:00 pm hasta las 4:30 pm)\n`;
+                } else {
+                    msg += `• *Tipo de Entrega Local:* Delivery (Cotizable desde WhatsApp)\n`;
+                    msg += `• *Dirección de Destino Delivery:* ${direccionDeliveryLocal.trim()}\n`;
+                    msg += `• *Costo de Delivery:* A cotizar y coordinar por WhatsApp\n`;
+                }
+            } else {
+                // Municipio Colina
+                if (tipoEntregaLocal === 'fija') {
+                    msg += `• *Tipo de Entrega Local:* Entrega Fija\n`;
+                    msg += `• *Lugar Fijo de Entrega:* Casa azul de 2 pisos en la esquina frente al ambulatorio Wilfredo Medina (La Vela)\n`;
+                } else {
+                    msg += `• *Tipo de Entrega Local:* Delivery (Cotizable desde WhatsApp)\n`;
+                    msg += `• *Dirección de Destino Delivery:* ${direccionDeliveryLocal.trim()}\n`;
+                    msg += `• *Costo de Delivery:* A cotizar y coordinar por WhatsApp\n`;
+                }
+            }
         } else {
             msg += `• *Modalidad:* Envío Nacional\n`;
             msg += `• *Empresa:* ${empresaEnvio}\n`;
@@ -452,7 +474,15 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
                     cliente_cedula: cedula.trim(),
                     cliente_telefono: telefono.trim(),
                     tipo_entrega: tipoEntrega,
-                    direccion_entrega: tipoEntrega === 'local' ? `${municipioLocal} - ${direccionLocal.trim()}` : direccionAgencia.trim(),
+                    direccion_entrega: tipoEntrega === 'local' 
+                        ? (municipioLocal === 'Municipio Miranda'
+                            ? (tipoEntregaLocal === 'fija' 
+                                ? 'Municipio Miranda - Entrega Fija: Hospital Universitario Dr. Alfredo Van Grieken (Lun hasta 11:30am / Jue 1pm a 4:30pm)'
+                                : `Municipio Miranda - Delivery: ${direccionDeliveryLocal.trim()} (Cotizable por WhatsApp)`)
+                            : (tipoEntregaLocal === 'fija'
+                                ? 'Municipio Colina - Entrega Fija: Casa azul de 2 pisos en la esquina frente al ambulatorio Wilfredo Medina'
+                                : `Municipio Colina - Delivery: ${direccionDeliveryLocal.trim()} (Cotizable por WhatsApp)`))
+                        : direccionAgencia.trim(),
                     empresa_envio: tipoEntrega === 'nacional' ? empresaEnvio : undefined,
                     estado: tipoEntrega === 'nacional' ? estado.trim() : undefined,
                     ciudad: tipoEntrega === 'nacional' ? ciudad.trim() : undefined,
@@ -747,21 +777,22 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
                                 </div>
 
                                 {tipoEntrega === 'local' ? (
-                                    <div className="space-y-3 p-4 rounded-2xl bg-[#FFF9F5]/70 border border-[#FFC99C]/40">
+                                    <div className="space-y-4 p-4 rounded-2xl bg-[#FFF9F5]/70 border border-[#FFC99C]/40">
                                         <div className="p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-xs text-[#5F2142] font-bold flex items-center gap-2">
                                             <span>📍</span>
                                             <span>La entrega local aplica <strong>únicamente para Municipio Miranda y Municipio Colina</strong>.</span>
                                         </div>
 
+                                        {/* Selector de Municipio */}
                                         <div>
                                             <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1.5">
-                                                Selecciona tu Municipio *
+                                                1. Selecciona tu Municipio *
                                             </label>
                                             <div className="grid grid-cols-2 gap-2">
                                                 <button
                                                     type="button"
                                                     onClick={() => setMunicipioLocal('Municipio Miranda')}
-                                                    className={`p-2.5 rounded-xl border text-xs font-black transition-all ${
+                                                    className={`p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer ${
                                                         municipioLocal === 'Municipio Miranda'
                                                             ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-xs'
                                                             : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
@@ -772,7 +803,7 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
                                                 <button
                                                     type="button"
                                                     onClick={() => setMunicipioLocal('Municipio Colina')}
-                                                    className={`p-2.5 rounded-xl border text-xs font-black transition-all ${
+                                                    className={`p-2.5 rounded-xl border text-xs font-black transition-all cursor-pointer ${
                                                         municipioLocal === 'Municipio Colina'
                                                             ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-xs'
                                                             : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
@@ -783,19 +814,134 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
                                             </div>
                                         </div>
 
+                                        {/* Selector de Tipo de Entrega Local: Fija vs Delivery */}
                                         <div>
-                                            <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1">
-                                                Dirección o Punto de Encuentro ({municipioLocal}) *
+                                            <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1.5">
+                                                2. Selecciona Tipo de Entrega en {municipioLocal} *
                                             </label>
-                                            <textarea
-                                                rows={2}
-                                                required
-                                                value={direccionLocal}
-                                                onChange={(e) => setDireccionLocal(e.target.value)}
-                                                placeholder={`Indica sector, calle o punto de referencia en ${municipioLocal}...`}
-                                                className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm font-medium bg-white"
-                                            />
+                                            <div className="grid grid-cols-2 gap-2">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTipoEntregaLocal('fija')}
+                                                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                                                        tipoEntregaLocal === 'fija'
+                                                            ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-xs'
+                                                            : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
+                                                    }`}
+                                                >
+                                                    <div className="font-black text-xs">🏛️ Entrega Fija</div>
+                                                    <div className={`text-[10px] mt-0.5 ${tipoEntregaLocal === 'fija' ? 'text-[#FFC99C]' : 'text-gray-500'}`}>
+                                                        Punto establecido
+                                                    </div>
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setTipoEntregaLocal('delivery')}
+                                                    className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
+                                                        tipoEntregaLocal === 'delivery'
+                                                            ? 'bg-[#5F2142] text-white border-[#5F2142] shadow-xs'
+                                                            : 'bg-white border-gray-200 text-gray-700 hover:border-gray-300'
+                                                    }`}
+                                                >
+                                                    <div className="font-black text-xs">🛵 Delivery</div>
+                                                    <div className={`text-[10px] mt-0.5 ${tipoEntregaLocal === 'delivery' ? 'text-[#FFC99C]' : 'text-[#D86A33] font-bold'}`}>
+                                                        Cotizable por WhatsApp
+                                                    </div>
+                                                </button>
+                                            </div>
                                         </div>
+
+                                        {/* Detalles según Municipio y Tipo de Entrega */}
+                                        {municipioLocal === 'Municipio Miranda' ? (
+                                            tipoEntregaLocal === 'fija' ? (
+                                                <div className="p-3.5 rounded-xl bg-white border border-[#FFC99C] space-y-1.5 text-xs text-gray-700">
+                                                    <div className="flex items-center gap-2 font-black text-[#5F2142]">
+                                                        <span>🏥</span>
+                                                        <span>Punto Fijo de Entrega (Municipio Miranda):</span>
+                                                    </div>
+                                                    <div className="font-bold text-gray-900 bg-[#FFF9F5] p-2.5 rounded-lg border border-[#FFC99C]/60">
+                                                        El Hospital Universitario Dr. Alfredo Van Grieken de Coro
+                                                    </div>
+                                                    <div className="text-[11px] text-gray-600 space-y-0.5 pt-1">
+                                                        <span className="block font-black text-[#D86A33] uppercase text-[10px]">Horarios de Entrega Fija:</span>
+                                                        <p>• <strong>Lunes:</strong> En la mañana hasta las <strong>11:30 am</strong>.</p>
+                                                        <p>• <strong>Jueves:</strong> Desde la <strong>1:00 pm</strong> hasta las <strong>4:30 pm</strong>.</p>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2 p-3.5 rounded-xl bg-white border border-[#D86A33]/40">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="font-black text-xs text-[#5F2142] flex items-center gap-1.5">
+                                                            <span>🛵</span>
+                                                            <span>Delivery en Municipio Miranda (Coro)</span>
+                                                        </span>
+                                                        <span className="px-2 py-0.5 rounded-full bg-[#FFF4EB] border border-[#D86A33]/50 text-[10px] font-black text-[#D86A33]">
+                                                            Cotizable por WhatsApp
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[11px] text-gray-500 font-medium">
+                                                        El costo del delivery se cotiza directamente por WhatsApp según tu zona en Coro.
+                                                    </p>
+                                                    <div>
+                                                        <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1">
+                                                            Dirección exacta para el delivery *
+                                                        </label>
+                                                        <textarea
+                                                            rows={2}
+                                                            required
+                                                            value={direccionDeliveryLocal}
+                                                            onChange={(e) => setDireccionDeliveryLocal(e.target.value)}
+                                                            placeholder="Indica sector, calle, número de casa/edificio y punto de referencia en Coro..."
+                                                            className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm font-medium bg-white"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )
+                                        ) : (
+                                            tipoEntregaLocal === 'fija' ? (
+                                                <div className="p-3.5 rounded-xl bg-white border border-[#FFC99C] space-y-1.5 text-xs text-gray-700">
+                                                    <div className="flex items-center gap-2 font-black text-[#5F2142]">
+                                                        <span>🏠</span>
+                                                        <span>Punto Fijo de Entrega (Municipio Colina - La Vela):</span>
+                                                    </div>
+                                                    <div className="font-bold text-gray-900 bg-[#FFF9F5] p-2.5 rounded-lg border border-[#FFC99C]/60">
+                                                        Casa azul de 2 pisos en la esquina frente al ambulatorio Wilfredo Medina
+                                                    </div>
+                                                    <p className="text-[11px] text-gray-500 pt-1 font-medium">
+                                                        Punto establecido de retiro para el Municipio Colina (La Vela).
+                                                    </p>
+                                                </div>
+                                            ) : (
+                                                <div className="space-y-2 p-3.5 rounded-xl bg-white border border-[#D86A33]/40">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="font-black text-xs text-[#5F2142] flex items-center gap-1.5">
+                                                            <span>🛵</span>
+                                                            <span>Delivery en Municipio Colina (La Vela)</span>
+                                                        </span>
+                                                        <span className="px-2 py-0.5 rounded-full bg-[#FFF4EB] border border-[#D86A33]/50 text-[10px] font-black text-[#D86A33]">
+                                                            Cotizable por WhatsApp
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-[11px] text-gray-500 font-medium">
+                                                        El costo del delivery se cotiza directamente por WhatsApp según tu zona en La Vela.
+                                                    </p>
+                                                    <div>
+                                                        <label className="block text-[11px] font-black text-gray-700 uppercase tracking-wider mb-1">
+                                                            Dirección exacta para el delivery *
+                                                        </label>
+                                                        <textarea
+                                                            rows={2}
+                                                            required
+                                                            value={direccionDeliveryLocal}
+                                                            onChange={(e) => setDireccionDeliveryLocal(e.target.value)}
+                                                            placeholder="Indica sector, calle, número de casa/edificio y punto de referencia en La Vela..."
+                                                            className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm font-medium bg-white"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            )
+                                        )}
                                     </div>
                                 ) : (
                                     <div className="space-y-3.5 p-4 rounded-2xl bg-[#FFF9F5]/70 border border-[#FFC99C]/40">
