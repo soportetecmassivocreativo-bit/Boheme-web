@@ -141,9 +141,6 @@ export default function CheckoutModal() {
     const [telefonoOEmailEmisor, setTelefonoOEmailEmisor] = useState('');
     const [referenciaPago, setReferenciaPago] = useState('');
     const [montoPagado, setMontoPagado] = useState('');
-    const [comprobantePago, setComprobantePago] = useState<string>('');
-    const [comprobanteFileName, setComprobanteFileName] = useState<string>('');
-    const [isUploadingComprobante, setIsUploadingComprobante] = useState(false);
 
     // Validation errors
     const [formError, setFormError] = useState<string | null>(null);
@@ -218,46 +215,6 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
         }
     };
 
-    const handleComprobanteUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-
-        if (!file.type.startsWith('image/')) {
-            alert('Por favor selecciona una imagen válida de comprobante (JPG, PNG, etc.)');
-            return;
-        }
-
-        setIsUploadingComprobante(true);
-        setComprobanteFileName(file.name);
-
-        try {
-            const formData = new FormData();
-            formData.append('files', file);
-
-            const res = await fetch('/api/admin/upload', {
-                method: 'POST',
-                body: formData
-            });
-
-            if (res.ok) {
-                const data = await res.json();
-                if (data.urls && data.urls[0]) {
-                    setComprobantePago(data.urls[0]);
-                    return;
-                }
-            }
-            throw new Error('Fallback local');
-        } catch {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                setComprobantePago(event.target?.result as string);
-            };
-            reader.readAsDataURL(file);
-        } finally {
-            setIsUploadingComprobante(false);
-        }
-    };
-
     const validateStep1 = () => {
         setFormError(null);
         if (!nombre.trim() || !apellido.trim()) {
@@ -308,10 +265,6 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
         }
         if (!montoPagado.trim()) {
             setFormError('Por favor confirma el monto exacto transferido.');
-            return false;
-        }
-        if (!comprobantePago) {
-            setFormError('Es obligatorio adjuntar la captura del comprobante de pago para formalizar.');
             return false;
         }
         return true;
@@ -459,13 +412,6 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
             msg += `• *Monto Transferido:* ${montoPagado.trim()}\n`;
         }
         msg += `\n━━━━━━━━━━━━━━━━━━━━━━\n`;
-        if (comprobantePago) {
-            if (comprobantePago.startsWith('http://') || comprobantePago.startsWith('https://')) {
-                msg += `🧾 *Enlace del Comprobante cargado:* ${comprobantePago}\n`;
-            } else {
-                msg += `🧾 *Comprobante de pago:* Adjuntado y registrado en la plataforma.\n`;
-            }
-        }
         msg += `📎 *Adjunto a continuación la captura del comprobante de pago.* ¡Quedo atento a la confirmación!`;
 
         // 2. Register Order in Admin Billing Module (Facturado)
@@ -496,7 +442,6 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
                     banco_emisor: bancoEmisor.trim() || undefined,
                     telefono_o_email_emisor: telefonoOEmailEmisor.trim(),
                     referencia_pago: referenciaPago.trim(),
-                    comprobante_pago: comprobantePago || undefined,
                     monto_usd: totalUSD,
                     tasa_bcv: bcvRate,
                     monto_bs: totalBs,
@@ -1553,64 +1498,6 @@ ${extra.telefono ? `Teléfono: ${extra.telefono}\n` : ''}${extra.cedulaORif ? `C
                                             placeholder={`Ej: Bs. ${totalBs.toFixed(2)} o $${totalUSD.toFixed(2)}`}
                                             className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm font-medium bg-white"
                                         />
-                                    </div>
-                                </div>
-
-                                {/* Upload Comprobante / Capture (Obligatorio) */}
-                                <div className="p-3.5 rounded-2xl bg-white border-2 border-dashed border-[#D86A33]/60 space-y-2">
-                                    <div className="flex items-center justify-between">
-                                        <label className="block text-xs font-black text-[#5F2142] uppercase tracking-wider flex items-center gap-1.5">
-                                            <UploadCloud size={16} className="text-[#D86A33]" />
-                                            <span>Adjuntar Comprobante / Capture de Pago *</span>
-                                        </label>
-                                        <span className="text-[10px] font-black px-2 py-0.5 rounded-full bg-red-100 text-red-700">
-                                            Obligatorio
-                                        </span>
-                                    </div>
-
-                                    <p className="text-[11px] text-gray-500 font-medium">
-                                        Carga una foto o captura de tu pago para validar y registrar la orden antes de abrir WhatsApp.
-                                    </p>
-
-                                    <div className="flex flex-col sm:flex-row items-center gap-3 pt-1">
-                                        <label className="w-full sm:w-auto px-4 py-2.5 rounded-xl bg-[#FFF4EB] border border-[#D86A33] text-[#D86A33] hover:bg-[#D86A33] hover:text-white transition-all text-xs font-black cursor-pointer flex items-center justify-center gap-2">
-                                            <ImageIcon size={15} />
-                                            <span>{isUploadingComprobante ? 'Procesando captura...' : comprobantePago ? 'Cambiar Captura' : 'Subir Comprobante (JPG, PNG)'}</span>
-                                            <input
-                                                type="file"
-                                                accept="image/*"
-                                                required={!comprobantePago}
-                                                onChange={handleComprobanteUpload}
-                                                className="hidden"
-                                            />
-                                        </label>
-
-                                        {comprobantePago && (
-                                            <div className="flex items-center gap-2 text-xs font-bold text-emerald-700 bg-emerald-50 px-3 py-2 rounded-xl border border-emerald-200 w-full sm:w-auto">
-                                                <Check size={14} className="text-emerald-600 shrink-0" />
-                                                <span className="truncate max-w-[200px]">{comprobanteFileName || 'Comprobante adjuntado con éxito'}</span>
-                                            </div>
-                                        )}
-                                    </div>
-
-                                    {comprobantePago && (
-                                        <div className="pt-2">
-                                            <img
-                                                src={comprobantePago}
-                                                alt="Comprobante cargado"
-                                                className="h-28 w-auto rounded-xl border border-gray-200 object-contain bg-gray-50 p-1"
-                                            />
-                                        </div>
-                                    )}
-                                </div>
-
-                                {/* Capture Reminder Note */}
-                                <div className="p-3 rounded-xl bg-white border border-[#D86A33]/30 text-xs text-gray-700 flex items-start gap-2.5 font-normal">
-                                    <span className="text-base">📷</span>
-                                    <div>
-                                        <strong className="text-[#5F2142] block font-bold">Importante: Comprobante / Capture de Pago</strong>
-                                        Al pulsar el botón a continuación, se abrirá WhatsApp con el mensaje estructurado de tu compra. 
-                                        Allí deberás <strong>adjuntar la captura del comprobante</strong> para que el equipo de BOHEME valide tu pago de inmediato.
                                     </div>
                                 </div>
                             </div>
