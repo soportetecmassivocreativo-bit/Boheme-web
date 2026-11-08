@@ -186,7 +186,6 @@ export const HERO_CONFIG: HeroConfig = {
         trustPills: [
             { icon: 'sparkles', text: 'Bordado y estampado a tu medida' },
             { icon: 'truck', text: 'Envíos a toda Venezuela + Entrega local' },
-            { icon: 'shield', text: 'Telas antifluidos 100% calidad' },
         ],
     },
 

@@ -150,89 +150,81 @@ export default function Home() {
                 </div>
             </section>
 
-            {/* 3. MODOA "New Favorites" Section with Light-Tone Cards on White Background */}
+            {/* 3. "Colección Boheme" Section with Amplified Cards on White Background */}
             <section className="py-16 md:py-20 bg-white relative overflow-hidden">
                 {/* Background ambient accents */}
                 <div className="absolute top-1/3 left-10 w-72 h-72 bg-[#FFC99C]/20 rounded-full blur-3xl pointer-events-none" />
                 <div className="absolute bottom-10 right-10 w-80 h-80 bg-[#D86A33]/10 rounded-full blur-3xl pointer-events-none" />
 
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+                <div className="max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
                     
-                    {/* Header inspired by MODOA: "✦ New Favorites" */}
-                    <div className="flex items-center justify-between mb-10 pb-4 border-b border-gray-100">
+                    {/* Header: "✦ Colección Boheme" + Símbolo Decorativo Artesanal */}
+                    <div className="flex items-center justify-between mb-10 pb-4 border-b border-[#FFC99C]/60">
                         <div className="flex items-center gap-3">
-                            <span className="text-[#D86A33] text-xl sm:text-2xl animate-spin-slow">✦</span>
+                            <span className="text-[#D86A33] text-2xl sm:text-3xl animate-spin-slow">✦</span>
                             <h2 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#5F2142] tracking-tight">
-                                New Favorites
-                            </h2>
-                            <span className="hidden sm:inline-block px-3 py-1 rounded-full bg-[#FFF4EB] text-[#D86A33] border border-[#D86A33]/30 text-xs font-black uppercase">
                                 Colección Boheme
-                            </span>
+                            </h2>
                         </div>
 
-                        {/* MODOA style arrows and link */}
-                        <div className="flex items-center gap-3">
-                            <Link 
-                                href="/categorias/gorros" 
-                                className="hidden sm:inline-flex items-center gap-1.5 text-xs font-black text-[#5F2142] hover:text-[#D86A33] transition-colors underline decoration-[#FFC99C] underline-offset-4"
-                            >
-                                <span>Ver todo</span>
-                                <span>→</span>
-                            </Link>
-                            <div className="flex items-center gap-1.5 text-gray-400">
-                                <span className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-[#D86A33] hover:text-[#D86A33] transition-colors cursor-pointer">
-                                    <ChevronLeft size={16} />
-                                </span>
-                                <span className="w-8 h-8 rounded-full border border-gray-200 flex items-center justify-center hover:border-[#D86A33] hover:text-[#D86A33] transition-colors cursor-pointer">
-                                    <ChevronRight size={16} />
-                                </span>
-                            </div>
+                        {/* Símbolo decorativo artesanal en lugar de Ver todo y flechas */}
+                        <div
+                            aria-hidden="true"
+                            className="inline-flex items-center gap-2.5 px-4 py-1.5 rounded-full bg-[#FFF4EB] border-2 border-dashed border-[#D86A33]/50 shadow-2xs select-none"
+                        >
+                            <span className="text-[#D86A33] text-sm animate-spin-slow">✦</span>
+                            <span className="text-[#5F2142] text-xs font-black tracking-widest">★</span>
+                            <span className="w-6 h-6 rounded-full bg-[#D86A33] text-white flex items-center justify-center text-xs shadow-2xs">
+                                ❤
+                            </span>
+                            <span className="text-[#5F2142] text-xs font-black tracking-widest">★</span>
+                            <span className="text-[#D86A33] text-sm animate-spin-slow">✦</span>
                         </div>
                     </div>
 
-                    {/* Proportional MODOA Light Cards Grid with Mixed Buttons */}
-                    <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-5">
+                    {/* Amplified Light Cards Grid with Mixed Buttons */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-5 sm:gap-6">
                         {CATEGORIAS_FAVORITES.map((cat) => (
                             <Link 
                                 key={cat.slug} 
                                 href={`/categorias/${cat.slug}`}
-                                className={`group relative rounded-3xl p-3 sm:p-4 ${cat.bgCard} border border-[#FFC99C]/50 hover:border-[#D86A33] shadow-xs hover:shadow-xl hover:-translate-y-1.5 transition-all duration-300 flex flex-col justify-between`}
+                                className={`group relative rounded-[2rem] p-4 sm:p-5 ${cat.bgCard} border-2 border-[#FFC99C]/60 hover:border-[#D86A33] shadow-sm hover:shadow-2xl hover:-translate-y-2 transition-all duration-300 flex flex-col justify-between`}
                             >
                                 {/* Top Tag & Heart */}
-                                <div className="flex items-center justify-between mb-2 z-10">
-                                    <span className={`px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider ${cat.tagStyle} shadow-2xs`}>
+                                <div className="flex items-center justify-between mb-3 z-10">
+                                    <span className={`px-3 py-1 rounded-full text-[10px] sm:text-[11px] font-black uppercase tracking-wider ${cat.tagStyle} shadow-2xs`}>
                                         {cat.tag}
                                     </span>
-                                    <span className="w-6 h-6 rounded-full bg-white/90 backdrop-blur-sm flex items-center justify-center text-[#5F2142]/60 group-hover:text-[#D86A33] transition-colors shadow-2xs">
-                                        <Heart size={12} className="group-hover:fill-[#D86A33]" />
+                                    <span className="w-8 h-8 rounded-full bg-white/95 backdrop-blur-sm flex items-center justify-center text-[#5F2142]/60 group-hover:text-[#D86A33] transition-colors shadow-2xs">
+                                        <Heart size={15} className="group-hover:fill-[#D86A33]" />
                                     </span>
                                 </div>
 
-                                {/* Product / Category Image Container */}
-                                <div className="aspect-[4/3] rounded-2xl bg-white overflow-hidden relative mb-3 flex items-center justify-center border border-gray-100">
+                                {/* Product / Category Image Container (Amplified aspect-square) */}
+                                <div className="aspect-square rounded-2xl bg-white overflow-hidden relative mb-4 flex items-center justify-center border border-[#FFC99C]/40 shadow-inner">
                                     <img 
                                         src={cat.image} 
                                         alt={cat.title} 
-                                        className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-105"
+                                        className="object-cover w-full h-full transition-transform duration-500 group-hover:scale-108"
                                     />
                                 </div>
 
                                 {/* Bottom Info Row with Mixed Color Action Buttons */}
                                 <div className="pt-1">
-                                    <h3 className="font-black text-sm sm:text-base text-[#5F2142] group-hover:text-[#D86A33] transition-colors line-clamp-1">
+                                    <h3 className="font-black text-base sm:text-lg text-[#5F2142] group-hover:text-[#D86A33] transition-colors line-clamp-1">
                                         {cat.title}
                                     </h3>
-                                    <p className="text-[11px] text-gray-500 line-clamp-1 mb-2 font-medium">
+                                    <p className="text-xs sm:text-sm text-gray-500 line-clamp-1 mb-3 font-medium">
                                         {cat.subtitle}
                                     </p>
 
-                                    <div className="flex items-center justify-between pt-1 border-t border-gray-100">
-                                        <span className="text-xs font-black text-[#D86A33]">
+                                    <div className="flex items-center justify-between pt-2.5 border-t border-[#FFC99C]/40">
+                                        <span className="text-sm sm:text-base font-black text-[#D86A33]">
                                             {cat.priceNote}
                                         </span>
                                         {/* Mixed Button: Alternates between Orange and Borgoña Violeta */}
-                                        <div className={`w-7 h-7 rounded-full ${cat.buttonColor} flex items-center justify-center group-hover:scale-110 transition-all shadow-xs`}>
-                                            <ArrowUpRight size={14} />
+                                        <div className={`w-9 h-9 rounded-full ${cat.buttonColor} flex items-center justify-center group-hover:scale-110 transition-all shadow-sm`}>
+                                            <ArrowUpRight size={17} />
                                         </div>
                                     </div>
                                 </div>
