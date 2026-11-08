@@ -34,7 +34,7 @@ export default function BohemeLoader({ onComplete }: BohemeLoaderProps) {
         };
 
         // Safety fallback so loader never blocks interaction
-        const safetyTimer = window.setTimeout(finishLoader, 4200);
+        const safetyTimer = window.setTimeout(finishLoader, 6500);
 
         if (prefersReducedMotion) {
             const quickTimer = window.setTimeout(() => {
@@ -106,7 +106,7 @@ export default function BohemeLoader({ onComplete }: BohemeLoaderProps) {
                         duration: motion.durations.slow,
                         ease: 'power2.inOut',
                     },
-                    0.28
+                    0.35
                 )
                 .to(
                     scanLineRef.current,
@@ -115,13 +115,13 @@ export default function BohemeLoader({ onComplete }: BohemeLoaderProps) {
                         duration: motion.durations.slow,
                         ease: 'power2.inOut',
                     },
-                    0.28
+                    0.35
                 )
-                // 3. Fade out scan beam & pulse revealed logo subtly
+                // 3. Fade out scan beam & hold the completed BOHEME logo so it's clearly appreciated
                 .to(scanLineRef.current, {
                     opacity: 0,
                     scaleY: 0.3,
-                    duration: 0.22,
+                    duration: 0.3,
                     ease: motion.easings.reveal,
                 })
                 // 4. Lift the curtain up smoothly to unveil the Hero
@@ -129,9 +129,9 @@ export default function BohemeLoader({ onComplete }: BohemeLoaderProps) {
                     loaderRef.current,
                     {
                         yPercent: -100,
-                        duration: 0.72,
+                        duration: 0.85,
                         ease: motion.easings.curtain,
-                        delay: 0.18,
+                        delay: 0.65,
                         onComplete: () => {
                             window.clearTimeout(safetyTimer);
                             finishLoader();

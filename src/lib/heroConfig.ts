@@ -144,7 +144,7 @@ export const HERO_CONFIG: HeroConfig = {
         durations: {
             fast: 0.38,
             base: 0.78,
-            slow: 1.35,
+            slow: 2.2,
         },
         stagger: 0.09, // 90 ms (dentro del rango 60-120 ms)
     },
@@ -159,7 +159,7 @@ export const HERO_CONFIG: HeroConfig = {
         backgroundImageSrc: '/hero_bg.png', // [PLACEHOLDER FONDO CARGA] Reemplazar por foto de taller o quirófano
         backgroundImageAlt: 'Atelier de confección y accesorios médicos BOHEME',
         topBadgeText: 'ATELIER & TIENDA MÉDICA • VENEZUELA',
-        loadingStatusText: 'Preparando tu turno con color & buena onda...',
+        loadingStatusText: 'Preparando tu guardia con color & buena onda...',
     },
 
     // 3. Tokens de Color de Marca
