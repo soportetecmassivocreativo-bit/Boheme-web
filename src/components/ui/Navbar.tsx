@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ShoppingCart, Menu, X } from 'lucide-react';
+import { ShoppingCart, Menu, X, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import { useCartStore } from '@/lib/store';
 
@@ -19,7 +19,7 @@ export default function Navbar() {
                             <img 
                                 src="/logo-wine.png" 
                                 alt="BOHEME" 
-                                className="w-[120px] sm:w-[140px] lg:w-[150px] h-auto object-contain transition-transform group-hover:scale-105 drop-shadow-sm" 
+                                className="w-[108px] sm:w-[140px] lg:w-[150px] h-auto object-contain transition-transform group-hover:scale-105 drop-shadow-sm" 
                             />
                         </Link>
                     </div>
@@ -33,8 +33,18 @@ export default function Navbar() {
                         <Link href="/categorias/productos-personalizados" className="text-[#5F2142] hover:text-[#D86A33] transition-colors font-bold text-xs lg:text-base whitespace-nowrap">Personalizados</Link>
                     </div>
 
-                    {/* Actions: Cart & Mobile Menu */}
-                    <div className="flex items-center space-x-2 sm:space-x-4">
+                    {/* Actions: Admin Access, Cart & Mobile Menu */}
+                    <div className="flex items-center space-x-2 sm:space-x-3">
+                        <Link
+                            href="/admin/login"
+                            onClick={() => setIsOpen(false)}
+                            className="inline-flex items-center gap-1.5 px-2.5 sm:px-3.5 py-1.5 sm:py-2 rounded-full bg-[#FFF9F5] hover:bg-[#5F2142] text-[#5F2142] hover:text-white border border-[#FFC99C]/80 hover:border-[#5F2142] transition-all duration-200 text-[11px] sm:text-xs font-extrabold shadow-2xs whitespace-nowrap"
+                            title="Acceso para administradores"
+                        >
+                            <ShieldCheck size={15} className="text-[#D86A33] flex-shrink-0" />
+                            <span className="hidden sm:inline">Acceso para administradores</span>
+                            <span className="inline sm:hidden">Acceso Admin</span>
+                        </Link>
                         <button 
                             onClick={toggleCart} 
                             className="text-[#5F2142] hover:text-[#D86A33] transition-colors relative p-2.5 rounded-full hover:bg-[#FFF9F5] border border-transparent hover:border-[#FFC99C]/60"
@@ -57,7 +67,7 @@ export default function Navbar() {
                 </div>
             </div>
 
-            {/* Mobile Menu (Secciones de Productos) */}
+            {/* Mobile Menu (Secciones de Productos + Acceso Admin) */}
             {isOpen && (
                 <div className="md:hidden bg-white border-t border-gray-100 py-4 px-5 space-y-2 shadow-xl animate-fadeIn">
                     <Link href="/categorias/gorros" onClick={() => setIsOpen(false)} className="block text-[#5F2142] hover:text-[#D86A33] hover:bg-[#FFF9F5] font-bold py-2.5 px-3 rounded-xl transition-colors">Gorros</Link>
@@ -65,6 +75,16 @@ export default function Navbar() {
                     <Link href="/categorias/accesorios-medicos" onClick={() => setIsOpen(false)} className="block text-[#5F2142] hover:text-[#D86A33] hover:bg-[#FFF9F5] font-bold py-2.5 px-3 rounded-xl transition-colors">Accesorios</Link>
                     <Link href="/categorias/equipos-medicos" onClick={() => setIsOpen(false)} className="block text-[#5F2142] hover:text-[#D86A33] hover:bg-[#FFF9F5] font-bold py-2.5 px-3 rounded-xl transition-colors">Equipos</Link>
                     <Link href="/categorias/productos-personalizados" onClick={() => setIsOpen(false)} className="block text-[#5F2142] hover:text-[#D86A33] hover:bg-[#FFF9F5] font-bold py-2.5 px-3 rounded-xl transition-colors">Personalizados</Link>
+                    <div className="pt-2 mt-2 border-t border-gray-100">
+                        <Link
+                            href="/admin/login"
+                            onClick={() => setIsOpen(false)}
+                            className="flex items-center justify-center gap-2 w-full py-2.5 px-4 rounded-xl bg-[#FFF9F5] hover:bg-[#5F2142] text-[#5F2142] hover:text-white border border-[#FFC99C] font-extrabold text-sm transition-colors"
+                        >
+                            <ShieldCheck size={17} className="text-[#D86A33]" />
+                            Acceso para administradores
+                        </Link>
+                    </div>
                 </div>
             )}
         </nav>
