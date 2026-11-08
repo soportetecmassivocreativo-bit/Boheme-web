@@ -1,4 +1,5 @@
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 export interface PagoMovilAccount {
@@ -98,6 +99,10 @@ export interface SiteSettings {
     lastUpdated: string;
 }
 
+const IS_CLEAN_PRODUCTION =
+    process.env.VERCEL_ENV === 'production' ||
+    process.env.BOHEME_CLEAN_PROD === 'true';
+
 export const DEFAULT_SETTINGS: SiteSettings = {
     pagoMovil: {
         id: 'pm-principal',
@@ -106,20 +111,20 @@ export const DEFAULT_SETTINGS: SiteSettings = {
         telefonoRaw: '04121409976',
         cedula: 'V-24.354.847',
         cedulaRaw: '24354847',
-        titular: 'BOHEME',
+        titular: 'Jedidiah Oropeza',
         activo: true
     },
     binance: {
         id: 'binance-principal',
         email: 'worldglobalweb724@gmail.com',
         payId: '',
-        titular: 'BOHEME',
+        titular: 'Angel Antequera',
         activo: true
     },
     cuentasAdicionales: [],
     correlativo: {
         prefijo: 'BHM-',
-        proximoNumero: 1003,
+        proximoNumero: IS_CLEAN_PRODUCTION ? 1001 : 1005,
         digitosMinimos: 4,
         sufijo: ''
     },
@@ -146,13 +151,35 @@ export const DEFAULT_SETTINGS: SiteSettings = {
         nombreTienda: 'BOHEME',
         telefonoWhatsapp: '584121409976',
         mensajeWhatsappIntro: '¡Hola! He formalizado mi pedido en la web de BOHEME.',
-        instagram: '@boheme_ve',
-        direccionFisica: 'Municipio Miranda (Coro) y Municipio Colina (La Vela), Estado Falcón, Venezuela',
+        instagram: '@boheme_creaciones',
+        direccionFisica: 'La Vela de Coro, Estado Falcon, Venezuela.',
         monedaPrincipal: 'USD'
     },
     usuarios: [
         {
             id: 'user-admin-principal',
+            nombre: 'Angel Antequera',
+            email: 'masteradmin@boheme.com',
+            password: process.env.ADMIN_PASSWORD || 'boheme2026',
+            rol: 'super_admin',
+            cargo: 'Gerencia & Administración General',
+            telefono: '0412-7608158',
+            activo: true,
+            createdAt: '2026-01-01T00:00:00.000Z'
+        },
+        {
+            id: 'user-1792970272817',
+            nombre: 'Jedidiah Oropeza',
+            email: 'ceoadmin@boheme.com',
+            password: 'Boheme2026',
+            rol: 'admin',
+            cargo: 'Gerente',
+            telefono: '0412-1409976',
+            activo: true,
+            createdAt: '2026-10-25T23:17:52.817Z'
+        },
+        {
+            id: 'user-admin-legacy',
             nombre: 'Administrador Principal BOHEME',
             email: process.env.ADMIN_EMAIL || 'admin@boheme.com',
             password: process.env.ADMIN_PASSWORD || 'boheme2026',
@@ -166,7 +193,9 @@ export const DEFAULT_SETTINGS: SiteSettings = {
     lastUpdated: new Date().toISOString()
 };
 
-const SETTINGS_FILE = path.join(process.cwd(), '.site_settings.json');
+const SETTINGS_FILE = process.env.VERCEL
+    ? path.join(os.tmpdir(), `${IS_CLEAN_PRODUCTION ? 'prod' : 'dev'}_.site_settings.json`)
+    : path.join(process.cwd(), '.site_settings.json');
 let memorySettings: SiteSettings = { ...DEFAULT_SETTINGS };
 let settingsLoadedOnce = false;
 let lastDiskCheckTime = 0;

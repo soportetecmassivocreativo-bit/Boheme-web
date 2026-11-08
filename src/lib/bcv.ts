@@ -1,5 +1,6 @@
 import https from 'node:https';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 export interface BcvRateData {
@@ -29,7 +30,9 @@ let lastFetchTimestamp: number = 0;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 // Disk cache path for persistence across server restarts
-const CACHE_FILE_PATH = path.join(process.cwd(), '.bcv_cache.json');
+const CACHE_FILE_PATH = process.env.VERCEL
+    ? path.join(os.tmpdir(), '.bcv_cache.json')
+    : path.join(process.cwd(), '.bcv_cache.json');
 
 // Initialize cache from disk if available
 try {

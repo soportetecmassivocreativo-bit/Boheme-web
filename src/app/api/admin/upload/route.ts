@@ -24,7 +24,14 @@ export async function POST(request: Request) {
         }
 
         const uploadDir = path.join(process.cwd(), 'public', 'uploads');
-        await mkdir(uploadDir, { recursive: true });
+        let canWriteToPublic = !process.env.VERCEL;
+        if (canWriteToPublic) {
+            try {
+                await mkdir(uploadDir, { recursive: true });
+            } catch {
+                canWriteToPublic = false;
+            }
+        }
 
         const uploadedUrls: string[] = [];
 
@@ -43,9 +50,20 @@ export async function POST(request: Request) {
 
             const arrayBuffer = await file.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
-            await writeFile(filePath, buffer);
 
-            uploadedUrls.push(`/uploads/${uniqueFilename}`);
+            if (canWriteToPublic) {
+                try {
+                    await writeFile(filePath, buffer);
+                    uploadedUrls.push(`/uploads/${uniqueFilename}`);
+                    continue;
+                } catch {
+                    canWriteToPublic = false;
+                }
+            }
+
+            // Serverless fallback: embed as base64 Data URL so uploads work on read-only filesystems (Vercel)
+            const mimeType = file.type || 'image/jpeg';
+            uploadedUrls.push(`data:${mimeType};base64,${buffer.toString('base64')}`);
         }
 
         return NextResponse.json({

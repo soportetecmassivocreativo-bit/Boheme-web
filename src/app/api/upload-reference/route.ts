@@ -13,7 +13,14 @@ export async function POST(request: Request) {
 
         const files = rawFiles.slice(0, 5);
         const uploadDir = path.join(process.cwd(), 'public', 'uploads', 'referencias');
-        await mkdir(uploadDir, { recursive: true });
+        let canWriteToPublic = !process.env.VERCEL;
+        if (canWriteToPublic) {
+            try {
+                await mkdir(uploadDir, { recursive: true });
+            } catch {
+                canWriteToPublic = false;
+            }
+        }
 
         const uploadedUrls: string[] = [];
 
@@ -31,9 +38,19 @@ export async function POST(request: Request) {
 
             const arrayBuffer = await file.arrayBuffer();
             const buffer = Buffer.from(arrayBuffer);
-            await writeFile(filePath, buffer);
 
-            uploadedUrls.push(`/uploads/referencias/${uniqueFilename}`);
+            if (canWriteToPublic) {
+                try {
+                    await writeFile(filePath, buffer);
+                    uploadedUrls.push(`/uploads/referencias/${uniqueFilename}`);
+                    continue;
+                } catch {
+                    canWriteToPublic = false;
+                }
+            }
+
+            const mimeType = file.type || 'image/jpeg';
+            uploadedUrls.push(`data:${mimeType};base64,${buffer.toString('base64')}`);
         }
 
         return NextResponse.json({

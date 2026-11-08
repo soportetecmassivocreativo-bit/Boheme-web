@@ -137,7 +137,10 @@ export const CATEGORIES: Record<string, CategoryInfo> = {
         title: 'Accesorios',
         description: 'Explora nuestra colección de accesorios diseñados para brindarte confort y estilo en tu labor diaria.',
         subcategories: [
-            { id: 10, name: 'Calculadoras' }
+            { id: 10, name: 'Calculadoras' },
+            { id: 201, name: 'Atomizadores' },
+            { id: 202, name: 'Carpetas' },
+            { id: 203, name: 'Diapasón' }
         ]
     },
     'equipos-medicos': {
@@ -248,7 +251,8 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Apertura frontal. Colores: Variados (Consultar disponibilidad). Tamaño: A4 (23,7X36cm). Capacidad: 100 hojas',
         price: 5,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos'
+        categoria_slug: 'accesorios-medicos',
+        subcategoria_id: 202
     },
     {
         id: '7',
@@ -256,7 +260,8 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Apertura Lateral. Modelo con almacenamiento inferior. Colores: Variados. Tamaño: Carta',
         price: 8,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos'
+        categoria_slug: 'accesorios-medicos',
+        subcategoria_id: 202
     },
     {
         id: '8',
@@ -272,7 +277,8 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Con Sordina. Colores: Plateado, Dorado, Azul, Rosado. Incluye martillo. Tamaño: 17,5cm',
         price: 12,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos'
+        categoria_slug: 'accesorios-medicos',
+        subcategoria_id: 203
     },
     {
         id: '10',
@@ -280,7 +286,8 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Cada diapasón incluye un martillo de madera con cabeza de goma, llave Allen, paño y estuche de terciopelo.',
         price: 25,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos'
+        categoria_slug: 'accesorios-medicos',
+        subcategoria_id: 203
     },
     {
         id: '11',
@@ -328,7 +335,8 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Capacidad: 50ml. Colores: Variados (Consultar disponibilidad)',
         price: 2,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos'
+        categoria_slug: 'accesorios-medicos',
+        subcategoria_id: 201
     },
     {
         id: '17',
@@ -336,7 +344,8 @@ let MOCK_PRODUCTS: Product[] = [
         description: 'Ideal para llevar tu perfume preferido a todo lugar. Capacidad: 5ml. Colores variados.',
         price: 3,
         image_url: '/cat_accesorios.png',
-        categoria_slug: 'accesorios-medicos'
+        categoria_slug: 'accesorios-medicos',
+        subcategoria_id: 201
     },
     {
         id: '18',
@@ -1391,13 +1400,90 @@ export interface Order {
     }>;
 }
 
-let INVOICE_COUNTER = 1003;
+const IS_CLEAN_PRODUCTION =
+    process.env.VERCEL_ENV === 'production' ||
+    process.env.BOHEME_CLEAN_PROD === 'true';
 
-let ORDERS: Order[] = [
+// In develop/preview, stock gorros 102 and 103 were already sold in test orders BHM-1003 and BHM-1004
+if (!IS_CLEAN_PRODUCTION) {
+    MOCK_PRODUCTS = MOCK_PRODUCTS.filter(p => p.id !== '102' && p.id !== '103');
+}
+
+const DEV_TEST_ORDERS: Order[] = [
+    {
+        id: 'ord-1794079023089-l5cn',
+        numero_factura: 'BHM-1004',
+        created_at: '2026-11-07T19:17:03.089Z',
+        cliente_nombre: 'Angel',
+        cliente_apellido: 'Antequera',
+        cliente_cedula: '29871222',
+        cliente_telefono: '04146887663',
+        tipo_entrega: 'local',
+        direccion_entrega: 'Municipio Colina - Entrega Fija: Casa azul de 2 pisos en la esquina frente al ambulatorio Wilfredo Medina',
+        metodo_pago: 'pago_movil',
+        nombre_metodo_pago: 'Pago Móvil (Banco de Venezuela (0102))',
+        banco_emisor: '0104 - Banco Venezolano de Crédito',
+        telefono_o_email_emisor: '04146887663',
+        referencia_pago: '123456',
+        monto_usd: 8.5,
+        tasa_bcv: 897.54,
+        monto_bs: 7629.09,
+        estado_pago: 'pendiente',
+        estado_taller: 'por_disenar',
+        pedido_cerrado: false,
+        items: [
+            {
+                id: '103',
+                name: 'Gorro Quirúrgico Butterfly Pastel',
+                price: 8.5,
+                quantity: 1,
+                image_url: '/cat_gorros.png',
+                categoria_slug: 'gorros',
+                subcategoria_id: 70,
+                is_personalizado: false,
+                es_por_encargo: false
+            }
+        ]
+    },
+    {
+        id: 'ord-1794064700079-afu4',
+        numero_factura: 'BHM-1003',
+        created_at: '2026-11-07T15:18:20.080Z',
+        cliente_nombre: 'Mariangel',
+        cliente_apellido: 'Antequera',
+        cliente_cedula: '24526755',
+        cliente_telefono: '04127608158',
+        tipo_entrega: 'local',
+        direccion_entrega: 'Municipio Colina - Entrega Fija: Casa azul de 2 pisos en la esquina frente al ambulatorio Wilfredo Medina',
+        metodo_pago: 'pago_movil',
+        nombre_metodo_pago: 'Pago Móvil (Banco de Venezuela (0102))',
+        banco_emisor: '0134 - Banesco',
+        telefono_o_email_emisor: '04127608158',
+        referencia_pago: '123456',
+        monto_usd: 9,
+        tasa_bcv: 897.54,
+        monto_bs: 8077.86,
+        estado_pago: 'pendiente',
+        estado_taller: 'por_disenar',
+        pedido_cerrado: false,
+        items: [
+            {
+                id: '102',
+                name: 'Gorro Quirófano Antifluido Azul Profundo',
+                price: 9,
+                quantity: 1,
+                image_url: '/cat_gorros.png',
+                categoria_slug: 'gorros',
+                subcategoria_id: 70,
+                is_personalizado: false,
+                es_por_encargo: false
+            }
+        ]
+    },
     {
         id: 'ord-1001',
         numero_factura: 'BHM-1001',
-        created_at: new Date(Date.now() - 1000 * 60 * 60 * 5).toISOString(), // 5 hours ago
+        created_at: '2026-10-24T13:06:18.403Z',
         cliente_nombre: 'Dra. María',
         cliente_apellido: 'Fernández',
         cliente_cedula: 'V-21.458.962',
@@ -1415,7 +1501,7 @@ let ORDERS: Order[] = [
         tasa_bcv: 886.23,
         monto_bs: 21269.52,
         estado_pago: 'verificada',
-        estado_taller: 'en_imprenta',
+        estado_taller: 'por_coser',
         pedido_cerrado: false,
         notas_taller: 'Arte aprobado por WhatsApp. En imprenta para sublimar patrón floral.',
         items: [
@@ -1424,7 +1510,8 @@ let ORDERS: Order[] = [
                 price: 8.00,
                 quantity: 1,
                 image_url: '/cat_gorros.png',
-                categoria_slug: 'gorros'
+                categoria_slug: 'gorros',
+                subcategoria_id: 70
             },
             {
                 name: 'Gorro Personalizado con Nombre & Especialidad',
@@ -1442,20 +1529,21 @@ let ORDERS: Order[] = [
                 price: 4.00,
                 quantity: 1,
                 image_url: '/cat_accesorios.png',
-                categoria_slug: 'lanyards'
+                categoria_slug: 'lanyards',
+                subcategoria_id: 5
             }
         ]
     },
     {
         id: 'ord-1002',
         numero_factura: 'BHM-1002',
-        created_at: new Date(Date.now() - 1000 * 60 * 90).toISOString(), // 90 mins ago
+        created_at: '2026-10-24T16:36:18.403Z',
         cliente_nombre: 'Dr. Alejandro',
         cliente_apellido: 'Torres',
         cliente_cedula: 'V-18.963.214',
         cliente_telefono: '0412-9874561',
         tipo_entrega: 'local',
-        direccion_entrega: 'Centro Médico Quirúrgico, Municipio Miranda (Coro), Consultorio 312',
+        direccion_entrega: 'Centro Médico Quirúrgico, Piso 3, Consultorio 312',
         metodo_pago: 'binance',
         telefono_o_email_emisor: 'ale.torres.md@gmail.com',
         referencia_pago: 'TXID-872910398',
@@ -1463,7 +1551,7 @@ let ORDERS: Order[] = [
         tasa_bcv: 886.23,
         monto_bs: 35449.20,
         estado_pago: 'por_verificar',
-        estado_taller: 'por_entregar',
+        estado_taller: 'pedido_solicitado',
         pedido_cerrado: false,
         notas_taller: 'Equipos médicos verificados y embalados para entrega local.',
         items: [
@@ -1471,14 +1559,14 @@ let ORDERS: Order[] = [
                 name: 'Estetoscopio Doble Campana Profesional',
                 price: 25.00,
                 quantity: 1,
-                image_url: '/cat_accesorios.png',
+                image_url: '/cat_equipos.png',
                 categoria_slug: 'equipos-medicos'
             },
             {
                 name: 'Oxímetro de Pulso Digital OLED Portátil',
                 price: 15.00,
                 quantity: 1,
-                image_url: '/cat_accesorios.png',
+                image_url: '/cat_equipos.png',
                 categoria_slug: 'equipos-medicos'
             }
         ]
@@ -1486,13 +1574,13 @@ let ORDERS: Order[] = [
     {
         id: 'ord-1000',
         numero_factura: 'BHM-1000',
-        created_at: new Date(Date.now() - 1000 * 60 * 60 * 48).toISOString(), // 2 days ago
+        created_at: '2026-10-22T18:06:18.403Z',
         cliente_nombre: 'Dra. Valentina',
         cliente_apellido: 'Gómez',
         cliente_cedula: 'V-25.147.852',
         cliente_telefono: '0424-4567890',
         tipo_entrega: 'local',
-        direccion_entrega: 'Policlínica Guadalupe, Consultorio 14, Municipio Miranda (Coro)',
+        direccion_entrega: 'Policlínica La Viña, Consultorio 14, Valencia',
         metodo_pago: 'pago_movil',
         banco_emisor: 'Mercantil',
         telefono_o_email_emisor: '0424-4567890',
@@ -1503,7 +1591,7 @@ let ORDERS: Order[] = [
         estado_pago: 'verificada',
         estado_taller: 'entregado',
         pedido_cerrado: true,
-        fecha_cierre: new Date(Date.now() - 1000 * 60 * 60 * 24).toISOString(),
+        fecha_cierre: '2026-10-23T18:06:18.403Z',
         notas_taller: 'Entregado en recepción con firma de la doctora.',
         items: [
             {
@@ -1517,10 +1605,28 @@ let ORDERS: Order[] = [
     }
 ];
 
+let INVOICE_COUNTER = IS_CLEAN_PRODUCTION ? 1000 : 1004;
+
+let ORDERS: Order[] = IS_CLEAN_PRODUCTION ? [] : [...DEV_TEST_ORDERS];
+
+function resolveStoreFilePath(filename: string): string {
+    if (typeof window === 'undefined' && process.env.VERCEL) {
+        try {
+            const os = eval('require')('os');
+            const path = eval('require')('path');
+            const envSuffix = IS_CLEAN_PRODUCTION ? 'prod' : 'dev';
+            return path.join(os.tmpdir(), `${envSuffix}_${filename}`);
+        } catch {
+            return `/tmp/${filename}`;
+        }
+    }
+    return filename;
+}
+
 // Server-side safe persistent file storage with serialized async write queue & RAM caching for 100+ concurrent orders
-const ORDERS_FILE = '.orders_store.json';
-const PRODUCTS_FILE = '.products_store.json';
-const CATEGORIES_FILE = '.categories_store.json';
+const ORDERS_FILE = resolveStoreFilePath('.orders_store.json');
+const PRODUCTS_FILE = resolveStoreFilePath('.products_store.json');
+const CATEGORIES_FILE = resolveStoreFilePath('.categories_store.json');
 
 let ordersLoadedOnce = false;
 let lastOrdersDiskCheck = 0;
@@ -1590,7 +1696,7 @@ function loadOrdersFromDisk(force = false) {
             lastOrdersMtimeMs = stat.mtimeMs;
             const data = fs.readFileSync(ORDERS_FILE, 'utf-8');
             const parsed = JSON.parse(data);
-            if (Array.isArray(parsed) && parsed.length > 0) {
+            if (Array.isArray(parsed)) {
                 let needsSave = false;
                 ORDERS = parsed.map((o: Order) => {
                     const hadMissingImg = Array.isArray(o.items) && o.items.some(it => !it.image_url);
@@ -1603,7 +1709,7 @@ function loadOrdersFromDisk(force = false) {
                 const maxNum = parsed.reduce((max: number, o: Order) => {
                     const match = o.numero_factura?.match(/BHM-(\d+)/i);
                     return match ? Math.max(max, parseInt(match[1], 10)) : max;
-                }, 1002);
+                }, IS_CLEAN_PRODUCTION ? 1000 : 1004);
                 INVOICE_COUNTER = Math.max(INVOICE_COUNTER, maxNum);
                 if (needsSave) {
                     scheduleSaveOrdersToDisk();
