@@ -10,8 +10,6 @@ import {
     Truck,
     ShieldCheck,
     Heart,
-    CheckCircle2,
-    ChevronDown,
 } from 'lucide-react';
 import { HERO_CONFIG } from '@/lib/heroConfig';
 import { useCartStore } from '@/lib/store';
@@ -61,11 +59,8 @@ export default function HeroSection() {
     const mainCardRef = useRef<HTMLDivElement>(null);
     const satCard1Ref = useRef<HTMLDivElement>(null);
     const satCard2Ref = useRef<HTMLDivElement>(null);
-    const brandCardRef = useRef<HTMLDivElement>(null);
     const sticker1Ref = useRef<HTMLDivElement>(null);
     const sticker2Ref = useRef<HTMLDivElement>(null);
-    const sticker3Ref = useRef<HTMLDivElement>(null);
-    const scrollHintRef = useRef<HTMLAnchorElement>(null);
 
     // Continuous floating timelines ref so we can pause/resume offscreen
     const ambientTimelinesRef = useRef<gsap.core.Tween[]>([]);
@@ -137,11 +132,8 @@ export default function HeroSection() {
                         mainCardRef.current,
                         satCard1Ref.current,
                         satCard2Ref.current,
-                        brandCardRef.current,
                         sticker1Ref.current,
                         sticker2Ref.current,
-                        sticker3Ref.current,
-                        scrollHintRef.current,
                     ],
                     { opacity: 1, x: 0, y: 0, scale: 1, rotation: 0 }
                 );
@@ -208,7 +200,7 @@ export default function HeroSection() {
                     0.22
                 )
                 .fromTo(
-                    [satCard1Ref.current, satCard2Ref.current, brandCardRef.current],
+                    [satCard1Ref.current, satCard2Ref.current],
                     { y: 28, opacity: 0, scale: 0.92 },
                     {
                         y: 0,
@@ -220,7 +212,7 @@ export default function HeroSection() {
                     0.42
                 )
                 .fromTo(
-                    [sticker1Ref.current, sticker2Ref.current, sticker3Ref.current],
+                    [sticker1Ref.current, sticker2Ref.current],
                     { scale: 0.5, opacity: 0, rotation: -12 },
                     {
                         scale: 1,
@@ -231,12 +223,6 @@ export default function HeroSection() {
                         stagger: motion.stagger,
                     },
                     0.58
-                )
-                .fromTo(
-                    scrollHintRef.current,
-                    { y: 10, opacity: 0 },
-                    { y: 0, opacity: 1, duration: motion.durations.fast },
-                    0.85
                 );
 
             // Desynchronized subtle floating tweens (amplitudes 4px - 7px, different periods)
@@ -257,15 +243,6 @@ export default function HeroSection() {
                 ease: 'sine.inOut',
                 delay: 0.4,
             });
-            const float3 = gsap.to(sticker3Ref.current, {
-                y: -7,
-                rotation: 3,
-                duration: 3.4,
-                repeat: -1,
-                yoyo: true,
-                ease: 'sine.inOut',
-                delay: 0.9,
-            });
             const floatSat1 = gsap.to(satCard1Ref.current, {
                 y: -5,
                 duration: 3.1,
@@ -283,7 +260,7 @@ export default function HeroSection() {
                 delay: 0.7,
             });
 
-            ambientTimelinesRef.current = [float1, float2, float3, floatSat1, floatSat2];
+            ambientTimelinesRef.current = [float1, float2, floatSat1, floatSat2];
 
             // Scroll Parallax (both desktop & mobile, ultra-light transform only)
             gsap.to(collageStageRef.current, {
@@ -308,8 +285,6 @@ export default function HeroSection() {
         if (canHover && stageEl) {
             const mainX = gsap.quickTo(mainCardRef.current, 'x', { duration: 0.6, ease: 'power3.out' });
             const mainY = gsap.quickTo(mainCardRef.current, 'y', { duration: 0.6, ease: 'power3.out' });
-            const brandX = gsap.quickTo(brandCardRef.current, 'x', { duration: 0.75, ease: 'power3.out' });
-            const brandY = gsap.quickTo(brandCardRef.current, 'y', { duration: 0.75, ease: 'power3.out' });
             const st1X = gsap.quickTo(sticker1Ref.current, 'x', { duration: 0.5, ease: 'power3.out' });
 
             const handleMouseMove = (e: MouseEvent) => {
@@ -319,16 +294,12 @@ export default function HeroSection() {
 
                 mainX(relX * 14);
                 mainY(relY * 10);
-                brandX(relX * -18);
-                brandY(relY * -12);
                 st1X(relX * 22);
             };
 
             const handleMouseLeave = () => {
                 mainX(0);
                 mainY(0);
-                brandX(0);
-                brandY(0);
                 st1X(0);
             };
 
@@ -765,40 +736,6 @@ export default function HeroSection() {
                                             </Link>
                                         </div>
                                     ))}
-                                </div>
-
-                                {/* FLOATING BRAND PROMISE CARD (Inspired by Cardón reference brandCard) */}
-                                <div
-                                    ref={brandCardRef}
-                                    className="mt-3 relative z-20 p-3.5 sm:p-4 rounded-2xl bg-[#5F2142] text-white border border-[#FFC99C]/40 shadow-xl will-change-transform"
-                                >
-                                    <div className="flex items-start gap-3">
-                                        <div className="w-9 h-9 rounded-xl bg-[#D86A33] text-white flex items-center justify-center shrink-0 shadow-inner">
-                                            <CheckCircle2 size={18} />
-                                        </div>
-                                        <div className="text-left">
-                                            <div className="flex items-center gap-2">
-                                                <h2 className="text-xs sm:text-sm font-black text-[#FFC99C]">
-                                                    {visuals.brandPromiseCard.title}
-                                                </h2>
-                                                <span
-                                                    ref={sticker3Ref}
-                                                    className="px-2 py-0.5 rounded-full bg-white/15 border border-[#FFC99C]/40 text-[9px] font-black text-white uppercase tracking-wider will-change-transform"
-                                                >
-                                                    {stickers.newCollectionTag}
-                                                </span>
-                                            </div>
-                                            <p className="text-[11px] sm:text-xs text-[#FFF4EB]/90 mt-1 leading-relaxed">
-                                                “{visuals.brandPromiseCard.quote}”
-                                            </p>
-                                            <div className="mt-2 pt-1.5 border-t border-white/15 text-[10px] text-[#FFC99C]/90">
-                                                {visuals.brandPromiseCard.locationLabel}{' '}
-                                                <strong className="text-white font-black">
-                                                    {visuals.brandPromiseCard.locationHighlight}
-                                                </strong>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>

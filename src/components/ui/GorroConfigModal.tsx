@@ -516,9 +516,6 @@ export default function GorroConfigModal({
                             )}
                         </div>
 
-                        <p className="mt-1.5 text-xs text-gray-500">
-                            Impuestos incluidos. Los <span className="underline decoration-[#D86A33] text-[#5F2142] font-semibold">gastos de envío</span> se calculan en la pantalla de pago.
-                        </p>
                         {product.description && (
                             <p className="mt-2 text-xs text-gray-600 leading-relaxed">
                                 {product.description}

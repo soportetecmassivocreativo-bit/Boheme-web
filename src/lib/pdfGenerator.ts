@@ -380,7 +380,7 @@ export function generateInvoicePdf(order: Order, pdfConfig?: Partial<PdfTemplate
                                     <div style="font-weight: 800; color: #111827;">${it.name}</div>
                                     ${(it.is_personalizado || it.nombre_personalizado || it.especialidad_personalizada || it.color_preferencia || it.detalles_personalizados) ? `
                                         <div style="margin-top: 4px; font-size: 10px; color: #4b5563; background: #fff9f5; padding: 4px 8px; border-left: 2px solid ${cfg.colorAcento}; border-radius: 4px;">
-                                            ${it.nombre_personalizado ? `<div><strong>• Bordado / Nombre:</strong> ${it.nombre_personalizado}</div>` : ''}
+                                            ${it.nombre_personalizado ? `<div><strong>• Nombre / Personalización:</strong> ${it.nombre_personalizado}</div>` : ''}
                                             ${it.especialidad_personalizada ? `<div><strong>• Especialidad:</strong> ${it.especialidad_personalizada}</div>` : ''}
                                             ${it.color_preferencia ? `<div><strong>• Color / Preferencia:</strong> ${it.color_preferencia}</div>` : ''}
                                             ${it.detalles_personalizados ? `<div><strong>• Detalles:</strong> ${it.detalles_personalizados}</div>` : ''}
@@ -628,7 +628,7 @@ export function generateWorkshopReportPdf(
                         ${cfg.mostrarLogo ? `<img src="/logo-wine.png" alt="Logo" class="brand-logo" onerror="this.style.display='none'" />` : ''}
                         <div>
                             <div class="company-name">${cfg.nombreEmpresa}</div>
-                            <div class="company-meta">Control de Producción, Bordado, Imprenta, Costura y Despacho</div>
+                            <div class="company-meta">Control de Producción, Diseño, Imprenta, Costura y Despacho</div>
                             <div class="company-meta">Filtro: <strong>${filterSummary}</strong></div>
                         </div>
                     </div>
@@ -694,7 +694,7 @@ export function generateWorkshopReportPdf(
                                         ${o.items.map(it => `
                                             <div style="margin-bottom: 4px;">
                                                 <strong>• ${it.quantity}x ${it.name}</strong>
-                                                ${it.nombre_personalizado ? `<br/><span style="color: ${cfg.colorPrimario}; font-size: 10px;">↳ Bordado: <strong>${it.nombre_personalizado}</strong></span>` : ''}
+                                                ${it.nombre_personalizado ? `<br/><span style="color: ${cfg.colorPrimario}; font-size: 10px;">↳ Nombre: <strong>${it.nombre_personalizado}</strong></span>` : ''}
                                                 ${it.especialidad_personalizada ? `<span style="color: #4b5563; font-size: 10px;"> (${it.especialidad_personalizada})</span>` : ''}
                                                 ${it.color_preferencia ? `<br/><span style="color: #6b7280; font-size: 10px;">↳ Color: ${it.color_preferencia}</span>` : ''}
                                             </div>

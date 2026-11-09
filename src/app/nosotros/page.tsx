@@ -18,19 +18,21 @@ export default function NosotrosPage() {
             <AboutSection />
 
             {/* Bottom CTA Box */}
-            <section className="pb-24 bg-white relative">
+            <section className="pt-4 pb-24 bg-white relative">
                 <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                    <div className="bg-[#FFF9F5] border-2 border-dashed border-[#5F2142]/30 text-gray-900 rounded-3xl p-8 md:p-12 text-center shadow-sm relative overflow-hidden">
-                        {/* Washi Tape Header Pin */}
-                        <div className="absolute -top-3.5 left-1/2 -translate-x-1/2 z-20">
-                            <span className="washi-tape text-xs font-black text-[#5F2142] px-5 py-1 tracking-widest uppercase inline-block -rotate-1 shadow-xs">
+                    <div className="bg-[#FFF9F5] border-2 border-dashed border-[#5F2142]/30 text-gray-900 rounded-3xl pt-10 pb-8 px-6 sm:p-10 md:p-12 text-center shadow-sm relative">
+                        {/* Washi Tape Header Pin (Outside overflow-hidden so it never clips on mobile) */}
+                        <div className="absolute -top-4 left-1/2 -translate-x-1/2 z-20 max-w-[92%] w-max">
+                            <span className="washi-tape text-[10px] sm:text-xs font-black text-[#5F2142] px-4 sm:px-5 py-1.5 tracking-widest uppercase inline-block -rotate-1 shadow-xs whitespace-nowrap">
                                 ★ ÚNETE AL ESTILO BOHEME ★
                             </span>
                         </div>
 
-                        {/* Background subtle glow */}
-                        <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#D86A33]/10 rounded-full blur-3xl pointer-events-none"></div>
-                        <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-[#FFC99C]/20 rounded-full blur-3xl pointer-events-none"></div>
+                        {/* Background subtle glow clipped inside its own rounded container */}
+                        <div className="absolute inset-0 rounded-3xl overflow-hidden pointer-events-none">
+                            <div className="absolute -top-24 -right-24 w-64 h-64 bg-[#D86A33]/10 rounded-full blur-3xl"></div>
+                            <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-[#FFC99C]/20 rounded-full blur-3xl"></div>
+                        </div>
 
                         <div className="relative z-10 max-w-2xl mx-auto">
                             <span className="text-[#D86A33] text-xs font-black tracking-widest uppercase mb-3 inline-block">

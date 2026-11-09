@@ -100,10 +100,10 @@ export default function PersonalizeModal({ product, isOpen, onClose }: Personali
                         </div>
                     </div>
 
-                    {/* Nombre a bordar / estampar */}
+                    {/* Nombre a personalizar / estampar */}
                     <div>
                         <label className="block text-xs font-black text-[#5F2142] uppercase tracking-wider mb-1.5">
-                            Nombre a bordar o estampar *
+                            Nombre a personalizar o estampar *
                         </label>
                         <input
                             type="text"
@@ -114,7 +114,7 @@ export default function PersonalizeModal({ product, isOpen, onClose }: Personali
                             className="w-full px-3.5 py-2.5 rounded-xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm font-medium"
                         />
                         <span className="text-[10px] text-gray-400 font-medium block mt-1">
-                            Asegúrate de escribir los acentos y mayúsculas exactamente como deseas que se bordan.
+                            Asegúrate de escribir los acentos y mayúsculas exactamente como deseas que se estampen.
                         </span>
                     </div>
 

@@ -184,8 +184,8 @@ export const HERO_CONFIG: HeroConfig = {
         subtitle:
             'Gorritos quirúrgicos, lanyards personalizados, accesorios y equipos médicos creados con dedicación artesanal para acompañarte en cada guardia.',
         trustPills: [
-            { icon: 'sparkles', text: 'Bordado y estampado a tu medida' },
-            { icon: 'truck', text: 'Envíos a toda Venezuela + Entrega local' },
+            { icon: 'sparkles', text: 'Personalizados a tu medida' },
+            { icon: 'truck', text: 'Envíos a toda Venezuela' },
         ],
     },
 
@@ -226,7 +226,7 @@ export const HERO_CONFIG: HeroConfig = {
                 imageAlt: 'Lanyards sublimados y accesorios médicos personalizados BOHEME',
                 imageFit: 'cover',
                 badge: '✦ PERSONALIZADOS',
-                title: 'Lanyards & Cintas',
+                title: 'Lanyards',
                 subtitle: 'Con tu nombre y especialidad',
                 priceTag: 'Desde $3.00',
                 href: '/categorias/lanyards',

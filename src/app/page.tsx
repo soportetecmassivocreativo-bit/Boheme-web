@@ -31,7 +31,7 @@ const CATEGORIAS_FAVORITES = [
     },
     {
         slug: 'lanyards',
-        title: 'Lanyards & Cintas',
+        title: 'Lanyards',
         subtitle: 'Sublimados • Con Broche',
         tag: '★ PERSONALIZADOS',
         tagStyle: 'bg-white border border-[#5F2142] text-[#5F2142]',

@@ -886,7 +886,7 @@ let MOCK_PRODUCTS: Product[] = [
     {
         id: '407',
         name: 'Peluches',
-        description: 'Tiernos peluches personalizados con bata o uniforme médico, nombre bordado o estampado a elección.',
+        description: 'Tiernos peluches personalizados con bata o uniforme médico y nombre estampado a elección.',
         price: 14,
         image_url: '/cat_accesorios.png',
         categoria_slug: 'productos-personalizados'

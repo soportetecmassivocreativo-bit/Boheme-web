@@ -138,7 +138,7 @@ export default function AboutSection() {
                                     <span className="w-5 h-5 rounded-full bg-[#FFF4EB] border border-[#D86A33]/40 text-[#D86A33] flex items-center justify-center shrink-0 mt-0.5 shadow-2xs">
                                         <Check size={13} strokeWidth={3} />
                                     </span>
-                                    <span>Envíos garantizados a toda Venezuela con entregas personalizadas.</span>
+                                    <span>Envíos nacionales a toda Venezuela.</span>
                                 </li>
                             </ul>
                         </div>
