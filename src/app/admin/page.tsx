@@ -69,6 +69,7 @@ import {
     generateInvoicePdf,
     generateBillingReportPdf,
     generateWorkshopReportPdf,
+    generateWorkshopSheetsBatchPdf,
     generateStockReportPdf,
     exportToCsv
 } from '@/lib/pdfGenerator';
@@ -184,6 +185,7 @@ export default function AdminPage() {
     const [filterTallerType, setFilterTallerType] = useState<string>('all');
     const [filterTallerStage, setFilterTallerStage] = useState<string>('all');
     const [filterTallerDelivery, setFilterTallerDelivery] = useState<'all' | 'local' | 'nacional'>('all');
+    const [filterTallerDate, setFilterTallerDate] = useState<string>('');
     const [tallerSearch, setTallerSearch] = useState<string>('');
     const [selectedWorkshopOrder, setSelectedWorkshopOrder] = useState<Order | null>(null);
     const [editingWorkshopNotesOrder, setEditingWorkshopNotesOrder] = useState<Order | null>(null);
@@ -1491,109 +1493,67 @@ export default function AdminPage() {
         return ['/cat_gorros.png'];
     };
 
+    const enrichOrdersForWorkshopPrint = (ordersList: Order[]): Order[] => {
+        return ordersList.map(o => ({
+            ...o,
+            items: o.items.map(it => {
+                const imgs = resolveOrderItemImages(it);
+                return {
+                    ...it,
+                    image_url: imgs[0] || it.image_url || '/cat_gorros.png'
+                };
+            })
+        }));
+    };
+
     const handlePrintWorkshopSheet = (order: Order) => {
-        const printWindow = window.open('', '_blank');
-        if (!printWindow) {
-            alert('Por favor habilita las ventanas emergentes en tu navegador para imprimir la orden de trabajo.');
+        const enriched = enrichOrdersForWorkshopPrint([order]);
+        generateWorkshopSheetsBatchPdf(
+            enriched,
+            `Ficha Individual • Factura ${order.numero_factura}`,
+            settings.pdfConfig,
+            '4'
+        );
+    };
+
+    const handlePrintBatchWorkshopSheets = (ordersList: Order[], label: string, density: '4' | '5' | '6' | '1' = '4') => {
+        if (!ordersList || ordersList.length === 0) {
+            alert('No hay pedidos en esta selección para generar el PDF de fichas de taller.');
             return;
         }
-        const printContent = `
-            <!DOCTYPE html>
-            <html>
-            <head>
-                <title>Ficha Técnica Taller - ${order.numero_factura}</title>
-                <style>
-                    body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; padding: 28px; color: #111; line-height: 1.4; }
-                    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #5F2142; padding-bottom: 12px; margin-bottom: 16px; }
-                    .title { font-size: 20px; font-weight: 900; color: #5F2142; }
-                    .badge { display: inline-block; padding: 4px 10px; background: #FFF4EB; border: 1px solid #D86A33; color: #D86A33; border-radius: 9999px; font-weight: bold; font-size: 12px; }
-                    .section { margin-bottom: 16px; border: 1px solid #e5e7eb; border-radius: 8px; padding: 12px; }
-                    .section-title { font-size: 12px; font-weight: 900; text-transform: uppercase; color: #5F2142; margin-bottom: 8px; border-bottom: 1px dashed #eee; padding-bottom: 4px; }
-                    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; }
-                    .item-card { border: 1px solid #ddd; border-radius: 6px; padding: 10px; margin-bottom: 8px; background: #fafafa; display: flex; gap: 12px; align-items: flex-start; }
-                    .item-img { width: 72px; height: 72px; border-radius: 8px; object-fit: cover; border: 1px solid #ccc; flex-shrink: 0; background: #fff; }
-                    .checklist { display: flex; gap: 14px; margin-top: 14px; font-size: 11px; font-weight: bold; flex-wrap: wrap; }
-                    .box { width: 14px; height: 14px; border: 1.5px solid #333; display: inline-block; vertical-align: middle; margin-right: 4px; border-radius: 2px; }
-                    @media print { button { display: none; } body { padding: 0; } }
-                </style>
-            </head>
-            <body>
-                <div class="header">
-                    <div>
-                        <div class="title">BOHEME • FICHA TÉCNICA DE PRODUCCIÓN & TALLER</div>
-                        <div style="font-size: 12px; color: #666;">Orden de Fabricación y Confección • Factura ${order.numero_factura}</div>
-                    </div>
-                    <div>
-                        <span class="badge">${order.tipo_entrega === 'nacional' ? `ENVÍO NACIONAL (${order.empresa_envio || 'MRW'})` : 'ENTREGA LOCAL (MCPIO. MIRANDA / MCPIO. COLINA)'}</span>
-                    </div>
-                </div>
-                
-                <div class="section">
-                    <div class="section-title">Datos del Cliente & Destino</div>
-                    <div class="grid">
-                        <div><strong>Cliente:</strong> ${order.cliente_nombre} ${order.cliente_apellido}</div>
-                        <div><strong>Cédula:</strong> ${order.cliente_cedula}</div>
-                        <div><strong>Teléfono:</strong> ${order.cliente_telefono}</div>
-                        <div><strong>Fecha de Pedido:</strong> ${new Date(order.created_at).toLocaleDateString()}</div>
-                        <div style="grid-column: span 2;"><strong>Dirección / Destino:</strong> ${order.direccion_entrega} ${order.ciudad ? `(${order.ciudad}, ${order.estado})` : ''}</div>
-                        ${order.numero_guia_envio ? `<div><strong>Guía de Envío:</strong> ${order.numero_guia_envio}</div>` : ''}
-                    </div>
-                </div>
+        const enriched = enrichOrdersForWorkshopPrint(ordersList);
+        generateWorkshopSheetsBatchPdf(enriched, label, settings.pdfConfig, density);
+    };
 
-                <div class="section">
-                    <div class="section-title">Prendas y Especificaciones de Personalización</div>
-                    ${order.items.map((it, idx) => {
-                        const imgs = resolveOrderItemImages(it);
-                        return `
-                        <div class="item-card">
-                            ${imgs[0] ? `<img src="${imgs[0]}" alt="${it.name}" class="item-img" />` : ''}
-                            <div style="flex: 1;">
-                                <div style="display: flex; justify-content: space-between; font-weight: bold; font-size: 13px;">
-                                    <span>${idx + 1}. ${it.name} (Cantidad: ${it.quantity})</span>
-                                    <span style="color: #5F2142;">${it.is_personalizado ? '★ PERSONALIZADO' : 'ESTÁNDAR'}</span>
-                                </div>
-                                ${it.genero ? `<div style="font-size: 12px; margin-top: 2px;"><strong>• Género:</strong> ${it.genero} ${it.modelo ? `• <strong>Estilo:</strong> ${it.modelo}` : ''}</div>` : ''}
-                                ${it.subcategoria_especial ? `<div style="font-size: 12px;"><strong>• Subcategoría Especial:</strong> ${it.subcategoria_especial}</div>` : ''}
-                                ${it.adicionales && it.adicionales.length > 0 ? `<div style="font-size: 12px;"><strong>• Adicionales:</strong> ${it.adicionales.join(', ')}</div>` : ''}
-                                ${it.nombre_personalizado ? `<div style="font-size: 12px; margin-top: 4px;"><strong>• Nombre a bordar / imprimir:</strong> <span style="font-size: 14px; color: #5F2142; font-weight: 900; background: #fff3e6; padding: 1px 4px; border-radius: 3px;">${it.nombre_personalizado}</span></div>` : ''}
-                                ${it.texto_personalizado ? `<div style="font-size: 12px;"><strong>• Texto libre:</strong> ${it.texto_personalizado}</div>` : ''}
-                                ${it.especialidad_personalizada ? `<div style="font-size: 12px;"><strong>• Especialidad / Profesión:</strong> ${it.especialidad_personalizada}</div>` : ''}
-                                ${it.color_preferencia ? `<div style="font-size: 12px;"><strong>• Color de tela / bordado:</strong> ${it.color_preferencia}</div>` : ''}
-                                ${it.detalles_personalizados ? `<div style="font-size: 12px;"><strong>• Notas adicionales:</strong> ${it.detalles_personalizados}</div>` : ''}
-                            </div>
-                        </div>
-                    `}).join('')}
-                </div>
+    const handlePrintDailyWorkshopSheets = () => {
+        const targetDate = filterTallerDate || new Date().toLocaleDateString('en-CA');
+        let dayOrders = orders.filter(o => {
+            const localDay = new Date(o.created_at).toLocaleDateString('en-CA');
+            const isoDay = o.created_at.slice(0, 10);
+            return localDay === targetDate || isoDay === targetDate;
+        });
 
-                ${order.notas_taller ? `
-                    <div class="section">
-                        <div class="section-title">Bitácora / Notas de Taller</div>
-                        <div style="font-size: 12px;">${order.notas_taller}</div>
-                    </div>
-                ` : ''}
+        let summaryLabel = `Pedidos del Día (${targetDate})`;
+        if (dayOrders.length === 0 && !filterTallerDate && orders.length > 0) {
+            // Si hoy no se han registrado pedidos aún y no hay fecha fija seleccionada, tomar los pedidos de la última jornada registrada o los activos en taller
+            const latestDate = new Date(orders[0].created_at).toLocaleDateString('en-CA');
+            const latestOrders = orders.filter(o => {
+                const localDay = new Date(o.created_at).toLocaleDateString('en-CA');
+                const isoDay = o.created_at.slice(0, 10);
+                return localDay === latestDate || isoDay === latestDate;
+            });
+            if (latestOrders.length > 0) {
+                dayOrders = filteredTallerOrders.length > 0 ? filteredTallerOrders : latestOrders;
+                summaryLabel = `Guía Diaria de Taller (${dayOrders.length} pedidos en lista)`;
+            }
+        }
 
-                <div class="section">
-                    <div class="section-title">Control de Estaciones y Calidad</div>
-                    <div class="checklist">
-                        <div><span class="box"></span> 1. Diseño Aprobado</div>
-                        <div><span class="box"></span> 2. Imprenta / Sublimado</div>
-                        <div><span class="box"></span> 3. Confección / Costura</div>
-                        <div><span class="box"></span> 4. Acabado & Limpieza</div>
-                        <div><span class="box"></span> 5. Embalaje</div>
-                        <div><span class="box"></span> 6. Despacho / Entrega</div>
-                    </div>
-                    <div style="margin-top: 28px; display: flex; justify-content: space-between; font-size: 11px; color: #555;">
-                        <div>Firma Responsable Taller: _____________________</div>
-                        <div>Firma Control de Calidad: _____________________</div>
-                    </div>
-                </div>
+        if (dayOrders.length === 0) {
+            alert(`No se encontraron pedidos registrados en la fecha ${targetDate}. Puedes seleccionar otra fecha o imprimir las fichas en lista.`);
+            return;
+        }
 
-                <script>window.onload = function() { window.print(); };</script>
-            </body>
-            </html>
-        `;
-        printWindow.document.write(printContent);
-        printWindow.document.close();
+        handlePrintBatchWorkshopSheets(dayOrders, summaryLabel, '4');
     };
 
     const toggleOrderExpanded = (orderId: string) => {
@@ -1712,6 +1672,13 @@ export default function AdminPage() {
         // 4. Delivery filter (local vs nacional)
         if (filterTallerDelivery !== 'all') {
             if (order.tipo_entrega !== filterTallerDelivery) return false;
+        }
+
+        // 4b. Date / Day filter (YYYY-MM-DD)
+        if (filterTallerDate) {
+            const localDay = new Date(order.created_at).toLocaleDateString('en-CA');
+            const isoDay = order.created_at.slice(0, 10);
+            if (localDay !== filterTallerDate && isoDay !== filterTallerDate) return false;
         }
 
         // 5. Search text
@@ -2515,7 +2482,7 @@ export default function AdminPage() {
                                             Taller & Producción de Pedidos
                                         </h1>
                                         <p className="text-xs text-gray-500 dark:text-gray-400 font-medium">
-                                            Alimentado directamente de Facturado. Confección, corte, bordado y despacho.
+                                            Alimentado directamente de Facturado. Confección, corte, estampado y despacho.
                                         </p>
                                     </div>
                                 </div>
@@ -2653,10 +2620,89 @@ export default function AdminPage() {
                         </div>
 
                         {/* ========================================================= */}
-                        {/* MULTI-FILTER & SEARCH BAR                                */}
+                        {/* MULTI-FILTER, DAILY SELECTOR & BATCH WORKSHOP PDF BAR    */}
                         {/* ========================================================= */}
                         <div className={`p-4 sm:p-5 rounded-3xl ${bgCard} border ${borderDefault} shadow-sm space-y-3`}>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                            {/* Barra superior de Impresión Masiva de Fichas Técnicas (4 a 6 por hoja) */}
+                            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-white/10">
+                                <div>
+                                    <div className="text-xs font-black text-[#5F2142] dark:text-[#FFC99C] flex items-center gap-1.5">
+                                        <Printer size={14} className="text-[#D86A33]" />
+                                        <span>Guía Diaria de Taller en PDF (4 a 6 fichas completas por hoja)</span>
+                                    </div>
+                                    <p className="text-[11px] text-gray-500">
+                                        Imprime todas las fichas técnicas del día o de la lista actual ahorrando papel (4, 5 o 6 pedidos por página).
+                                    </p>
+                                </div>
+
+                                <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                        type="button"
+                                        onClick={handlePrintDailyWorkshopSheets}
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black shadow-md shadow-[#D86A33]/25 transition-all hover:scale-105"
+                                    >
+                                        <Printer size={14} />
+                                        <span>
+                                            {filterTallerDate
+                                                ? `🖨️ PDF Fichas del Día (${filterTallerDate})`
+                                                : '🖨️ PDF Fichas del Día (4-6 por hoja)'}
+                                        </span>
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        onClick={() =>
+                                            handlePrintBatchWorkshopSheets(
+                                                filteredTallerOrders,
+                                                `Pedidos en Lista (${tallerTab.toUpperCase()}${filterTallerDate ? ` • Fecha: ${filterTallerDate}` : ''})`,
+                                                '4'
+                                            )
+                                        }
+                                        className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#5F2142] hover:bg-[#4a1833] text-white text-xs font-black shadow-xs transition-all"
+                                    >
+                                        <ClipboardList size={14} />
+                                        <span>🖨️ PDF Fichas en Lista ({filteredTallerOrders.length})</span>
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+                                {/* Filtro por Día / Fecha */}
+                                <div>
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">
+                                            Día / Fecha de Pedido:
+                                        </label>
+                                        <div className="flex items-center gap-1">
+                                            <button
+                                                type="button"
+                                                onClick={() => setFilterTallerDate(new Date().toLocaleDateString('en-CA'))}
+                                                className="text-[10px] font-black text-[#D86A33] hover:underline"
+                                            >
+                                                Hoy
+                                            </button>
+                                            {filterTallerDate && (
+                                                <>
+                                                    <span className="text-gray-300">•</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setFilterTallerDate('')}
+                                                        className="text-[10px] font-black text-gray-500 hover:underline"
+                                                    >
+                                                        Todas
+                                                    </button>
+                                                </>
+                                            )}
+                                        </div>
+                                    </div>
+                                    <input
+                                        type="date"
+                                        value={filterTallerDate}
+                                        onChange={(e) => setFilterTallerDate(e.target.value)}
+                                        className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${inputStyle}`}
+                                    />
+                                </div>
+
                                 {/* Filtro por Tipo de Producto */}
                                 <div>
                                     <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
@@ -2721,7 +2767,7 @@ export default function AdminPage() {
                                             type="text"
                                             value={tallerSearch}
                                             onChange={(e) => setTallerSearch(e.target.value)}
-                                            placeholder="# Factura, cliente, bordado..."
+                                            placeholder="# Factura, cliente, nombre..."
                                             className={`w-full pl-8 pr-7 py-2 rounded-xl border text-xs font-medium outline-none ${inputStyle}`}
                                         />
                                         <Search size={13} className="absolute left-2.5 top-2.5 text-gray-400" />
@@ -2758,6 +2804,7 @@ export default function AdminPage() {
                                         setFilterTallerType('all');
                                         setFilterTallerStage('all');
                                         setFilterTallerDelivery('all');
+                                        setFilterTallerDate('');
                                         setTallerSearch('');
                                     }}
                                     className="px-5 py-2 rounded-full border border-gray-200 dark:border-white/10 text-xs font-bold hover:border-[#D86A33]"
@@ -4549,6 +4596,15 @@ export default function AdminPage() {
 
                     // 2. Filtered Orders for Reporte de Taller
                     const repTallerOrders = orders.filter(o => {
+                        const d = new Date(o.created_at);
+                        if (reportDateFrom) {
+                            const from = new Date(reportDateFrom + 'T00:00:00');
+                            if (d < from) return false;
+                        }
+                        if (reportDateTo) {
+                            const to = new Date(reportDateTo + 'T23:59:59');
+                            if (d > to) return false;
+                        }
                         if (reportWorkshopStatus === 'activos' && o.pedido_cerrado) return false;
                         if (reportWorkshopStatus === 'cerrados' && !o.pedido_cerrado) return false;
                         if (reportWorkshopStage !== 'all') {
@@ -4830,20 +4886,32 @@ export default function AdminPage() {
                                                 <h3 className="font-black text-base text-[#5F2142] dark:text-[#FFC99C]">
                                                     Parámetros del Reporte de Taller y Producción
                                                 </h3>
-                                                <p className="text-xs text-gray-500">Filtra por estado de cierre, etapa de confección o modalidad de entrega.</p>
+                                                <p className="text-xs text-gray-500">Filtra por día/fecha, estado de cierre, etapa de confección o modalidad de entrega.</p>
                                             </div>
 
                                             <div className="flex flex-wrap items-center gap-2.5">
                                                 <button
                                                     type="button"
                                                     onClick={() => {
-                                                        const filterDesc = `Estado: ${reportWorkshopStatus.toUpperCase()} | Etapa: ${reportWorkshopStage.toUpperCase()} | Entrega: ${reportWorkshopDelivery.toUpperCase()}`;
-                                                        generateWorkshopReportPdf(repTallerOrders, filterDesc, settings.pdfConfig);
+                                                        const filterDesc = `Estado: ${reportWorkshopStatus.toUpperCase()} | Etapa: ${reportWorkshopStage.toUpperCase()} | Entrega: ${reportWorkshopDelivery.toUpperCase()}${reportDateFrom ? ` | Desde: ${reportDateFrom}` : ''}${reportDateTo ? ` | Hasta: ${reportDateTo}` : ''}`;
+                                                        handlePrintBatchWorkshopSheets(repTallerOrders, filterDesc, '4');
                                                     }}
                                                     className="inline-flex items-center gap-2 px-5 py-2.5 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black shadow-md shadow-[#D86A33]/25 transition-all hover:scale-105"
                                                 >
                                                     <Printer size={15} />
-                                                    <span>Generar PDF de Taller</span>
+                                                    <span>🖨️ PDF Fichas por Pedido (4-6 por hoja)</span>
+                                                </button>
+
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        const filterDesc = `Estado: ${reportWorkshopStatus.toUpperCase()} | Etapa: ${reportWorkshopStage.toUpperCase()} | Entrega: ${reportWorkshopDelivery.toUpperCase()}${reportDateFrom ? ` | Desde: ${reportDateFrom}` : ''}${reportDateTo ? ` | Hasta: ${reportDateTo}` : ''}`;
+                                                        generateWorkshopReportPdf(repTallerOrders, filterDesc, settings.pdfConfig);
+                                                    }}
+                                                    className="inline-flex items-center gap-2 px-4 py-2.5 rounded-full bg-[#5F2142] hover:bg-[#4a1833] text-white text-xs font-black shadow-xs transition-all"
+                                                >
+                                                    <ClipboardList size={15} />
+                                                    <span>PDF Tabla Resumen</span>
                                                 </button>
 
                                                 <button
@@ -4861,7 +4929,7 @@ export default function AdminPage() {
                                                                 o.direccion_entrega,
                                                                 getStageInfo(o.estado_taller || getDefaultWorkshopStatus(o.items, o.tipo_entrega)).label,
                                                                 o.pedido_cerrado ? 'CERRADO' : 'ACTIVO',
-                                                                o.items.map(i => `${i.quantity}x ${i.name}${i.nombre_personalizado ? ` [Bordado: ${i.nombre_personalizado}]` : ''}`).join(' | ')
+                                                                o.items.map(i => `${i.quantity}x ${i.name}${i.nombre_personalizado ? ` [Estampado: ${i.nombre_personalizado}]` : ''}`).join(' | ')
                                                             ])
                                                         );
                                                     }}
@@ -4873,7 +4941,52 @@ export default function AdminPage() {
                                             </div>
                                         </div>
 
-                                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
+                                            <div>
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <label className="block font-black text-gray-500 uppercase text-[10px]">Fecha Desde</label>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            const today = new Date().toLocaleDateString('en-CA');
+                                                            setReportDateFrom(today);
+                                                            setReportDateTo(today);
+                                                        }}
+                                                        className="text-[10px] font-black text-[#D86A33] hover:underline"
+                                                    >
+                                                        📅 Hoy
+                                                    </button>
+                                                </div>
+                                                <input
+                                                    type="date"
+                                                    value={reportDateFrom}
+                                                    onChange={(e) => setReportDateFrom(e.target.value)}
+                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                />
+                                            </div>
+                                            <div>
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <label className="block font-black text-gray-500 uppercase text-[10px]">Fecha Hasta</label>
+                                                    {(reportDateFrom || reportDateTo) && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                setReportDateFrom('');
+                                                                setReportDateTo('');
+                                                            }}
+                                                            className="text-[10px] font-black text-gray-500 hover:underline"
+                                                        >
+                                                            Todas
+                                                        </button>
+                                                    )}
+                                                </div>
+                                                <input
+                                                    type="date"
+                                                    value={reportDateTo}
+                                                    onChange={(e) => setReportDateTo(e.target.value)}
+                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                />
+                                            </div>
                                             <div>
                                                 <label className="block font-black text-gray-500 uppercase text-[10px] mb-1">Estado del Pedido</label>
                                                 <select
@@ -4925,12 +5038,13 @@ export default function AdminPage() {
                                             <table className="w-full text-left border-collapse text-xs">
                                                 <thead>
                                                     <tr className="text-[10px] font-black text-gray-400 uppercase tracking-wider bg-gray-50/50 dark:bg-white/5">
-                                                        <th className="py-3 px-4">Factura</th>
+                                                        <th className="py-3 px-4">Factura / Fecha</th>
                                                         <th className="py-3 px-4">Cliente</th>
                                                         <th className="py-3 px-4">Prendas & Personalización</th>
                                                         <th className="py-3 px-4">Entrega</th>
                                                         <th className="py-3 px-4">Etapa Actual</th>
                                                         <th className="py-3 px-4">Cierre</th>
+                                                        <th className="py-3 px-4 text-right">Ficha PDF</th>
                                                     </tr>
                                                 </thead>
                                                 <tbody className="divide-y divide-gray-100 dark:divide-white/5">
@@ -4938,7 +5052,10 @@ export default function AdminPage() {
                                                         const stInfo = getStageInfo(o.estado_taller || getDefaultWorkshopStatus(o.items, o.tipo_entrega));
                                                         return (
                                                             <tr key={o.id} className="hover:bg-gray-50/50 dark:hover:bg-white/5">
-                                                                <td className="py-3 px-4 font-mono font-black text-[#5F2142] dark:text-[#FFC99C]">{o.numero_factura}</td>
+                                                                <td className="py-3 px-4">
+                                                                    <div className="font-mono font-black text-[#5F2142] dark:text-[#FFC99C]">{o.numero_factura}</div>
+                                                                    <div className="text-[10px] text-gray-400">{new Date(o.created_at).toLocaleDateString('es-VE')}</div>
+                                                                </td>
                                                                 <td className="py-3 px-4 font-bold">{o.cliente_nombre} {o.cliente_apellido}</td>
                                                                 <td className="py-3 px-4">
                                                                     {o.items.map((it, i) => (
@@ -4954,6 +5071,15 @@ export default function AdminPage() {
                                                                     <span className={`px-2 py-0.5 rounded-full text-[10px] font-black ${o.pedido_cerrado ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>
                                                                         {o.pedido_cerrado ? '✓ Cerrado' : 'Activo'}
                                                                     </span>
+                                                                </td>
+                                                                <td className="py-3 px-4 text-right">
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => handlePrintWorkshopSheet(o)}
+                                                                        className="px-2.5 py-1 rounded-lg bg-[#FFF4EB] dark:bg-white/10 text-[#D86A33] font-black text-[10px] hover:bg-[#D86A33] hover:text-white transition-all"
+                                                                    >
+                                                                        🖨️ Ficha
+                                                                    </button>
                                                                 </td>
                                                             </tr>
                                                         );

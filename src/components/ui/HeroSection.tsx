@@ -449,7 +449,7 @@ export default function HeroSection() {
             <section
                 ref={sectionRef}
                 aria-label="Bienvenida a BOHEME"
-                className="relative pt-22 pb-4 sm:pt-28 sm:pb-6 lg:pt-30 lg:pb-8 overflow-hidden bg-[#FFF9F5]"
+                className="relative pt-24 pb-4 sm:pt-28 sm:pb-6 lg:pt-32 lg:pb-8 overflow-hidden bg-[#FFF9F5]"
             >
                 {/* Checkered Artisan Texture + Soft Ambient Glows */}
                 <div className="absolute inset-0 bg-checkered-peach opacity-55 pointer-events-none" />
@@ -485,14 +485,14 @@ export default function HeroSection() {
                                 <span className="sr-only">{content.accessibleFullTitle}</span>
 
                                 {/* Visual Animated Title */}
-                                <span aria-hidden="true" className="block overflow-hidden pb-1">
+                                <span aria-hidden="true" className="block pt-2 pb-1.5">
                                     <span
                                         ref={titleLine1Ref}
-                                        className="inline-flex flex-wrap items-center justify-center lg:justify-start gap-x-2.5 gap-y-1 will-change-transform"
+                                        className="inline-flex flex-wrap items-center justify-center lg:justify-start gap-x-2.5 gap-y-1.5 will-change-transform"
                                     >
                                         <span>{content.titlePrefix}</span>
                                         <span
-                                            className="relative inline-flex items-center justify-center px-3.5 py-0.5 sm:px-4 sm:py-1 rounded-2xl bg-[#FFF4EB] border-2 border-dashed border-[#D86A33] text-[#D86A33] shadow-xs overflow-hidden align-baseline"
+                                            className="relative inline-flex items-center justify-center px-3.5 py-1 sm:px-4 sm:py-1 rounded-2xl bg-[#FFF4EB] border-2 border-dashed border-[#D86A33] text-[#D86A33] shadow-xs align-baseline"
                                             style={{ minWidth: `${longestWordChars + 1.5}ch` }}
                                         >
                                             <span
@@ -505,7 +505,7 @@ export default function HeroSection() {
                                     </span>
                                 </span>
 
-                                <span aria-hidden="true" className="block overflow-hidden pt-1 pb-1">
+                                <span aria-hidden="true" className="block pt-1.5 pb-1.5">
                                     <span
                                         ref={titleLine2Ref}
                                         className="inline-block will-change-transform"
@@ -609,7 +609,7 @@ export default function HeroSection() {
                                             onClick={handleQualityStampSurprise}
                                             aria-label={stickers.qualityStamp.ariaLabel}
                                             title="¡Tócame para buena onda en tu turno!"
-                                            className="group relative w-22 h-22 sm:w-26 sm:h-26 rounded-full border-2 border-dashed border-[#D86A33] bg-[#FFF4EB] hover:bg-white p-2 flex flex-col items-center justify-center text-center shadow-xl -rotate-6 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#D86A33]/40"
+                                            className="group relative w-24 h-24 sm:w-28 sm:h-28 rounded-full border-2 border-dashed border-[#D86A33] bg-[#FFF4EB] hover:bg-white p-2 flex flex-col items-center justify-center text-center shadow-xl -rotate-6 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-[#D86A33]/40"
                                         >
                                             <span className="text-[9px] sm:text-[10px] font-black text-[#5F2142] uppercase tracking-tight leading-tight">
                                                 {stickers.qualityStamp.topLine}
