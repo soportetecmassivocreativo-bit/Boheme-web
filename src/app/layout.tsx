@@ -11,11 +11,11 @@ export const metadata: Metadata = {
     description: "Gorros quirúrgicos, lanyards, accesorios y equipos médicos de alta calidad.",
     icons: {
         icon: [
-            { url: "/favicon-dev.svg?v=2", type: "image/svg+xml" },
-            { url: "/icon?v=2", type: "image/png", sizes: "64x64" },
+            { url: "/favicon-dev.svg?v=3", type: "image/svg+xml" },
+            { url: "/icon?v=3", type: "image/png", sizes: "64x64" },
         ],
-        shortcut: ["/favicon-dev.svg?v=2"],
-        apple: [{ url: "/apple-icon?v=2", sizes: "180x180", type: "image/png" }],
+        shortcut: ["/favicon-dev.svg?v=3"],
+        apple: [{ url: "/apple-icon?v=3", sizes: "180x180", type: "image/png" }],
     },
 };
 
