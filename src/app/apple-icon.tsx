@@ -7,12 +7,6 @@ export const size = {
 export const contentType = 'image/png';
 
 export default function AppleIcon() {
-    const vercelEnv = process.env.VERCEL_ENV;
-    const isProd = vercelEnv === 'production';
-    const isDev = vercelEnv === 'preview' || vercelEnv === 'development';
-    const badgeLabel = isProd ? '' : isDev ? 'DEV' : 'LOCAL';
-    const accentColor = isProd ? '#D86A33' : isDev ? '#D86A33' : '#059669';
-
     return new ImageResponse(
         (
             <div
@@ -25,7 +19,7 @@ export default function AppleIcon() {
                     justifyContent: 'center',
                     background: 'linear-gradient(135deg, #5F2142 0%, #3E1229 100%)',
                     borderRadius: '40px',
-                    border: `6px solid ${accentColor}`,
+                    border: '6px solid #F59E0B',
                     position: 'relative',
                     color: '#FFF9F5',
                     fontFamily: 'serif',
@@ -36,12 +30,12 @@ export default function AppleIcon() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        marginTop: badgeLabel ? '-18px' : '0px',
+                        marginTop: '-18px',
                     }}
                 >
                     <span
                         style={{
-                            fontSize: badgeLabel ? 98 : 112,
+                            fontSize: 98,
                             fontWeight: 900,
                             lineHeight: 1,
                         }}
@@ -50,8 +44,8 @@ export default function AppleIcon() {
                     </span>
                     <span
                         style={{
-                            fontSize: badgeLabel ? 52 : 60,
-                            color: '#FFC99C',
+                            fontSize: 52,
+                            color: '#D86A33',
                             marginLeft: '6px',
                         }}
                     >
@@ -59,29 +53,28 @@ export default function AppleIcon() {
                     </span>
                 </div>
 
-                {badgeLabel && (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            bottom: '12px',
-                            left: '18px',
-                            right: '18px',
-                            height: '42px',
-                            borderRadius: '14px',
-                            background: accentColor,
-                            color: '#FFFFFF',
-                            fontSize: '24px',
-                            fontWeight: 900,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            letterSpacing: '2px',
-                            fontFamily: 'sans-serif',
-                        }}
-                    >
-                        {badgeLabel}
-                    </div>
-                )}
+                <div
+                    style={{
+                        position: 'absolute',
+                        bottom: '12px',
+                        left: '16px',
+                        right: '16px',
+                        height: '42px',
+                        borderRadius: '14px',
+                        background: '#D86A33',
+                        border: '2px solid #FFC99C',
+                        color: '#FFFFFF',
+                        fontSize: '21px',
+                        fontWeight: 900,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        letterSpacing: '1.5px',
+                        fontFamily: 'sans-serif',
+                    }}
+                >
+                    BOHEME
+                </div>
             </div>
         ),
         {

@@ -6,24 +6,16 @@ import WhatsAppButton from "@/components/ui/WhatsAppButton";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
 
-const vercelEnv = process.env.VERCEL_ENV;
-const envFaviconSvg =
-    vercelEnv === "production"
-        ? "/favicon-prod.svg"
-        : vercelEnv === "preview" || vercelEnv === "development"
-            ? "/favicon-dev.svg"
-            : "/favicon-local.svg";
-
 export const metadata: Metadata = {
     title: "BOHEME | Equipos y Accesorios",
     description: "Gorros quirúrgicos, lanyards, accesorios y equipos médicos de alta calidad.",
     icons: {
         icon: [
-            { url: envFaviconSvg, type: "image/svg+xml" },
-            { url: "/icon", type: "image/png", sizes: "64x64" },
+            { url: "/favicon-dev.svg?v=2", type: "image/svg+xml" },
+            { url: "/icon?v=2", type: "image/png", sizes: "64x64" },
         ],
-        shortcut: [envFaviconSvg],
-        apple: [{ url: "/apple-icon", sizes: "180x180", type: "image/png" }],
+        shortcut: ["/favicon-dev.svg?v=2"],
+        apple: [{ url: "/apple-icon?v=2", sizes: "180x180", type: "image/png" }],
     },
 };
 

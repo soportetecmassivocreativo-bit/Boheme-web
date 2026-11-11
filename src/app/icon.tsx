@@ -7,12 +7,6 @@ export const size = {
 export const contentType = 'image/png';
 
 export default function Icon() {
-    const vercelEnv = process.env.VERCEL_ENV;
-    const isProd = vercelEnv === 'production';
-    const isDev = vercelEnv === 'preview' || vercelEnv === 'development';
-    const badgeLabel = isProd ? '' : isDev ? 'DEV' : 'LOC';
-    const accentColor = isProd ? '#D86A33' : isDev ? '#D86A33' : '#059669';
-
     return new ImageResponse(
         (
             <div
@@ -25,7 +19,7 @@ export default function Icon() {
                     justifyContent: 'center',
                     background: 'linear-gradient(135deg, #5F2142 0%, #3E1229 100%)',
                     borderRadius: '16px',
-                    border: `3px solid ${accentColor}`,
+                    border: '3px solid #F59E0B',
                     position: 'relative',
                     color: '#FFF9F5',
                     fontFamily: 'serif',
@@ -36,12 +30,12 @@ export default function Icon() {
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
-                        marginTop: badgeLabel ? '-10px' : '0px',
+                        marginTop: '-10px',
                     }}
                 >
                     <span
                         style={{
-                            fontSize: badgeLabel ? 34 : 40,
+                            fontSize: 34,
                             fontWeight: 900,
                             lineHeight: 1,
                         }}
@@ -50,8 +44,8 @@ export default function Icon() {
                     </span>
                     <span
                         style={{
-                            fontSize: badgeLabel ? 18 : 22,
-                            color: '#FFC99C',
+                            fontSize: 18,
+                            color: '#D86A33',
                             marginLeft: '2px',
                         }}
                     >
@@ -59,29 +53,28 @@ export default function Icon() {
                     </span>
                 </div>
 
-                {badgeLabel && (
-                    <div
-                        style={{
-                            position: 'absolute',
-                            bottom: '3px',
-                            left: '5px',
-                            right: '5px',
-                            height: '17px',
-                            borderRadius: '6px',
-                            background: accentColor,
-                            color: '#FFFFFF',
-                            fontSize: '10px',
-                            fontWeight: 900,
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            letterSpacing: '1px',
-                            fontFamily: 'sans-serif',
-                        }}
-                    >
-                        {badgeLabel}
-                    </div>
-                )}
+                <div
+                    style={{
+                        position: 'absolute',
+                        bottom: '3px',
+                        left: '5px',
+                        right: '5px',
+                        height: '17px',
+                        borderRadius: '6px',
+                        background: '#D86A33',
+                        border: '1px solid #FFC99C',
+                        color: '#FFFFFF',
+                        fontSize: '8.5px',
+                        fontWeight: 900,
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        letterSpacing: '0.5px',
+                        fontFamily: 'sans-serif',
+                    }}
+                >
+                    BOHEME
+                </div>
             </div>
         ),
         {
