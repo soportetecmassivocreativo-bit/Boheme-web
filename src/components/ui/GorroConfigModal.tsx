@@ -349,7 +349,7 @@ export default function GorroConfigModal({
                 <button
                     type="button"
                     onClick={onClose}
-                    className="absolute top-4 right-4 z-30 w-9 h-9 rounded-full bg-white/90 hover:bg-[#5F2142] text-[#5F2142] hover:text-white border border-gray-200 shadow-md flex items-center justify-center transition-all"
+                    className="sticky lg:absolute top-3 right-3 ml-auto mr-3 mt-3 lg:m-0 z-30 w-9 h-9 rounded-full bg-white/95 hover:bg-[#5F2142] text-[#5F2142] hover:text-white border border-gray-200 shadow-md flex items-center justify-center transition-all shrink-0"
                     aria-label="Cerrar"
                 >
                     <X size={18} />
@@ -358,47 +358,49 @@ export default function GorroConfigModal({
                 {/* ============================================================= */}
                 {/* LEFT COLUMN: PRODUCT GALLERY & LIVE VISUAL SUMMARY            */}
                 {/* ============================================================= */}
-                <div className="lg:w-[45%] bg-[#FFF9F5] p-5 sm:p-7 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#FFC99C]/40 relative">
-                    {/* Top Zoom Button */}
-                    <div className="flex items-center justify-between mb-3">
+                <div className="lg:w-[45%] bg-[#FFF9F5] px-4 pb-3.5 pt-1 sm:p-5 lg:p-7 -mt-9 lg:mt-0 flex flex-col justify-between border-b lg:border-b-0 lg:border-r border-[#FFC99C]/40 relative shrink-0">
+                    {/* Top Zoom Button & Category Pill (padded right on mobile so it never touches X button) */}
+                    <div className="flex items-center justify-between mb-2 lg:mb-3 pr-11 lg:pr-0">
                         <button
                             type="button"
                             onClick={() => setIsZoomed(prev => !prev)}
-                            className="w-9 h-9 rounded-full bg-white border border-gray-200 shadow-2xs flex items-center justify-center text-gray-600 hover:text-[#D86A33] hover:border-[#D86A33] transition-all"
+                            className="w-8 h-8 lg:w-9 lg:h-9 rounded-full bg-white border border-gray-200 shadow-2xs flex items-center justify-center text-gray-600 hover:text-[#D86A33] hover:border-[#D86A33] transition-all"
                             title={isZoomed ? 'Reducir zoom' : 'Ampliar imagen'}
                         >
-                            {isZoomed ? <ZoomOut size={16} /> : <ZoomIn size={16} />}
+                            {isZoomed ? <ZoomOut size={15} /> : <ZoomIn size={15} />}
                         </button>
 
                         {(!isProductoPersonalizado || product.subcategoria_nombre) && (
-                            <span className="px-3 py-1 rounded-full bg-white border border-[#FFC99C] text-[11px] font-black uppercase tracking-wider text-[#5F2142] shadow-2xs">
+                            <span className="px-2.5 py-1 rounded-full bg-white border border-[#FFC99C] text-[10px] lg:text-[11px] font-black uppercase tracking-wider text-[#5F2142] shadow-2xs truncate max-w-[210px] sm:max-w-none">
                                 ✦ {categoryName}
                                 {effectiveEspecialSubcat ? ` • ${effectiveEspecialSubcat}` : ''}
                             </span>
                         )}
                     </div>
 
-                    {/* Main Product Image */}
+                    {/* Main Product Image (Compact height on mobile so options & text are visible immediately) */}
                     <div
                         onClick={() => setIsZoomed(prev => !prev)}
-                        className="relative aspect-square rounded-3xl bg-white border border-[#FFC99C]/40 shadow-inner overflow-hidden flex items-center justify-center cursor-zoom-in group"
+                        className={`relative ${
+                            isZoomed ? 'h-64 sm:h-80' : 'h-40 sm:h-52'
+                        } lg:h-auto lg:aspect-square rounded-2xl lg:rounded-3xl bg-white border border-[#FFC99C]/40 shadow-inner overflow-hidden flex items-center justify-center cursor-zoom-in group transition-all duration-300`}
                     >
                         <img
                             src={gallery[activeImgIdx] || '/cat_gorros.png'}
                             alt={product.name}
                             className={`w-full h-full object-cover transition-transform duration-500 ${
-                                isZoomed ? 'scale-135 cursor-zoom-out' : 'group-hover:scale-105'
+                                isZoomed ? 'scale-125 cursor-zoom-out' : 'group-hover:scale-105'
                             }`}
                         />
 
                         {/* Live Floating Configuration Summary Overlay */}
-                        <div className="absolute bottom-3 left-3 right-3 bg-white/95 backdrop-blur-md border border-[#FFC99C]/80 rounded-2xl p-3 shadow-lg space-y-1.5 pointer-events-none">
-                            <div className="flex items-center justify-between gap-2 text-xs">
+                        <div className="absolute bottom-2 left-2 right-2 lg:bottom-3 lg:left-3 lg:right-3 bg-white/95 backdrop-blur-md border border-[#FFC99C]/80 rounded-xl lg:rounded-2xl px-2.5 py-1.5 lg:p-3 shadow-md space-y-1 pointer-events-none">
+                            <div className="flex items-center justify-between gap-2 text-[11px] lg:text-xs">
                                 {isGenderless ? (
-                                    <span className="font-black text-[#5F2142] flex items-center gap-1.5">
+                                    <span className="font-black text-[#5F2142] flex items-center gap-1.5 truncate">
                                         <span>✨ {isProductoPersonalizado ? 'Producto Personalizado' : 'Lanyard Personalizado'}</span>
                                         <span className="text-[#D86A33]">•</span>
-                                        <span className="text-[#D86A33]">Se trabaja con tu diseño</span>
+                                        <span className="text-[#D86A33] truncate">Se trabaja con tu diseño</span>
                                     </span>
                                 ) : isExclusivoDamaEspecial ? (
                                     <span className="font-black text-[#5F2142] flex items-center gap-1.5">
@@ -421,14 +423,14 @@ export default function GorroConfigModal({
                                 )}
 
                                 {!isGenderless && selectedAdicionales.length > 0 && (
-                                    <span className="px-2 py-0.5 rounded-full bg-[#D86A33]/15 text-[#D86A33] font-black text-[10px]">
+                                    <span className="px-2 py-0.5 rounded-full bg-[#D86A33]/15 text-[#D86A33] font-black text-[10px] shrink-0">
                                         +{selectedAdicionales.length} (+${adicionalesUnitCost.toFixed(2)})
                                     </span>
                                 )}
                             </div>
 
                             {!isGenderless && selectedAdicionales.length > 0 && (
-                                <div className="flex flex-wrap gap-1">
+                                <div className="hidden sm:flex flex-wrap gap-1">
                                     {selectedAdicionales.map(ad => (
                                         <span
                                             key={ad}
@@ -441,7 +443,7 @@ export default function GorroConfigModal({
                             )}
 
                             {hasPersonalizationCapability && (nombrePersonalizado.trim() || textoLibre.trim() || (allowsReferenceImages && referenceImages.length > 0)) && (
-                                <div className="pt-1.5 border-t border-[#FFC99C]/40 text-[11px] space-y-0.5">
+                                <div className="pt-1 border-t border-[#FFC99C]/40 text-[10px] lg:text-[11px] space-y-0.5">
                                     {nombrePersonalizado.trim() && (
                                         <div className="truncate font-black text-[#5F2142]">
                                             ✨ Nombre: <span className="text-[#D86A33]">{nombrePersonalizado}</span>
@@ -462,14 +464,14 @@ export default function GorroConfigModal({
                         </div>
                     </div>
 
-                    {/* Thumbnails Strip */}
-                    <div className="mt-4 flex items-center gap-2.5 overflow-x-auto pb-1">
+                    {/* Thumbnails Strip (On mobile only shown when there are 2+ images to save vertical space) */}
+                    <div className={`mt-2.5 lg:mt-4 items-center gap-2 overflow-x-auto pb-1 ${gallery.length > 1 ? 'flex' : 'hidden lg:flex'}`}>
                         {gallery.map((imgUrl, idx) => (
                             <button
                                 key={idx}
                                 type="button"
                                 onClick={() => setActiveImgIdx(idx)}
-                                className={`w-16 h-16 rounded-2xl overflow-hidden border-2 shrink-0 transition-all ${
+                                className={`w-12 h-12 lg:w-16 lg:h-16 rounded-xl lg:rounded-2xl overflow-hidden border-2 shrink-0 transition-all ${
                                     activeImgIdx === idx
                                         ? 'border-[#5F2142] ring-2 ring-[#5F2142]/20 scale-105'
                                         : 'border-gray-200 opacity-70 hover:opacity-100'
@@ -484,7 +486,7 @@ export default function GorroConfigModal({
                 {/* ============================================================= */}
                 {/* RIGHT COLUMN: DYNAMIC SELECTOR FORM                           */}
                 {/* ============================================================= */}
-                <div className="lg:w-[55%] p-5 sm:p-8 overflow-y-auto space-y-5">
+                <div className="lg:w-[55%] p-4 sm:p-6 lg:p-8 lg:overflow-y-auto space-y-4 sm:space-y-5 shrink-0">
                     {/* Brand & Product Header */}
                     <div>
                         <p className="text-xs font-bold uppercase tracking-widest text-gray-400 mb-1">

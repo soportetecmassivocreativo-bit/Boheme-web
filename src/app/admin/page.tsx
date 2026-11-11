@@ -185,7 +185,8 @@ export default function AdminPage() {
     const [filterTallerType, setFilterTallerType] = useState<string>('all');
     const [filterTallerStage, setFilterTallerStage] = useState<string>('all');
     const [filterTallerDelivery, setFilterTallerDelivery] = useState<'all' | 'local' | 'nacional'>('all');
-    const [filterTallerDate, setFilterTallerDate] = useState<string>('');
+    const [filterTallerDateFrom, setFilterTallerDateFrom] = useState<string>('');
+    const [filterTallerDateTo, setFilterTallerDateTo] = useState<string>('');
     const [tallerSearch, setTallerSearch] = useState<string>('');
     const [selectedWorkshopOrder, setSelectedWorkshopOrder] = useState<Order | null>(null);
     const [editingWorkshopNotesOrder, setEditingWorkshopNotesOrder] = useState<Order | null>(null);
@@ -1526,16 +1527,27 @@ export default function AdminPage() {
     };
 
     const handlePrintDailyWorkshopSheets = () => {
-        const targetDate = filterTallerDate || new Date().toLocaleDateString('en-CA');
-        let dayOrders = orders.filter(o => {
+        const hasRangeFilter = Boolean(filterTallerDateFrom || filterTallerDateTo);
+        const todayStr = new Date().toLocaleDateString('en-CA');
+
+        let periodOrders = orders.filter(o => {
             const localDay = new Date(o.created_at).toLocaleDateString('en-CA');
             const isoDay = o.created_at.slice(0, 10);
-            return localDay === targetDate || isoDay === targetDate;
+            const effectiveDay = localDay || isoDay;
+
+            if (hasRangeFilter) {
+                if (filterTallerDateFrom && effectiveDay < filterTallerDateFrom && isoDay < filterTallerDateFrom) return false;
+                if (filterTallerDateTo && effectiveDay > filterTallerDateTo && isoDay > filterTallerDateTo) return false;
+                return true;
+            }
+            return localDay === todayStr || isoDay === todayStr;
         });
 
-        let summaryLabel = `Pedidos del Día (${targetDate})`;
-        if (dayOrders.length === 0 && !filterTallerDate && orders.length > 0) {
-            // Si hoy no se han registrado pedidos aún y no hay fecha fija seleccionada, tomar los pedidos de la última jornada registrada o los activos en taller
+        let summaryLabel = hasRangeFilter
+            ? `Período (${filterTallerDateFrom || 'Inicio'} al ${filterTallerDateTo || 'Hoy'})`
+            : `Pedidos del Día (${todayStr})`;
+
+        if (periodOrders.length === 0 && !hasRangeFilter && orders.length > 0) {
             const latestDate = new Date(orders[0].created_at).toLocaleDateString('en-CA');
             const latestOrders = orders.filter(o => {
                 const localDay = new Date(o.created_at).toLocaleDateString('en-CA');
@@ -1543,17 +1555,21 @@ export default function AdminPage() {
                 return localDay === latestDate || isoDay === latestDate;
             });
             if (latestOrders.length > 0) {
-                dayOrders = filteredTallerOrders.length > 0 ? filteredTallerOrders : latestOrders;
-                summaryLabel = `Guía Diaria de Taller (${dayOrders.length} pedidos en lista)`;
+                periodOrders = filteredTallerOrders.length > 0 ? filteredTallerOrders : latestOrders;
+                summaryLabel = `Guía de Taller (${periodOrders.length} pedidos en lista)`;
             }
         }
 
-        if (dayOrders.length === 0) {
-            alert(`No se encontraron pedidos registrados en la fecha ${targetDate}. Puedes seleccionar otra fecha o imprimir las fichas en lista.`);
+        if (periodOrders.length === 0) {
+            alert(
+                hasRangeFilter
+                    ? `No se encontraron pedidos en el período seleccionado (${filterTallerDateFrom || '...'} a ${filterTallerDateTo || '...'}).`
+                    : `No se encontraron pedidos registrados hoy (${todayStr}). Selecciona un rango de fecha de inicio y fin o imprime las fichas en lista.`
+            );
             return;
         }
 
-        handlePrintBatchWorkshopSheets(dayOrders, summaryLabel, '4');
+        handlePrintBatchWorkshopSheets(periodOrders, summaryLabel, '4');
     };
 
     const toggleOrderExpanded = (orderId: string) => {
@@ -1674,11 +1690,13 @@ export default function AdminPage() {
             if (order.tipo_entrega !== filterTallerDelivery) return false;
         }
 
-        // 4b. Date / Day filter (YYYY-MM-DD)
-        if (filterTallerDate) {
+        // 4b. Date range filter (Fecha Inicio y Fecha Fin: YYYY-MM-DD)
+        if (filterTallerDateFrom || filterTallerDateTo) {
             const localDay = new Date(order.created_at).toLocaleDateString('en-CA');
             const isoDay = order.created_at.slice(0, 10);
-            if (localDay !== filterTallerDate && isoDay !== filterTallerDate) return false;
+            const effectiveDay = localDay || isoDay;
+            if (filterTallerDateFrom && effectiveDay < filterTallerDateFrom && isoDay < filterTallerDateFrom) return false;
+            if (filterTallerDateTo && effectiveDay > filterTallerDateTo && isoDay > filterTallerDateTo) return false;
         }
 
         // 5. Search text
@@ -2620,18 +2638,18 @@ export default function AdminPage() {
                         </div>
 
                         {/* ========================================================= */}
-                        {/* MULTI-FILTER, DAILY SELECTOR & BATCH WORKSHOP PDF BAR    */}
+                        {/* MULTI-FILTER, DATE PERIOD SELECTOR & BATCH WORKSHOP PDF   */}
                         {/* ========================================================= */}
-                        <div className={`p-4 sm:p-5 rounded-3xl ${bgCard} border ${borderDefault} shadow-sm space-y-3`}>
+                        <div className={`p-4 sm:p-5 rounded-3xl ${bgCard} border ${borderDefault} shadow-sm space-y-3 overflow-hidden`}>
                             {/* Barra superior de Impresión Masiva de Fichas Técnicas (4 a 6 por hoja) */}
                             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 pb-3 border-b border-gray-100 dark:border-white/10">
                                 <div>
                                     <div className="text-xs font-black text-[#5F2142] dark:text-[#FFC99C] flex items-center gap-1.5">
-                                        <Printer size={14} className="text-[#D86A33]" />
-                                        <span>Guía Diaria de Taller en PDF (4 a 6 fichas completas por hoja)</span>
+                                        <Printer size={14} className="text-[#D86A33] shrink-0" />
+                                        <span>Guía de Taller en PDF (4 a 6 fichas completas por hoja)</span>
                                     </div>
                                     <p className="text-[11px] text-gray-500">
-                                        Imprime todas las fichas técnicas del día o de la lista actual ahorrando papel (4, 5 o 6 pedidos por página).
+                                        Filtra por fecha de inicio y fin o imprime las fichas del día ahorrando papel (4, 5 o 6 pedidos por página).
                                     </p>
                                 </div>
 
@@ -2641,11 +2659,11 @@ export default function AdminPage() {
                                         onClick={handlePrintDailyWorkshopSheets}
                                         className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#D86A33] hover:bg-[#c25925] text-white text-xs font-black shadow-md shadow-[#D86A33]/25 transition-all hover:scale-105"
                                     >
-                                        <Printer size={14} />
+                                        <Printer size={14} className="shrink-0" />
                                         <span>
-                                            {filterTallerDate
-                                                ? `🖨️ PDF Fichas del Día (${filterTallerDate})`
-                                                : '🖨️ PDF Fichas del Día (4-6 por hoja)'}
+                                            {filterTallerDateFrom || filterTallerDateTo
+                                                ? `PDF Fichas del Período (${filterTallerDateFrom || '...'} a ${filterTallerDateTo || '...'})`
+                                                : 'PDF Fichas del Día (4-6 por hoja)'}
                                         </span>
                                     </button>
 
@@ -2654,57 +2672,78 @@ export default function AdminPage() {
                                         onClick={() =>
                                             handlePrintBatchWorkshopSheets(
                                                 filteredTallerOrders,
-                                                `Pedidos en Lista (${tallerTab.toUpperCase()}${filterTallerDate ? ` • Fecha: ${filterTallerDate}` : ''})`,
+                                                `Pedidos en Lista (${tallerTab.toUpperCase()}${
+                                                    filterTallerDateFrom || filterTallerDateTo
+                                                        ? ` • Período: ${filterTallerDateFrom || 'Inicio'} a ${filterTallerDateTo || 'Hoy'}`
+                                                        : ''
+                                                })`,
                                                 '4'
                                             )
                                         }
                                         className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-[#5F2142] hover:bg-[#4a1833] text-white text-xs font-black shadow-xs transition-all"
                                     >
-                                        <ClipboardList size={14} />
-                                        <span>🖨️ PDF Fichas en Lista ({filteredTallerOrders.length})</span>
+                                        <ClipboardList size={14} className="shrink-0" />
+                                        <span>PDF Fichas en Lista ({filteredTallerOrders.length})</span>
                                     </button>
                                 </div>
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
-                                {/* Filtro por Día / Fecha */}
-                                <div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                {/* Filtro por Fecha de Inicio del Período */}
+                                <div className="min-w-0 overflow-hidden">
                                     <div className="flex items-center justify-between mb-1">
                                         <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">
-                                            Día / Fecha de Pedido:
+                                            Fecha Inicio (Desde):
                                         </label>
-                                        <div className="flex items-center gap-1">
-                                            <button
-                                                type="button"
-                                                onClick={() => setFilterTallerDate(new Date().toLocaleDateString('en-CA'))}
-                                                className="text-[10px] font-black text-[#D86A33] hover:underline"
-                                            >
-                                                Hoy
-                                            </button>
-                                            {filterTallerDate && (
-                                                <>
-                                                    <span className="text-gray-300">•</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => setFilterTallerDate('')}
-                                                        className="text-[10px] font-black text-gray-500 hover:underline"
-                                                    >
-                                                        Todas
-                                                    </button>
-                                                </>
-                                            )}
-                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                const today = new Date().toLocaleDateString('en-CA');
+                                                setFilterTallerDateFrom(today);
+                                                setFilterTallerDateTo(today);
+                                            }}
+                                            className="text-[10px] font-black text-[#D86A33] hover:underline"
+                                        >
+                                            📅 Hoy
+                                        </button>
                                     </div>
                                     <input
                                         type="date"
-                                        value={filterTallerDate}
-                                        onChange={(e) => setFilterTallerDate(e.target.value)}
-                                        className={`w-full px-3 py-2 rounded-xl border text-xs font-bold outline-none ${inputStyle}`}
+                                        value={filterTallerDateFrom}
+                                        onChange={(e) => setFilterTallerDateFrom(e.target.value)}
+                                        className={`w-full min-w-0 max-w-full block appearance-none px-3 py-2 rounded-xl border text-xs font-bold outline-none ${inputStyle}`}
+                                    />
+                                </div>
+
+                                {/* Filtro por Fecha de Fin del Período */}
+                                <div className="min-w-0 overflow-hidden">
+                                    <div className="flex items-center justify-between mb-1">
+                                        <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400">
+                                            Fecha Fin (Hasta):
+                                        </label>
+                                        {(filterTallerDateFrom || filterTallerDateTo) && (
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setFilterTallerDateFrom('');
+                                                    setFilterTallerDateTo('');
+                                                }}
+                                                className="text-[10px] font-black text-gray-500 hover:underline"
+                                            >
+                                                Limpiar fechas
+                                            </button>
+                                        )}
+                                    </div>
+                                    <input
+                                        type="date"
+                                        value={filterTallerDateTo}
+                                        onChange={(e) => setFilterTallerDateTo(e.target.value)}
+                                        className={`w-full min-w-0 max-w-full block appearance-none px-3 py-2 rounded-xl border text-xs font-bold outline-none ${inputStyle}`}
                                     />
                                 </div>
 
                                 {/* Filtro por Tipo de Producto */}
-                                <div>
+                                <div className="min-w-0">
                                     <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
                                         Tipo de Producto:
                                     </label>
@@ -2725,7 +2764,7 @@ export default function AdminPage() {
                                 </div>
 
                                 {/* Filtro por Etapa de Taller */}
-                                <div>
+                                <div className="min-w-0">
                                     <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
                                         Etapa de Taller:
                                     </label>
@@ -2742,7 +2781,7 @@ export default function AdminPage() {
                                 </div>
 
                                 {/* Filtro por Modalidad de Entrega */}
-                                <div>
+                                <div className="min-w-0">
                                     <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
                                         Modalidad de Entrega:
                                     </label>
@@ -2758,7 +2797,7 @@ export default function AdminPage() {
                                 </div>
 
                                 {/* Búsqueda de Texto en Vivo */}
-                                <div>
+                                <div className="min-w-0">
                                     <label className="block text-[10px] font-black uppercase tracking-wider text-gray-400 mb-1">
                                         Buscar en Taller:
                                     </label>
@@ -2804,7 +2843,8 @@ export default function AdminPage() {
                                         setFilterTallerType('all');
                                         setFilterTallerStage('all');
                                         setFilterTallerDelivery('all');
-                                        setFilterTallerDate('');
+                                        setFilterTallerDateFrom('');
+                                        setFilterTallerDateTo('');
                                         setTallerSearch('');
                                     }}
                                     className="px-5 py-2 rounded-full border border-gray-200 dark:border-white/10 text-xs font-bold hover:border-[#D86A33]"
@@ -4777,22 +4817,22 @@ export default function AdminPage() {
                                         </div>
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
-                                            <div>
+                                            <div className="min-w-0 overflow-hidden">
                                                 <label className="block font-black text-gray-500 uppercase text-[10px] mb-1">Fecha Desde</label>
                                                 <input
                                                     type="date"
                                                     value={reportDateFrom}
                                                     onChange={(e) => setReportDateFrom(e.target.value)}
-                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                    className={`w-full min-w-0 max-w-full block appearance-none px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
                                                 />
                                             </div>
-                                            <div>
+                                            <div className="min-w-0 overflow-hidden">
                                                 <label className="block font-black text-gray-500 uppercase text-[10px] mb-1">Fecha Hasta</label>
                                                 <input
                                                     type="date"
                                                     value={reportDateTo}
                                                     onChange={(e) => setReportDateTo(e.target.value)}
-                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                    className={`w-full min-w-0 max-w-full block appearance-none px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
                                                 />
                                             </div>
                                             <div>
@@ -4942,7 +4982,7 @@ export default function AdminPage() {
                                         </div>
 
                                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 text-xs">
-                                            <div>
+                                            <div className="min-w-0 overflow-hidden">
                                                 <div className="flex items-center justify-between mb-1">
                                                     <label className="block font-black text-gray-500 uppercase text-[10px]">Fecha Desde</label>
                                                     <button
@@ -4961,10 +5001,10 @@ export default function AdminPage() {
                                                     type="date"
                                                     value={reportDateFrom}
                                                     onChange={(e) => setReportDateFrom(e.target.value)}
-                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                    className={`w-full min-w-0 max-w-full block appearance-none px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
                                                 />
                                             </div>
-                                            <div>
+                                            <div className="min-w-0 overflow-hidden">
                                                 <div className="flex items-center justify-between mb-1">
                                                     <label className="block font-black text-gray-500 uppercase text-[10px]">Fecha Hasta</label>
                                                     {(reportDateFrom || reportDateTo) && (
@@ -4984,7 +5024,7 @@ export default function AdminPage() {
                                                     type="date"
                                                     value={reportDateTo}
                                                     onChange={(e) => setReportDateTo(e.target.value)}
-                                                    className={`w-full px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
+                                                    className={`w-full min-w-0 max-w-full block appearance-none px-3 py-2 rounded-xl border font-bold ${inputStyle}`}
                                                 />
                                             </div>
                                             <div>

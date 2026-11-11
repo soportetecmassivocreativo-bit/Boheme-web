@@ -1,6 +1,7 @@
 import Navbar from '@/components/ui/Navbar';
 import ProductCard from '@/components/ui/ProductCard';
 import CatalogSearchBar from '@/components/ui/CatalogSearchBar';
+import SubcategorySlider from '@/components/ui/SubcategorySlider';
 import Footer from '@/components/ui/Footer';
 import { fetchCategoryProducts, CATEGORIES, loadCategoriesFromDisk, normalizeCategorySlug, GORROS_ESPECIALES_SUBCATEGORIES } from '@/lib/db';
 import { notFound } from 'next/navigation';
@@ -140,51 +141,12 @@ export default async function CategoriaPage({ params, searchParams }: PageProps)
 
                 {/* Subcategories Filter Bar (Only shown when the section has subcategories and is not Accesorios / Equipos Médicos / Productos Personalizados) */}
                 {normalizedCategoria !== 'accesorios-medicos' && normalizedCategoria !== 'equipos-medicos' && normalizedCategoria !== 'productos-personalizados' && category.subcategories.length > 0 && (
-                    <div className="mb-8 overflow-x-auto pb-3 scrollbar-thin">
-                        <div className="flex space-x-2.5 items-center">
-                            {/* "Todas las Categorías" Filter Link */}
-                            <Link
-                                href={`/categorias/${categoria}${
-                                    (() => {
-                                        const p = new URLSearchParams();
-                                        if (buscar && buscar.trim()) p.set('buscar', buscar.trim());
-                                        const qs = p.toString();
-                                        return qs ? `?${qs}` : '';
-                                    })()
-                                }`}
-                                onClick={undefined}
-                                className={`px-5 py-2.5 rounded-full text-xs font-black whitespace-nowrap transition-all duration-200 border uppercase tracking-wider flex items-center gap-1.5 ${
-                                    !subcategoriaId
-                                        ? 'bg-[#5F2142] text-[#FFC99C] border-[#5F2142] shadow-md -rotate-1 scale-105'
-                                        : 'bg-white text-[#5F2142] border-[#FFC99C]/50 hover:border-[#D86A33] hover:text-[#D86A33] hover:scale-105'
-                                }`}
-                            >
-                                <span>✦ Todas las Categorías</span>
-                            </Link>
-
-                            {/* Dynamic Subcategory Filter Links */}
-                            {category.subcategories.map((sub) => {
-                                const isActive = subcategoriaId === sub.id;
-                                const subParams = new URLSearchParams();
-                                subParams.set('subcategoria', String(sub.id));
-                                if (buscar && buscar.trim()) subParams.set('buscar', buscar.trim());
-
-                                return (
-                                    <Link
-                                        key={sub.id}
-                                        href={`/categorias/${categoria}?${subParams.toString()}`}
-                                        className={`px-5 py-2.5 rounded-full text-xs font-black whitespace-nowrap transition-all duration-200 border uppercase tracking-wider flex items-center gap-1.5 ${
-                                            isActive
-                                                ? 'bg-[#D86A33] text-white border-[#D86A33] shadow-md rotate-1 scale-105'
-                                                : 'bg-white text-[#5F2142] border-[#FFC99C]/50 hover:border-[#D86A33] hover:text-[#D86A33] hover:scale-105'
-                                        }`}
-                                    >
-                                        <span>{sub.name}</span>
-                                    </Link>
-                                );
-                            })}
-                        </div>
-                    </div>
+                    <SubcategorySlider
+                        categoria={categoria}
+                        subcategories={category.subcategories}
+                        activeSubcategoriaId={subcategoriaId}
+                        buscar={buscar}
+                    />
                 )}
 
                 {/* Products Grid */}
