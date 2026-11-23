@@ -71,7 +71,7 @@ export const GORROS_DISENA_TU_IDEA_MODELS = [
         label: 'Especial Reversible',
         price: 11.00,
         allowsGenderAndStyle: true,
-        desc: 'Doble faz combinable (Dama o Caballero)'
+        desc: 'Doble vista combinable (Dama o Caballero)'
     },
     {
         id: 'Cintillo',
@@ -561,7 +561,7 @@ let MOCK_PRODUCTS: Product[] = [
     },
     {
         id: '104',
-        name: 'Gorro Especial Doble Faz Reversible Boheme',
+        name: 'Gorro Especial Reversible Boheme',
         description: 'Gorro especial doble vista: un lado estampado artístico y reverso unicolor combinable para dos estilos en uno.',
         price: 11,
         image_url: '/cat_gorros.png',
@@ -624,7 +624,7 @@ let MOCK_PRODUCTS: Product[] = [
     {
         id: '202',
         name: 'Lanyard Sublimado Colores Pastel',
-        description: 'Estampado textil doble faz en tonos pasteles. Suave al tacto con el cuello, hipoalergénico y lavable.',
+        description: 'Estampado textil doble vista en tonos pasteles. Suave al tacto con el cuello, hipoalergénico y lavable.',
         price: 4,
         image_url: '/cat_accesorios.png',
         categoria_slug: 'lanyards',
@@ -1774,7 +1774,7 @@ function loadProductsFromDisk(force = false) {
                     },
                     {
                         id: '104',
-                        name: 'Gorro Especial Doble Faz Reversible Boheme',
+                        name: 'Gorro Especial Reversible Boheme',
                         description: 'Gorro especial doble vista: un lado estampado artístico y reverso unicolor combinable para dos estilos en uno.',
                         price: 11,
                         image_url: '/cat_gorros.png',
@@ -1905,6 +1905,9 @@ function loadProductsFromDisk(force = false) {
                     if (existingIdx === -1) {
                         merged.push(defProd);
                         changed = true;
+                    } else if (defProd.id === '104' && (merged[existingIdx].name.includes('Doble Faz') || merged[existingIdx].name !== defProd.name)) {
+                        merged[existingIdx] = { ...merged[existingIdx], name: defProd.name, description: defProd.description };
+                        changed = true;
                     } else if ((defProd.id === '112' || defProd.id === '207') && merged[existingIdx].name !== 'Diseña tu idea') {
                         merged[existingIdx] = { ...merged[existingIdx], name: 'Diseña tu idea' };
                         changed = true;
@@ -1916,6 +1919,13 @@ function loadProductsFromDisk(force = false) {
                         changed = true;
                     }
                 }
+                merged = merged.map(p => {
+                    if (p.name && p.name.includes('Doble Faz')) {
+                        changed = true;
+                        return { ...p, name: p.name.replace(/\s*Doble Faz\s*/gi, ' ').replace(/\s+/g, ' ').trim() };
+                    }
+                    return p;
+                });
                 // Remove any Stock Gorro (70) or Stock Lanyard (5) whose stock is 0 or less
                 const beforeFilterLen = merged.length;
                 merged = merged.filter(p => !(isEphemeralStockItem(p) && p.stock !== undefined && Number(p.stock) <= 0));
