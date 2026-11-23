@@ -18,11 +18,14 @@ export default function AdminLoginPage() {
         setError(null);
         setLoading(true);
 
+        const cleanEmail = email.trim();
+        const cleanPassword = password.trim();
+
         try {
             const res = await fetch('/api/admin/login', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ email, password })
+                body: JSON.stringify({ email: cleanEmail, password: cleanPassword })
             });
 
             const data = await res.json();
@@ -93,10 +96,14 @@ export default function AdminLoginPage() {
                                 <input
                                     type="email"
                                     required
-                                    autoComplete="off"
+                                    autoComplete="username"
+                                    autoCapitalize="none"
+                                    autoCorrect="off"
+                                    spellCheck={false}
+                                    placeholder="ceoadmin@boheme.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm transition-all bg-white text-[#5F2142] font-medium"
+                                    className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm transition-all bg-white text-[#5F2142] font-medium placeholder:text-gray-300"
                                 />
                             </div>
                         </div>
@@ -113,10 +120,14 @@ export default function AdminLoginPage() {
                                 <input
                                     type={showPassword ? 'text' : 'password'}
                                     required
-                                    autoComplete="new-password"
+                                    autoComplete="current-password"
+                                    autoCapitalize="none"
+                                    autoCorrect="off"
+                                    spellCheck={false}
+                                    placeholder="••••••••"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full pl-10 pr-11 py-3 rounded-2xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm transition-all bg-white text-[#5F2142] font-medium"
+                                    className="w-full pl-10 pr-11 py-3 rounded-2xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm transition-all bg-white text-[#5F2142] font-medium placeholder:text-gray-300"
                                 />
                                 <button
                                     type="button"
@@ -133,7 +144,7 @@ export default function AdminLoginPage() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full py-3.5 px-6 rounded-full bg-[#5F2142] hover:bg-[#43142e] text-white font-black text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-[#5F2142]/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none"
+                                className="w-full py-3.5 px-6 rounded-full bg-[#5F2142] hover:bg-[#43142e] text-white font-black text-sm transition-all duration-200 flex items-center justify-center gap-2 shadow-lg shadow-[#5F2142]/20 hover:scale-[1.02] active:scale-[0.98] disabled:opacity-70 disabled:pointer-events-none cursor-pointer"
                             >
                                 {loading ? (
                                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
@@ -146,6 +157,10 @@ export default function AdminLoginPage() {
                             </button>
                         </div>
                     </form>
+
+                    <p className="text-[11px] text-center text-gray-400 mt-4 font-medium">
+                        Accesos: <span className="text-gray-600 font-semibold">ceoadmin@boheme.com</span> • <span className="text-gray-600 font-semibold">masteradmin@boheme.com</span>
+                    </p>
                 </div>
 
                 {/* Back to Home Link */}

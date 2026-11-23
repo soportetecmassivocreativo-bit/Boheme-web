@@ -13,6 +13,7 @@ export async function POST(request: Request) {
         const { email, password } = body;
 
         const cleanEmail = (email || '').trim().toLowerCase();
+        const cleanPassword = (password || '').trim();
         const settings = getSiteSettingsSync();
         const usersList = Array.isArray(settings.usuarios) && settings.usuarios.length > 0
             ? settings.usuarios
@@ -28,9 +29,28 @@ export async function POST(request: Request) {
                 }
             ];
 
-        const matchedUser = usersList.find(
-            u => u.email.trim().toLowerCase() === cleanEmail && u.password === password
-        );
+        // Handle common email aliases/typos (cioadmin vs ceoadmin)
+        const normalizeEmailForMatch = (e: string) => {
+            const low = (e || '').trim().toLowerCase();
+            if (low === 'cioadmin@boheme.com' || low === 'ceoadmin@boheme.com') {
+                return 'ceoadmin@boheme.com';
+            }
+            return low;
+        };
+
+        const targetNormalizedEmail = normalizeEmailForMatch(cleanEmail);
+
+        const matchedUser = usersList.find(u => {
+            const uEmail = (u.email || '').trim().toLowerCase();
+            const uNorm = normalizeEmailForMatch(uEmail);
+            const emailMatch = uEmail === cleanEmail || uNorm === targetNormalizedEmail;
+            if (!emailMatch) return false;
+
+            const uPass = (u.password || '').trim();
+            // Accept exact match or case-insensitive match (for mobile auto-capitalization)
+            const passwordMatch = uPass === cleanPassword || uPass.toLowerCase() === cleanPassword.toLowerCase();
+            return passwordMatch;
+        });
 
         if (!matchedUser) {
             return NextResponse.json(

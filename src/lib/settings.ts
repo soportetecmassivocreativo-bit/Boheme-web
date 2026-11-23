@@ -179,6 +179,17 @@ export const DEFAULT_SETTINGS: SiteSettings = {
             createdAt: '2026-10-25T23:17:52.817Z'
         },
         {
+            id: 'user-cioadmin-alias',
+            nombre: 'Jedidiah Oropeza',
+            email: 'cioadmin@boheme.com',
+            password: 'Boheme2026',
+            rol: 'admin',
+            cargo: 'Gerente',
+            telefono: '0412-1409976',
+            activo: true,
+            createdAt: '2026-10-25T23:17:52.817Z'
+        },
+        {
             id: 'user-admin-legacy',
             nombre: 'Administrador Principal BOHEME',
             email: process.env.ADMIN_EMAIL || 'admin@boheme.com',
@@ -232,9 +243,17 @@ function loadSettingsFromDisk(force = false): SiteSettings {
                     correlativo: { ...DEFAULT_SETTINGS.correlativo, ...(parsed.correlativo || {}) },
                     pdfConfig: { ...DEFAULT_SETTINGS.pdfConfig, ...(parsed.pdfConfig || {}) },
                     tienda: { ...DEFAULT_SETTINGS.tienda, ...(parsed.tienda || {}) },
-                    usuarios: Array.isArray(parsed.usuarios) && parsed.usuarios.length > 0
-                        ? parsed.usuarios
-                        : DEFAULT_SETTINGS.usuarios
+                    usuarios: (() => {
+                        const existingUsers: AdminUser[] = Array.isArray(parsed.usuarios) ? parsed.usuarios : [];
+                        const mergedUsers = [...existingUsers];
+                        for (const defUser of DEFAULT_SETTINGS.usuarios) {
+                            const found = mergedUsers.some(u => u.email.trim().toLowerCase() === defUser.email.trim().toLowerCase());
+                            if (!found) {
+                                mergedUsers.push(defUser);
+                            }
+                        }
+                        return mergedUsers.length > 0 ? mergedUsers : DEFAULT_SETTINGS.usuarios;
+                    })()
                 };
             }
         }
