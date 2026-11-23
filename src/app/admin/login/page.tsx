@@ -159,7 +159,7 @@ export default function AdminLoginPage() {
                     </form>
 
                     <p className="text-[11px] text-center text-gray-400 mt-4 font-medium">
-                        Accesos: <span className="text-gray-600 font-semibold">ceoadmin@boheme.com</span> • <span className="text-gray-600 font-semibold">masteradmin@boheme.com</span>
+                        Accesos: <span className="text-gray-600 font-semibold">cioadmin@boheme.com</span> • <span className="text-gray-600 font-semibold">ceoadmin@boheme.com</span>
                     </p>
                 </div>
 

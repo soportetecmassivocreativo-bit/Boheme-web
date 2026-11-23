@@ -1,9 +1,7 @@
 import { NextResponse } from 'next/server';
 import { 
     createAdminToken, 
-    ADMIN_COOKIE_NAME, 
-    DEFAULT_ADMIN_EMAIL, 
-    DEFAULT_ADMIN_PASSWORD 
+    ADMIN_COOKIE_NAME
 } from '@/lib/auth';
 import { getSiteSettingsSync } from '@/lib/settings';
 
@@ -15,41 +13,45 @@ export async function POST(request: Request) {
         const cleanEmail = (email || '').trim().toLowerCase();
         const cleanPassword = (password || '').trim();
         const settings = getSiteSettingsSync();
-        const usersList = Array.isArray(settings.usuarios) && settings.usuarios.length > 0
-            ? settings.usuarios
-            : [
-                {
-                    id: 'user-admin-principal',
-                    nombre: 'Administrador Principal BOHEME',
-                    email: DEFAULT_ADMIN_EMAIL,
-                    password: DEFAULT_ADMIN_PASSWORD,
-                    rol: 'super_admin' as const,
-                    activo: true,
-                    createdAt: '2026-01-01T00:00:00.000Z'
-                }
-            ];
 
-        // Handle common email aliases/typos (cioadmin vs ceoadmin)
-        const normalizeEmailForMatch = (e: string) => {
-            const low = (e || '').trim().toLowerCase();
-            if (low === 'cioadmin@boheme.com' || low === 'ceoadmin@boheme.com') {
-                return 'ceoadmin@boheme.com';
+        // Always include hardcoded fallback users so login works even on cold-boot Vercel instances
+        const HARDCODED_USERS = [
+            {
+                id: 'user-cioadmin-angel',
+                nombre: 'Angel Antequera',
+                email: 'cioadmin@boheme.com',
+                password: process.env.ADMIN_PASSWORD || 'boheme2026',
+                rol: 'super_admin' as const,
+                activo: true,
+                createdAt: '2026-01-01T00:00:00.000Z'
+            },
+            {
+                id: 'user-ceoadmin-jedidiah',
+                nombre: 'Jedidiah Oropeza',
+                email: 'ceoadmin@boheme.com',
+                password: 'Boheme2026',
+                rol: 'admin' as const,
+                activo: true,
+                createdAt: '2026-10-25T23:17:52.817Z'
             }
-            return low;
-        };
+        ];
 
-        const targetNormalizedEmail = normalizeEmailForMatch(cleanEmail);
+        // Merge saved users with hardcoded fallbacks: saved users take priority
+        const savedUsers = Array.isArray(settings.usuarios) ? settings.usuarios : [];
+        const usersList = [...savedUsers];
+        for (const hUser of HARDCODED_USERS) {
+            const alreadyExists = usersList.some(u => u.email.trim().toLowerCase() === hUser.email);
+            if (!alreadyExists) {
+                usersList.push(hUser);
+            }
+        }
 
         const matchedUser = usersList.find(u => {
             const uEmail = (u.email || '').trim().toLowerCase();
-            const uNorm = normalizeEmailForMatch(uEmail);
-            const emailMatch = uEmail === cleanEmail || uNorm === targetNormalizedEmail;
-            if (!emailMatch) return false;
-
+            if (uEmail !== cleanEmail) return false;
             const uPass = (u.password || '').trim();
-            // Accept exact match or case-insensitive match (for mobile auto-capitalization)
-            const passwordMatch = uPass === cleanPassword || uPass.toLowerCase() === cleanPassword.toLowerCase();
-            return passwordMatch;
+            // Accept exact or case-insensitive match (mobile keyboards capitalize first letter)
+            return uPass === cleanPassword || uPass.toLowerCase() === cleanPassword.toLowerCase();
         });
 
         if (!matchedUser) {
