@@ -100,10 +100,9 @@ export default function AdminLoginPage() {
                                     autoCapitalize="none"
                                     autoCorrect="off"
                                     spellCheck={false}
-                                    placeholder="ceoadmin@boheme.com"
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm transition-all bg-white text-[#5F2142] font-medium placeholder:text-gray-300"
+                                    className="w-full pl-10 pr-4 py-3 rounded-2xl border border-gray-200 focus:border-[#D86A33] focus:ring-2 focus:ring-[#D86A33]/20 outline-none text-sm transition-all bg-white text-[#5F2142] font-medium"
                                 />
                             </div>
                         </div>
@@ -157,10 +156,6 @@ export default function AdminLoginPage() {
                             </button>
                         </div>
                     </form>
-
-                    <p className="text-[11px] text-center text-gray-400 mt-4 font-medium">
-                        Accesos: <span className="text-gray-600 font-semibold">cioadmin@boheme.com</span> • <span className="text-gray-600 font-semibold">ceoadmin@boheme.com</span>
-                    </p>
                 </div>
 
                 {/* Back to Home Link */}
